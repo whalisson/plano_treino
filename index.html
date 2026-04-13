@@ -1231,22 +1231,18 @@ function makeBankPill(ex){
   var editBtn=document.createElement('button');
   editBtn.textContent='✎';
   editBtn.title='Editar';
-  editBtn.style.cssText='background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:#a59eff;font-size:12px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;';
-  editBtn.addEventListener('click',function(e){
-    e.stopPropagation();
-    openEditModal(ex.id);
-  });
+  editBtn.style.cssText='background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:#a59eff;font-size:12px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
+  editBtn.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  editBtn.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();openEditModal(ex.id);},{passive:false});
+  editBtn.addEventListener('click',function(e){e.stopPropagation();openEditModal(ex.id);});
 
   var delBtn=document.createElement('button');
   delBtn.textContent='×';
   delBtn.title='Remover';
-  delBtn.style.cssText='background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:14px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;';
-  delBtn.addEventListener('click',function(e){
-    e.stopPropagation();
-    bank=bank.filter(function(b){return b.id!==ex.id;});
-    renderBank();
-    saveState();
-  });
+  delBtn.style.cssText='background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:14px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
+  delBtn.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  delBtn.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();bank=bank.filter(function(b){return b.id!==ex.id;});renderBank();saveState();},{passive:false});
+  delBtn.addEventListener('click',function(e){e.stopPropagation();bank=bank.filter(function(b){return b.id!==ex.id;});renderBank();saveState();});
 
   acts.appendChild(editBtn);
   acts.appendChild(delBtn);
@@ -1271,6 +1267,9 @@ function makeBoardCard(ex,di,ei){
   el.draggable=true;
   var rm=document.createElement('button');
   rm.className='kexrm'; rm.textContent='×';
+  rm.style.touchAction='manipulation';
+  rm.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  rm.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();board[di].splice(ei,1);renderKanban();renderPeriodGrid();},{passive:false});
   rm.addEventListener('click',function(e){e.stopPropagation();board[di].splice(ei,1);renderKanban();renderPeriodGrid();});
   el.appendChild(rm);
   el.addEventListener('dragstart',function(e){
