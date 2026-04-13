@@ -233,7 +233,7 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .kex:active{cursor:grabbing;opacity:.7;transform:scale(.97);}
 .kex.dragging{opacity:.35;}
 /* touch: prevent text selection during drag */
-.kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:pan-y;}
+.kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:none;-webkit-touch-callout:none;}
 .kexname{font-size:11px;font-weight:600;padding-right:16px;line-height:1.3;}
 .kexmeta{font-size:10px;color:var(--accent);font-family:var(--mono);margin-top:1px;}
 .kexrm{position:absolute;top:4px;right:5px;background:transparent;border:none;color:var(--muted);font-size:14px;padding:0;cursor:pointer;line-height:1;}
@@ -1114,6 +1114,7 @@ function addTouchDrag(el, getItemFn){
   var startX, startY, moved=false;
 
   el.addEventListener('touchstart',function(e){
+    e.preventDefault(); // bloqueia seleção de texto e callout nativo
     moved=false;
     var t=e.touches[0];
     startX=t.clientX; startY=t.clientY;
@@ -1124,7 +1125,7 @@ function addTouchDrag(el, getItemFn){
       el.classList.add('dragging');
       touchScrollBlocked=true;
     }, LONG_PRESS_MS);
-  },{passive:true});
+  },{passive:false});
 
   el.addEventListener('touchmove',function(e){
     var t=e.touches[0];
