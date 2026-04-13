@@ -95,6 +95,11 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .week-cols{display:grid;grid-template-columns:140px 90px 70px auto;padding:4px 13px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);}
 .week-cols span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
 .series-row{display:grid;grid-template-columns:140px 90px 70px auto;align-items:center;padding:6px 13px;border-bottom:1px solid var(--border);}
+@media(max-width:500px){
+  .week-cols,.series-row{grid-template-columns:80px 68px 38px auto;padding-left:10px;padding-right:10px;}
+  .set-cb-box{width:20px;height:20px;}
+  .ser-checks{gap:4px;}
+}
 .series-row:last-child{border-bottom:none;}
 .series-row.main-set{background:rgba(108,99,255,.06);}
 .series-row.rm-test-set{background:rgba(74,222,128,.05);}
