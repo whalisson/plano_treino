@@ -1114,12 +1114,13 @@ function addTouchDrag(el, getItemFn){
   var startX, startY, moved=false;
 
   el.addEventListener('touchstart',function(e){
+    // se o toque foi em um botão (ou filho de botão), ignora — deixa o clique funcionar normalmente
+    if(e.target.closest('button')) return;
     moved=false;
     var t=e.touches[0];
     startX=t.clientX; startY=t.clientY;
     // Long-press to start drag
     touchLongPressTimer=setTimeout(function(){
-      // limpa qualquer seleção de texto que possa ter iniciado
       if(window.getSelection) window.getSelection().removeAllRanges();
       dragItem=getItemFn();
       touchGhost=createTouchGhost(el);
@@ -1128,8 +1129,8 @@ function addTouchDrag(el, getItemFn){
     }, LONG_PRESS_MS);
   },{passive:true});
 
-  // bloqueia menu de contexto (long-press nativo no Android/iOS)
-  el.addEventListener('contextmenu',function(e){e.preventDefault();});
+  // bloqueia menu de contexto (long-press nativo no Android/iOS) fora de botões
+  el.addEventListener('contextmenu',function(e){if(!e.target.closest('button'))e.preventDefault();});
 
   el.addEventListener('touchmove',function(e){
     var t=e.touches[0];
@@ -1232,16 +1233,12 @@ function makeBankPill(ex){
   editBtn.textContent='✎';
   editBtn.title='Editar';
   editBtn.style.cssText='background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:#a59eff;font-size:12px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
-  editBtn.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
-  editBtn.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();openEditModal(ex.id);},{passive:false});
   editBtn.addEventListener('click',function(e){e.stopPropagation();openEditModal(ex.id);});
 
   var delBtn=document.createElement('button');
   delBtn.textContent='×';
   delBtn.title='Remover';
   delBtn.style.cssText='background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:14px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
-  delBtn.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
-  delBtn.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();bank=bank.filter(function(b){return b.id!==ex.id;});renderBank();saveState();},{passive:false});
   delBtn.addEventListener('click',function(e){e.stopPropagation();bank=bank.filter(function(b){return b.id!==ex.id;});renderBank();saveState();});
 
   acts.appendChild(editBtn);
@@ -1268,8 +1265,6 @@ function makeBoardCard(ex,di,ei){
   var rm=document.createElement('button');
   rm.className='kexrm'; rm.textContent='×';
   rm.style.touchAction='manipulation';
-  rm.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
-  rm.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();board[di].splice(ei,1);renderKanban();renderPeriodGrid();},{passive:false});
   rm.addEventListener('click',function(e){e.stopPropagation();board[di].splice(ei,1);renderKanban();renderPeriodGrid();});
   el.appendChild(rm);
   el.addEventListener('dragstart',function(e){
