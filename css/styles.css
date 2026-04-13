@@ -304,3 +304,52 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .pr-gain{color:var(--green);font-weight:700;}
 .pr-dismiss{font-size:10px;color:rgba(255,255,255,.25);margin-top:10px;display:block;}
 
+/* ── RPE BLOCK BUILDER ── */
+.rpe-ref-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:700px;}
+.rpe-ref-table th{padding:5px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);}
+.rpe-ref-table th:first-child,.rpe-ref-table th:nth-child(2){text-align:left;}
+.rpe-ref-table td{padding:4px 8px;text-align:center;border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;}
+.rpe-ref-table tr:last-child td{border-bottom:none;}
+.rpe-ref-table tr:hover td{background:rgba(255,255,255,.02);}
+.rpe-cell-rpe{font-weight:700;text-align:left!important;white-space:nowrap;}
+.rpe-cell-rir{color:var(--muted);text-align:left!important;font-size:10px;}
+
+/* Exercise card in builder */
+.rpe-ex-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px;}
+.rpe-ex-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.rpe-ex-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.rpe-quick-btn{font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;cursor:pointer;transition:all .15s;font-family:var(--font);font-weight:500;box-shadow:none;}
+.rpe-quick-btn:hover{border-color:var(--accent);color:var(--text);opacity:1;}
+.rpe-quick-btn.rpe-quick-active{background:rgba(108,99,255,.15);border-color:rgba(108,99,255,.5);color:#a59eff;}
+
+/* Set row */
+.rpe-sets-list{display:flex;flex-direction:column;gap:5px;margin-bottom:6px;}
+.rpe-set-row{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:7px 10px;flex-wrap:nowrap;}
+.rpe-count-input,.rpe-reps-input{width:44px!important;font-size:13px!important;padding:4px 5px!important;text-align:center;margin:0;}
+.rpe-rpe-select{background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 5px;outline:none;width:74px;cursor:pointer;}
+.rpe-rpe-select:focus{border-color:var(--accent);}
+.rpe-x,.rpe-at,.rpe-eq{color:var(--muted);font-size:12px;flex-shrink:0;}
+.rpe-weight{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;flex:1;text-align:right;}
+.rpe-set-del{background:transparent!important;border:none!important;color:var(--muted);font-size:17px;padding:0 4px;cursor:pointer;line-height:1;box-shadow:none!important;flex-shrink:0;min-width:24px;}
+.rpe-set-del:hover{color:var(--red);opacity:1;transform:none;}
+.rpe-col-hdr{display:flex;gap:6px;padding:2px 10px;font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+
+/* Saved block cards */
+.rpe-blk-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px 14px;}
+.rpe-blk-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.rpe-blk-name{font-size:14px;font-weight:600;flex:1;}
+.rpe-blk-count{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.rpe-blk-exercises{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+.rpe-blk-ex{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 11px;}
+.rpe-blk-ex-name{font-size:12px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.rpe-blk-rm{font-size:10px;color:var(--muted);font-family:var(--mono);font-weight:400;}
+.rpe-blk-sets{display:flex;flex-wrap:wrap;gap:5px;}
+.rpe-blk-set{font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:rgba(255,255,255,.03);}
+.rpe-blk-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+@media(max-width:480px){
+  .rpe-set-row{gap:4px;padding:6px 7px;}
+  .rpe-count-input,.rpe-reps-input{width:36px!important;}
+  .rpe-rpe-select{width:62px;}
+}
+

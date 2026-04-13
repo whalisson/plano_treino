@@ -23,6 +23,7 @@
     <div class="ntab"    data-p="logbook">Logbook</div>
     <div class="ntab"    data-p="rm">Calc 1RM</div>
     <div class="ntab"    data-p="bike">Bike</div>
+    <div class="ntab"    data-p="rpe">RPE</div>
   </div>
 </nav>
 
@@ -328,6 +329,51 @@
     </div>
   </div>
 </div>
+<!-- ══ RPE BLOCOS ══ -->
+<div class="pg" id="pg-rpe">
+  <div class="sh">
+    <div class="shtitle">Blocos de Treino</div>
+    <span class="badge bp">RPE</span>
+  </div>
+
+  <!-- RPE Reference Table (collapsible) -->
+  <div class="ps" style="margin-bottom:16px;">
+    <div class="psh" id="psh-rpetable" onclick="toggleRPETable()">
+      <span class="pstitle">Tabela RPE — Referência</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:auto;margin-right:8px;">Tuscherer / Barbell Medicine</span>
+      <span class="pschev" id="chev-rpetable">▼</span>
+    </div>
+    <div class="psb" id="psb-rpetable">
+      <div id="rpe-table-wrap" style="overflow-x:auto;padding-bottom:4px;"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;">Valores = % do 1RM estimado. Baseado na tabela expandida de Tuscherer (RIR 0–10, Reps 1–15).</div>
+    </div>
+  </div>
+
+  <!-- Block Builder -->
+  <div class="card" style="margin-bottom:14px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:13px;" id="rpeBuilderTitle">Novo Bloco de Treino</div>
+
+    <div style="margin-bottom:12px;">
+      <label>Nome do bloco</label>
+      <input type="text" id="rpeBlockName" placeholder="Ex: Dia A — Força">
+    </div>
+
+    <!-- Dynamic exercises rendered here -->
+    <div id="rpeExerciseList" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;"></div>
+
+    <button class="sec" id="btnAddRPEEx" style="font-size:12px;width:100%;margin-bottom:14px;">+ Adicionar Exercício</button>
+
+    <div style="display:flex;gap:8px;">
+      <button id="btnSaveRPEBlock" style="flex:1;">Salvar Bloco</button>
+      <button class="sec" id="btnClearRPEBlock">Limpar</button>
+    </div>
+  </div>
+
+  <!-- Saved Blocks -->
+  <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Blocos Salvos</div>
+  <div id="rpeBlocksList" style="display:flex;flex-direction:column;gap:9px;"></div>
+</div>
+
 <script src="js/app.js"></script>
 </body>
 </html>
