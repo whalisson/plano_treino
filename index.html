@@ -233,7 +233,7 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .kex:active{cursor:grabbing;opacity:.7;transform:scale(.97);}
 .kex.dragging{opacity:.35;}
 /* touch: prevent text selection during drag */
-.kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:pan-y;-webkit-touch-callout:none;}
+.kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:manipulation;-webkit-touch-callout:none;}
 .kexname{font-size:11px;font-weight:600;padding-right:16px;line-height:1.3;}
 .kexmeta{font-size:10px;color:var(--accent);font-family:var(--mono);margin-top:1px;}
 .kexrm{position:absolute;top:2px;right:3px;background:transparent;border:none;color:var(--muted);font-size:14px;padding:5px 7px;cursor:pointer;line-height:1;touch-action:manipulation;}
@@ -1079,13 +1079,29 @@ var bank=[
 // ── DRAG & DROP ───────────────────────────────
 var dragItem=null;
 var dragGhost=null;
+var isTouch=('ontouchstart' in window||navigator.maxTouchPoints>0);
 
 // ── TOUCH DRAG SUPPORT ────────────────────────
 var touchGhost=null;
 var touchLastTarget=null;
 var touchScrollBlocked=false;
 var touchLongPressTimer=null;
-var LONG_PRESS_MS=200;
+var LONG_PRESS_MS=400;
+var autoScrollRAF=null;
+var autoScrollVel=0;
+
+function runAutoScroll(){
+  if(autoScrollVel!==0&&dragItem){
+    window.scrollBy(0,autoScrollVel);
+    autoScrollRAF=requestAnimationFrame(runAutoScroll);
+  } else {
+    autoScrollRAF=null;
+  }
+}
+function stopAutoScroll(){
+  autoScrollVel=0;
+  if(autoScrollRAF){cancelAnimationFrame(autoScrollRAF);autoScrollRAF=null;}
+}
 
 function createTouchGhost(el){
   var ghost=el.cloneNode(true);
@@ -1144,10 +1160,15 @@ function addTouchDrag(el, getItemFn){
       return;
     }
     e.preventDefault();
-    // Auto-scroll quando o ghost está perto das bordas da viewport
-    var EDGE=80, SPEED=6;
-    if(t.clientY<EDGE) window.scrollBy(0,-(SPEED+Math.round((EDGE-t.clientY)/10)));
-    else if(t.clientY>window.innerHeight-EDGE) window.scrollBy(0,SPEED+Math.round((t.clientY-(window.innerHeight-EDGE))/10));
+    // Auto-scroll contínuo via RAF quando dedo perto da borda
+    var EDGE=100;
+    var vy=t.clientY;
+    var vh=window.innerHeight;
+    var newVel=0;
+    if(vy<EDGE) newVel=-Math.max(4,Math.round((EDGE-vy)/8));
+    else if(vy>vh-EDGE) newVel=Math.max(4,Math.round((vy-(vh-EDGE))/8));
+    autoScrollVel=newVel;
+    if(newVel!==0&&!autoScrollRAF) autoScrollRAF=requestAnimationFrame(runAutoScroll);
     // Move ghost
     if(touchGhost){
       touchGhost.style.left=(t.clientX-touchGhost.offsetWidth/2)+'px';
@@ -1170,6 +1191,7 @@ function addTouchDrag(el, getItemFn){
 
   el.addEventListener('touchend',function(e){
     clearTimeout(touchLongPressTimer);
+    stopAutoScroll();
     touchScrollBlocked=false;
     if(touchGhost){touchGhost.remove();touchGhost=null;}
     el.classList.remove('dragging');
@@ -1182,7 +1204,6 @@ function addTouchDrag(el, getItemFn){
     var target=getTouchDropTarget(t.clientX,t.clientY);
     if(target){
       if(target.classList.contains('kcol')){
-        // Determine day index
         var cols=Array.from(document.querySelectorAll('.kcol'));
         var di=cols.indexOf(target);
         if(di>=0){
@@ -1210,6 +1231,7 @@ function addTouchDrag(el, getItemFn){
 
   el.addEventListener('touchcancel',function(){
     clearTimeout(touchLongPressTimer);
+    stopAutoScroll();
     touchScrollBlocked=false;
     if(touchGhost){touchGhost.remove();touchGhost=null;}
     el.classList.remove('dragging');
@@ -1237,28 +1259,32 @@ function makeBankPill(ex){
   var editBtn=document.createElement('button');
   editBtn.textContent='✎';
   editBtn.title='Editar';
-  editBtn.style.cssText='background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:#a59eff;font-size:12px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
+  editBtn.style.cssText='background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:#a59eff;font-size:13px;padding:6px 9px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
   editBtn.addEventListener('click',function(e){e.stopPropagation();openEditModal(ex.id);});
   editBtn.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  editBtn.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();openEditModal(ex.id);},{passive:false});
 
   var delBtn=document.createElement('button');
   delBtn.textContent='×';
   delBtn.title='Remover';
-  delBtn.style.cssText='background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:14px;padding:3px 6px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
+  delBtn.style.cssText='background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:15px;padding:6px 9px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
   delBtn.addEventListener('click',function(e){e.stopPropagation();bank=bank.filter(function(b){return b.id!==ex.id;});renderBank();saveState();});
   delBtn.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  delBtn.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();bank=bank.filter(function(b){return b.id!==ex.id;});renderBank();saveState();},{passive:false});
 
   acts.appendChild(editBtn);
   acts.appendChild(delBtn);
   el.appendChild(acts);
 
-  el.draggable=true;
-  el.addEventListener('dragstart',function(e){
-    dragItem={type:'bank',id:ex.id};
-    el.classList.add('dragging');
-    e.dataTransfer.effectAllowed='move';
-  });
-  el.addEventListener('dragend',function(){el.classList.remove('dragging');dragItem=null;});
+  if(!isTouch){
+    el.draggable=true;
+    el.addEventListener('dragstart',function(e){
+      dragItem={type:'bank',id:ex.id};
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+    });
+    el.addEventListener('dragend',function(){el.classList.remove('dragging');dragItem=null;});
+  }
   addTouchDrag(el,function(){return {type:'bank',id:ex.id};});
   return el;
 }
@@ -1268,19 +1294,22 @@ function makeBoardCard(ex,di,ei){
   el.className='kex';
   el.dataset.exid=ex.id;
   el.innerHTML='<div class="kexname">'+ex.name+'</div><div class="kexmeta">'+(ex.kg>0?ex.kg+'kg · ':'')+ex.reps+'</div>';
-  el.draggable=true;
   var rm=document.createElement('button');
   rm.className='kexrm'; rm.textContent='×';
   rm.style.touchAction='manipulation';
   rm.addEventListener('click',function(e){e.stopPropagation();board[di].splice(ei,1);renderKanban();renderPeriodGrid();});
   rm.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  rm.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();board[di].splice(ei,1);renderKanban();renderPeriodGrid();},{passive:false});
   el.appendChild(rm);
-  el.addEventListener('dragstart',function(e){
-    dragItem={type:'board',id:ex.id,fromDay:di,fromIdx:ei};
-    el.classList.add('dragging');
-    e.dataTransfer.effectAllowed='move';
-  });
-  el.addEventListener('dragend',function(){el.classList.remove('dragging');dragItem=null;});
+  if(!isTouch){
+    el.draggable=true;
+    el.addEventListener('dragstart',function(e){
+      dragItem={type:'board',id:ex.id,fromDay:di,fromIdx:ei};
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+    });
+    el.addEventListener('dragend',function(){el.classList.remove('dragging');dragItem=null;});
+  }
   addTouchDrag(el,function(){return {type:'board',id:ex.id,fromDay:di,fromIdx:ei};});
   return el;
 }
