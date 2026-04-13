@@ -96,9 +96,20 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .week-cols span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
 .series-row{display:grid;grid-template-columns:140px 90px 70px auto;align-items:center;padding:6px 13px;border-bottom:1px solid var(--border);}
 @media(max-width:500px){
-  .week-cols,.series-row{grid-template-columns:80px 68px 38px auto;padding-left:10px;padding-right:10px;}
-  .set-cb-box{width:20px;height:20px;}
-  .ser-checks{gap:4px;}
+  .week-cols{grid-template-columns:1fr 1fr 1fr;padding-left:10px;padding-right:10px;}
+  .week-cols span:last-child{display:none;}
+  .series-row{
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:auto auto;
+    padding-left:10px;padding-right:10px;
+  }
+  .ser-checks{
+    grid-column:1/-1;
+    justify-content:flex-start;
+    flex-wrap:wrap;
+    padding:5px 0 3px;
+    gap:5px;
+  }
 }
 .series-row:last-child{border-bottom:none;}
 .series-row.main-set{background:rgba(108,99,255,.06);}
