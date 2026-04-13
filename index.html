@@ -232,6 +232,8 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .kex{background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:7px 8px;position:relative;cursor:grab;user-select:none;transition:opacity .15s,transform .1s;}
 .kex:active{cursor:grabbing;opacity:.7;transform:scale(.97);}
 .kex.dragging{opacity:.35;}
+/* touch: prevent text selection during drag */
+.kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:pan-y;}
 .kexname{font-size:11px;font-weight:600;padding-right:16px;line-height:1.3;}
 .kexmeta{font-size:10px;color:var(--accent);font-family:var(--mono);margin-top:1px;}
 .kexrm{position:absolute;top:4px;right:5px;background:transparent;border:none;color:var(--muted);font-size:14px;padding:0;cursor:pointer;line-height:1;}
@@ -1078,6 +1080,133 @@ var bank=[
 var dragItem=null;
 var dragGhost=null;
 
+// ── TOUCH DRAG SUPPORT ────────────────────────
+var touchGhost=null;
+var touchLastTarget=null;
+var touchScrollBlocked=false;
+var touchLongPressTimer=null;
+var LONG_PRESS_MS=200;
+
+function createTouchGhost(el){
+  var ghost=el.cloneNode(true);
+  var rect=el.getBoundingClientRect();
+  ghost.style.cssText='position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;'
+    +'opacity:.75;pointer-events:none;z-index:9999;transform:scale(1.05);'
+    +'box-shadow:0 8px 24px rgba(0,0,0,.5);transition:none;border-radius:8px;';
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function getTouchDropTarget(x,y){
+  if(touchGhost) touchGhost.style.display='none';
+  var el=document.elementFromPoint(x,y);
+  if(touchGhost) touchGhost.style.display='';
+  if(!el) return null;
+  // Find closest column (.kcol) or bank (#ebank)
+  var col=el.closest('.kcol');
+  if(col) return col;
+  var bk=el.closest('#ebank');
+  if(bk) return bk;
+  return null;
+}
+
+function addTouchDrag(el, getItemFn){
+  var startX, startY, moved=false;
+
+  el.addEventListener('touchstart',function(e){
+    moved=false;
+    var t=e.touches[0];
+    startX=t.clientX; startY=t.clientY;
+    // Long-press to start drag
+    touchLongPressTimer=setTimeout(function(){
+      dragItem=getItemFn();
+      touchGhost=createTouchGhost(el);
+      el.classList.add('dragging');
+      touchScrollBlocked=true;
+    }, LONG_PRESS_MS);
+  },{passive:true});
+
+  el.addEventListener('touchmove',function(e){
+    var t=e.touches[0];
+    var dx=t.clientX-startX, dy=t.clientY-startY;
+    if(!touchScrollBlocked && Math.abs(dx)<6 && Math.abs(dy)<6) return;
+    moved=true;
+    if(!dragItem){
+      clearTimeout(touchLongPressTimer);
+      return;
+    }
+    e.preventDefault();
+    // Move ghost
+    if(touchGhost){
+      var rect=touchGhost.getBoundingClientRect();
+      touchGhost.style.left=(t.clientX-rect.width/2)+'px';
+      touchGhost.style.top=(t.clientY-rect.height/2)+'px';
+    }
+    // Highlight drop target
+    var target=getTouchDropTarget(t.clientX,t.clientY);
+    if(target!==touchLastTarget){
+      if(touchLastTarget){
+        touchLastTarget.classList.remove('drag-over');
+        touchLastTarget.style.borderColor='';
+      }
+      if(target){
+        if(target.classList.contains('kcol')) target.classList.add('drag-over');
+        else target.style.borderColor='var(--accent)';
+      }
+      touchLastTarget=target;
+    }
+  },{passive:false});
+
+  el.addEventListener('touchend',function(e){
+    clearTimeout(touchLongPressTimer);
+    touchScrollBlocked=false;
+    if(touchGhost){touchGhost.remove();touchGhost=null;}
+    el.classList.remove('dragging');
+    if(touchLastTarget){
+      touchLastTarget.classList.remove('drag-over');
+      touchLastTarget.style.borderColor='';
+    }
+    if(!dragItem){dragItem=null;touchLastTarget=null;return;}
+    var t=e.changedTouches[0];
+    var target=getTouchDropTarget(t.clientX,t.clientY);
+    if(target){
+      if(target.classList.contains('kcol')){
+        // Determine day index
+        var cols=Array.from(document.querySelectorAll('.kcol'));
+        var di=cols.indexOf(target);
+        if(di>=0){
+          if(dragItem.type==='bank'){
+            var ex=bank.find(function(b){return b.id===dragItem.id;});
+            if(ex) board[di].push({id:uid(),name:ex.name,kg:ex.kg,reps:ex.reps});
+          } else if(dragItem.type==='board'){
+            if(dragItem.fromDay!==di){
+              var item=board[dragItem.fromDay].splice(dragItem.fromIdx,1)[0];
+              if(item) board[di].push(item);
+            }
+          }
+          renderKanban();renderPeriodGrid();
+        }
+      } else if(target.id==='ebank'){
+        if(dragItem.type==='board'){
+          board[dragItem.fromDay].splice(dragItem.fromIdx,1);
+          renderKanban();renderPeriodGrid();
+        }
+      }
+    }
+    dragItem=null;
+    touchLastTarget=null;
+  },{passive:true});
+
+  el.addEventListener('touchcancel',function(){
+    clearTimeout(touchLongPressTimer);
+    touchScrollBlocked=false;
+    if(touchGhost){touchGhost.remove();touchGhost=null;}
+    el.classList.remove('dragging');
+    if(touchLastTarget){touchLastTarget.classList.remove('drag-over');touchLastTarget.style.borderColor='';}
+    dragItem=null;touchLastTarget=null;
+  },{passive:true});
+}
+
 function makeBankPill(ex){
   var el=document.createElement('div');
   el.className='bpill';
@@ -1125,6 +1254,7 @@ function makeBankPill(ex){
     e.dataTransfer.effectAllowed='move';
   });
   el.addEventListener('dragend',function(){el.classList.remove('dragging');dragItem=null;});
+  addTouchDrag(el,function(){return {type:'bank',id:ex.id};});
   return el;
 }
 
@@ -1144,6 +1274,7 @@ function makeBoardCard(ex,di,ei){
     e.dataTransfer.effectAllowed='move';
   });
   el.addEventListener('dragend',function(){el.classList.remove('dragging');dragItem=null;});
+  addTouchDrag(el,function(){return {type:'board',id:ex.id,fromDay:di,fromIdx:ei};});
   return el;
 }
 
