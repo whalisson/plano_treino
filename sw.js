@@ -1,7 +1,15 @@
-// Gorila Gym — Service Worker v1
-const CACHE = 'gorila-gym-v1';
+// Gorila Gym — Service Worker v6
+const CACHE = 'gorila-gym-v6';
 const ASSETS = [
   './index.html',
+  './css/styles.css',
+  './js/app.js',
+  './img/supino-met.png',
+  './img/agacha-met.png',
+  './img/terra-met.png',
+  './img/supino-ps.png',
+  './img/agacha-ps.png',
+  './img/terra-ps.png',
   'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js',
 ];
