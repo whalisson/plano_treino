@@ -7,13 +7,14 @@ var periodBase = [
   { label:'Semana 2',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x4',p:.65}] },
   { label:'Semana 3',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'5x4',p:.70}] },
   { label:'Semana 4',  series:[{r:'8 reps',p:.30},{r:'5 reps',p:.55},{r:'5 reps',p:.60},{r:'4x4',p:.75}] },
-  { label:'Semana 5',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.53},{r:'4 reps',p:.65},{r:'4x3',p:.80}] },
-  { label:'Semana 6',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'3x3',p:.85}] },
-  { label:'Semana 7',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'2x2',p:.90}] },
-  { label:'Semana 8',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x3',p:.70}] },
-  { label:'Semana 9',  rest:true, note:'Descanso' },
-  { label:'Semana 10', series:[{r:'8 reps',p:.50},{r:'5 reps',p:.60},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'1 rep',p:.90},{r:'1 rep',p:1.00},{r:'? reps',p:1.05}], note:'Teste Novo RM' },
-  { label:'Semana 11', rest:true, note:'Descansar 1 Semana e Repetir' },
+  { label:'Semana 5',  deload:true, note:'Volume −50% · Foco em técnica', series:[{r:'8 reps',p:.50},{r:'2x4',p:.60}] },
+  { label:'Semana 6',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.53},{r:'4 reps',p:.65},{r:'4x3',p:.80}] },
+  { label:'Semana 7',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'3x3',p:.85}] },
+  { label:'Semana 8',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'2x2',p:.90}] },
+  { label:'Semana 9',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x3',p:.70}] },
+  { label:'Semana 10', rest:true, note:'Descanso Total' },
+  { label:'Semana 11', series:[{r:'8 reps',p:.50},{r:'5 reps',p:.60},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'1 rep',p:.90},{r:'1 rep',p:1.00},{r:'? reps',p:1.05}], note:'Teste Novo RM' },
+  { label:'Semana 12', rest:true, note:'Descansar 1 Semana e Repetir' },
 ];
 
 // ── Dicts de aparência por lift (usados no histórico de ciclos) ──
@@ -71,15 +72,16 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     var isCurrent  = wi === currentWeekIdx;
 
     var block = document.createElement('div');
-    block.className = 'week-block' + (weekDone ? ' completed' : '') + (isCurrent ? ' current-week' : '');
+    block.className = 'week-block' + (weekDone ? ' completed' : '') + (isCurrent ? ' current-week' : '') + (w.deload ? ' deload-week' : '');
     block.id = 'wb-' + liftKey + '-' + wi;
 
     var hdr = document.createElement('div');
     hdr.className = 'week-header';
     hdr.innerHTML = '<span class="week-header-label">' + w.label + '</span>';
+    if (w.deload && !weekDone) hdr.innerHTML += '<span class="week-deload-badge">⬇ Deload</span>';
     if (isCurrent && !weekDone) hdr.innerHTML += '<span class="week-current-badge">▶ Em andamento</span>';
     if (weekDone)               hdr.innerHTML += '<span class="week-done-badge">✓ Concluída</span>';
-    if (w.note && !weekDone && !isCurrent) hdr.innerHTML += '<span class="week-header-note">' + w.note + '</span>';
+    if (w.note && !weekDone) hdr.innerHTML += '<span class="week-header-note">' + w.note + '</span>';
 
     var progWrap = document.createElement('div');
     progWrap.className = 'week-header-progress';
