@@ -278,10 +278,6 @@ function setupBankDropzone() {
 // ── Render ────────────────────────────────────
 function renderKanban() {
   var kb = g('kboard'); kb.innerHTML = '';
-  var wr  = getWeekRange();
-  var fmtD = function(d){ return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); };
-  var wkEl = g('logbookWeekRange');
-  if (wkEl) wkEl.textContent = fmtD(wr.start) + ' – ' + fmtD(wr.end);
   board.forEach(function(items, di) {
     var col  = document.createElement('div'); col.className = 'kcol';
     var kh   = document.createElement('div'); kh.className  = 'kch';

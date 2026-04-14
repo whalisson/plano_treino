@@ -144,6 +144,21 @@ function buildCardioChart() {
   renderCardioSessionList();
 }
 
+g('cardioDate').addEventListener('input', function() {
+  var cur = this.value;
+  var digits = cur.replace(/\D/g, '').slice(0, 4);
+  if (digits.length > 2) {
+    this.value = digits.slice(0, 2) + '/' + digits.slice(2);
+  } else {
+    this.value = digits;
+  }
+});
+
+g('btnCardioHoje').addEventListener('click', function() {
+  var now = new Date();
+  g('cardioDate').value = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0');
+});
+
 g('btnAddCardio').addEventListener('click', function() {
   var date = g('cardioDate').value.trim();
   var mins = parseInt(g('cardioMins').value);

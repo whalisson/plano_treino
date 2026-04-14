@@ -78,7 +78,7 @@ function applyState(saved) {
     if (saved.rmTerra)        g('rm-terra').value  = saved.rmTerra;
     if (saved.checks)         checksState      = saved.checks;
     if (saved.rmTests)        rmTestValues     = saved.rmTests;
-    if (saved.board)          board            = saved.board;
+    if (saved.board && saved.board.length === 7) board = saved.board;
     if (saved.bank)           bank             = saved.bank;
     if (saved.kgHistory)      kgHistory        = saved.kgHistory;
     if (saved.cycleHistory)   cycleHistory     = saved.cycleHistory;
@@ -104,8 +104,15 @@ function applyState(saved) {
   renderCycleHistory();
   renderRPEBlocks();
   // Persiste após cada renderização do kanban
+  // Só salva se houver ao menos um exercício no board OU se o estado salvo já foi carregado,
+  // para evitar sobrescrever dados válidos com um board vazio em caso de falha no load.
+  var _boardLoaded = !!(saved && saved.board);
   var _origRenderKanban = renderKanban;
-  renderKanban = function() { _origRenderKanban(); saveState(); };
+  renderKanban = function() {
+    _origRenderKanban();
+    var hasItems = board.some(function(day) { return day.length > 0; });
+    if (hasItems || _boardLoaded) saveState();
+  };
 }
 
 loadState().then(applyState).catch(function() { applyState(null); });
