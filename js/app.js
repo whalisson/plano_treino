@@ -156,14 +156,15 @@ function scrollToCurrentWeek() {
   var firstTarget = null;
   keysToOpen.forEach(function(k) {
     var psb = g('psb-' + k); if (!psb) return;
-    var cur = psb.querySelector('.current-week');
-    if (!cur) return;
     if (!psb.classList.contains('on')) {
       psb.classList.add('on');
       var chev = g('chev-' + k);
       if (chev) chev.textContent = '▲';
     }
-    if (!firstTarget) firstTarget = cur;
+    if (!firstTarget) {
+      // Prioriza a semana atual; se não existir, rola até o cabeçalho da seção
+      firstTarget = psb.querySelector('.current-week') || g('psh-' + k);
+    }
   });
 
   if (firstTarget) {
