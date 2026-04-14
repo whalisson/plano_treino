@@ -5,6 +5,35 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 function g(id) { return document.getElementById(id); }
 function round05(v) { return Math.round(v * 2) / 2; }
 
+function getWeekRange() {
+  var now    = new Date();
+  var dow    = now.getDay();
+  var monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1)); monday.setHours(0,0,0,0);
+  var sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  return { start:monday, end:sunday };
+}
+
+// ── Undo Toast ────────────────────────────────
+var _undoTimer = null;
+function showUndo(message, undoFn, commitFn) {
+  clearTimeout(_undoTimer);
+  var toast = g('undoToast');
+  toast.querySelector('.undo-msg').textContent = message;
+  toast.classList.add('on');
+  var btn    = toast.querySelector('.undo-btn');
+  var newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', function() {
+    clearTimeout(_undoTimer);
+    toast.classList.remove('on');
+    undoFn();
+  });
+  _undoTimer = setTimeout(function() {
+    toast.classList.remove('on');
+    if (commitFn) commitFn();
+  }, 4000);
+}
+
 // Parse "NxM" → número de séries
 function parseSetCount(rStr) {
   var m = rStr.match(/^(\d+)x(\d+)$/);
@@ -47,6 +76,7 @@ function saveState() {
       bank:          bank,
       kgHistory:     kgHistory,
       cycleHistory:  cycleHistory,
+      rmHistory:       rmHistory,
       cardioExtra:     cardioExtra,
       cardioGoal:      parseInt(g('cardioGoal').value)      || 300,
       cardioDailyGoal: parseInt(g('cardioDailyGoal').value) || 43,

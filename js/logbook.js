@@ -2,6 +2,16 @@
 // Kanban, banco de exercícios, drag-and-drop e progresso de carga
 
 var DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+var _bankQuery = '';
+
+function parseVolume(items) {
+  return items.reduce(function(total, ex) {
+    if (!ex.kg || ex.kg <= 0) return total;
+    var m = String(ex.reps).match(/^(\d+)x(\d+)/i);
+    var r = m ? parseInt(m[1]) * parseInt(m[2]) : (parseInt(ex.reps) || 0);
+    return total + r * ex.kg;
+  }, 0);
+}
 var board = DAYS.map(function() { return []; });
 var bank  = [
   { id:uid(), name:'Elev. Lateral Halt.',  kg:25,  reps:'3x12' },
@@ -178,7 +188,14 @@ function makeBankPill(ex) {
   delBtn.textContent = '×';
   delBtn.title = 'Remover';
   delBtn.style.cssText = 'background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:15px;padding:6px 9px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
-  var _delBank = function(e) { e.stopPropagation(); bank = bank.filter(function(b) { return b.id !== ex.id; }); renderBank(); saveState(); };
+  var _delBank = function(e) {
+    e.stopPropagation();
+    var saved = JSON.parse(JSON.stringify(ex));
+    var idx   = bank.findIndex(function(b) { return b.id === ex.id; });
+    bank = bank.filter(function(b) { return b.id !== ex.id; });
+    renderBank();
+    showUndo('"' + ex.name + '" removido do banco', function() { bank.splice(idx, 0, saved); renderBank(); }, saveState);
+  };
   delBtn.addEventListener('click',      _delBank);
   delBtn.addEventListener('touchend',   function(e) { e.preventDefault(); _delBank(e); }, { passive:false });
   delBtn.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
@@ -205,7 +222,14 @@ function makeBoardCard(ex, di, ei) {
   var rm = document.createElement('button');
   rm.className = 'kexrm'; rm.textContent = '×';
   rm.style.touchAction = 'manipulation';
-  var _removeCard = function(e) { e.stopPropagation(); board[di].splice(ei, 1); renderKanban(); renderPeriodGrid(); };
+  var _removeCard = function(e) {
+    e.stopPropagation();
+    var saved = JSON.parse(JSON.stringify(board[di][ei]));
+    var savedDi = di, savedEi = ei;
+    board[di].splice(ei, 1);
+    renderKanban(); renderPeriodGrid();
+    showUndo('"' + saved.name + '" removido de ' + DAYS[savedDi], function() { board[savedDi].splice(savedEi, 0, saved); renderKanban(); renderPeriodGrid(); }, null);
+  };
   rm.addEventListener('click',      _removeCard);
   rm.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
   rm.addEventListener('touchend',   function(e) { e.stopPropagation(); e.preventDefault(); _removeCard(e); }, { passive:false });
@@ -254,10 +278,17 @@ function setupBankDropzone() {
 // ── Render ────────────────────────────────────
 function renderKanban() {
   var kb = g('kboard'); kb.innerHTML = '';
+  var wr  = getWeekRange();
+  var fmtD = function(d){ return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); };
+  var wkEl = g('logbookWeekRange');
+  if (wkEl) wkEl.textContent = fmtD(wr.start) + ' – ' + fmtD(wr.end);
   board.forEach(function(items, di) {
     var col  = document.createElement('div'); col.className = 'kcol';
     var kh   = document.createElement('div'); kh.className  = 'kch';
-    kh.innerHTML = '<span class="kday">' + DAYS[di] + '</span><span class="kcnt">' + items.length + '</span>';
+    var vol  = parseVolume(items);
+    var volStr = vol >= 1000 ? (vol / 1000).toFixed(1) + 't' : (vol > 0 ? vol + 'kg' : '');
+    kh.innerHTML = '<span class="kday">' + DAYS[di] + '</span><span class="kcnt">' + items.length + '</span>'
+      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '');
     col.appendChild(kh);
     var body = document.createElement('div'); body.className = 'kbody';
     items.forEach(function(ex, ei) { body.appendChild(makeBoardCard(ex, di, ei)); });
@@ -269,8 +300,13 @@ function renderKanban() {
 
 function renderBank() {
   var bk = g('ebank'); bk.innerHTML = '';
-  if (!bank.length) { bk.innerHTML = '<span class="bank-drop-hint">Adicione exercícios com o botão acima ↑</span>'; return; }
-  bank.forEach(function(ex) { bk.appendChild(makeBankPill(ex)); });
+  var q  = _bankQuery.toLowerCase();
+  var filtered = q ? bank.filter(function(ex) { return ex.name.toLowerCase().indexOf(q) !== -1; }) : bank;
+  if (!filtered.length) {
+    bk.innerHTML = '<span class="bank-drop-hint">' + (q ? 'Nenhum exercício encontrado.' : 'Adicione exercícios com o botão acima ↑') + '</span>';
+    return;
+  }
+  filtered.forEach(function(ex) { bk.appendChild(makeBankPill(ex)); });
 }
 
 function renderPeriodGrid() {
@@ -306,6 +342,8 @@ function openEditModal(id) {
   g('mExDeleteWrap').style.display = 'block';
   g('mAddEx').classList.add('on');
 }
+
+g('bankSearch').addEventListener('input', function() { _bankQuery = this.value.trim(); renderBank(); });
 
 g('btnAddEx').addEventListener('click', openAddModal);
 g('btnCancelEx').addEventListener('click', function() { g('mAddEx').classList.remove('on'); });

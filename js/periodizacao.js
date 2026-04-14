@@ -375,6 +375,8 @@ function renderCustomLifts() {
 
     buildWeekTable(periodBase, tblId, lift.id, lift.rm);
   });
+
+  populateRMLiftSelect();
 }
 
 function deleteCustomLift(id) {

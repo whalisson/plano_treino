@@ -5,6 +5,15 @@ var cardioBase  = [];
 var cardioExtra = [];
 var cardioCI    = null;
 
+var CARDIO_TYPE_COLORS = {
+  corrida:  'rgba(74,222,128,.85)',
+  bike:     'rgba(45,212,191,.85)',
+  natacao:  'rgba(147,197,253,.85)',
+  eliptico: 'rgba(251,191,36,.85)',
+  outro:    'rgba(108,99,255,.75)',
+};
+var CARDIO_TYPE_LABELS = { corrida:'Corrida', bike:'Bike', natacao:'Natação', eliptico:'Elíptico', outro:'Outro' };
+
 function allCardioSessions() { return cardioBase.concat(cardioExtra); }
 
 function parseCardioDate(dStr) {
@@ -15,12 +24,21 @@ function parseCardioDate(dStr) {
   return new Date(yr, mon - 1, day);
 }
 
-function getWeekRange() {
-  var now    = new Date();
-  var dow    = now.getDay();
-  var monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1)); monday.setHours(0,0,0,0);
-  var sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-  return { start:monday, end:sunday };
+function calcCardioStreak() {
+  var goal  = parseInt(g('cardioGoal').value) || 300;
+  var all   = allCardioSessions();
+  var range = getWeekRange();
+  var streak = 0;
+  for (var w = 0; w <= 104; w++) {
+    var wStart = new Date(range.start); wStart.setDate(range.start.getDate() - w * 7);
+    var wEnd   = new Date(range.end);   wEnd.setDate(range.end.getDate()   - w * 7);
+    var mins = all.filter(function(s) {
+      try { var d = parseCardioDate(s.d); return d >= wStart && d <= wEnd; } catch(e) { return false; }
+    }).reduce(function(a, b) { return a + b.t; }, 0);
+    if (mins >= goal) streak++;
+    else break;
+  }
+  return streak;
 }
 
 function updateWeekGoal() {
@@ -43,6 +61,9 @@ function updateWeekGoal() {
 
   var fmt = function(d) { return d.getDate() + '/' + (d.getMonth() + 1); };
   g('cardioWeekRange').textContent = fmt(range.start) + ' – ' + fmt(range.end);
+
+  var streak = calcCardioStreak();
+  g('cardioStreak').innerHTML = streak > 0 ? streak + '<span class="mu">sem</span>' : '—<span class="mu">sem</span>';
 }
 
 function renderCardioSessionList() {
@@ -57,8 +78,13 @@ function renderCardioSessionList() {
     var realIdx = cardioExtra.length - 1 - i;
     var row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;';
-    row.innerHTML = '<span style="color:var(--muted);font-family:var(--mono);">' + s.d + '</span>'
-      + '<span style="font-weight:600;font-family:var(--mono);color:var(--teal);">' + s.t + ' min</span>';
+    var typeKey   = s.type || 'outro';
+    var typeBadge = '<span class="act-type act-' + typeKey + '">' + (CARDIO_TYPE_LABELS[typeKey] || typeKey) + '</span>';
+    var wktBadge  = s.wkt ? '<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;" title="' + s.wkt + '">· ' + s.wkt + '</span>' : '';
+    row.innerHTML = '<span style="color:var(--muted);font-family:var(--mono);min-width:40px;">' + s.d + '</span>'
+      + typeBadge
+      + wktBadge
+      + '<span style="font-weight:600;font-family:var(--mono);color:var(--teal);margin-left:auto;">' + s.t + ' min</span>';
     var delBtn = document.createElement('button');
     delBtn.style.cssText = 'background:transparent;border:none;color:var(--muted);font-size:14px;padding:0 4px;cursor:pointer;line-height:1;';
     delBtn.title       = 'Remover';
@@ -70,9 +96,10 @@ function renderCardioSessionList() {
 }
 
 function removeCardioSession(idx) {
+  var saved = JSON.parse(JSON.stringify(cardioExtra[idx]));
   cardioExtra.splice(idx, 1);
   refreshCardio();
-  saveState();
+  showUndo('Sessão de ' + saved.t + ' min removida', function() { cardioExtra.splice(idx, 0, saved); refreshCardio(); }, saveState);
 }
 
 function refreshCardio() {
@@ -98,11 +125,8 @@ function buildCardioChart() {
     data: {
       labels: all.map(function(d) { return d.d; }),
       datasets: [{ data: all.map(function(d) { return d.t; }),
-        backgroundColor: all.map(function(d, i) {
-          var isExtra = i >= cardioBase.length;
-          return d.t >= 60
-            ? (isExtra ? 'rgba(74,222,128,.9)' : 'rgba(74,222,128,.7)')
-            : (isExtra ? 'rgba(147,197,253,.85)' : 'rgba(147,197,253,.6)');
+        backgroundColor: all.map(function(d) {
+          return CARDIO_TYPE_COLORS[d.type] || CARDIO_TYPE_COLORS.outro;
         }),
         borderWidth:0, borderRadius:3
       }]
@@ -124,7 +148,8 @@ g('btnAddCardio').addEventListener('click', function() {
   var date = g('cardioDate').value.trim();
   var mins = parseInt(g('cardioMins').value);
   if (!date || isNaN(mins) || mins < 1) return;
-  cardioExtra.push({ d:date, t:mins });
+  var type = g('cardioType').value || 'outro';
+  cardioExtra.push({ d:date, t:mins, type:type });
   g('cardioDate').value = ''; g('cardioMins').value = '';
   refreshCardio();
   saveState();
@@ -355,7 +380,7 @@ g('btnConfirmLogWkt').addEventListener('click', function() {
   if (!logWktTarget) return;
   var date  = g('mLogWktDate').value.trim(); if (!date) return;
   var total = logWktTarget.segs.reduce(function(a,s){return a+s.mins;},0);
-  cardioExtra.push({ d:date, t:total });
+  cardioExtra.push({ d:date, t:total, type:'outro', wkt:logWktTarget.name });
   g('mLogWkt').classList.remove('on'); logWktTarget = null;
   refreshCardio(); saveState();
 });

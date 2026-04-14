@@ -26,6 +26,7 @@ function exportData() {
     bank:          bank,
     kgHistory:     kgHistory,
     cycleHistory:  cycleHistory,
+    rmHistory:       rmHistory,
     cardioExtra:     cardioExtra,
     cardioGoal:      parseInt(g('cardioGoal').value)      || 300,
     cardioDailyGoal: parseInt(g('cardioDailyGoal').value) || 43,
@@ -81,6 +82,7 @@ function applyState(saved) {
     if (saved.bank)           bank             = saved.bank;
     if (saved.kgHistory)      kgHistory        = saved.kgHistory;
     if (saved.cycleHistory)   cycleHistory     = saved.cycleHistory;
+    if (saved.rmHistory)        rmHistory                = saved.rmHistory;
     if (saved.cardioExtra)      cardioExtra              = saved.cardioExtra;
     if (saved.cardioGoal)       g('cardioGoal').value      = saved.cardioGoal;
     if (saved.cardioDailyGoal)  g('cardioDailyGoal').value = saved.cardioDailyGoal;
@@ -92,6 +94,8 @@ function applyState(saved) {
   buildAllPeriod();
   calcRM();
   renderCustomLifts();
+  populateRMLiftSelect();
+  renderRMHistory();
   renderKanban(); renderBank(); setupBankDropzone();
   renderPeriodGrid();
   renderProgressCharts();

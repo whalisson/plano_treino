@@ -128,7 +128,8 @@
   <div class="sh">
     <div class="shtitle">Plano Semanal</div>
     <span class="badge ba">Kanban</span>
-    <span style="font-size:12px;color:var(--muted);margin-left:4px;">Arraste exercícios para o dia desejado</span>
+    <span style="font-size:12px;color:var(--muted);margin-left:4px;">Arraste para o dia desejado</span>
+    <span style="font-size:11px;color:var(--muted);margin-left:auto;font-family:var(--mono);" id="logbookWeekRange"></span>
   </div>
   <div class="kboard" id="kboard"></div>
   <div class="div"></div>
@@ -136,6 +137,7 @@
     <div style="font-size:15px;font-weight:600;">Banco de Exercícios</div>
     <button id="btnAddEx">+ Novo Exercício</button>
   </div>
+  <input type="text" id="bankSearch" placeholder="Buscar exercício..." style="margin-bottom:8px;font-family:var(--font);">
   <div id="ebank" style="display:flex;flex-wrap:wrap;gap:7px;min-height:52px;padding:11px;background:var(--bg3);border:2px dashed var(--border2);border-radius:10px;"
     data-dropzone="bank"></div>
 
@@ -176,6 +178,41 @@
       </table>
     </div>
   </div>
+
+  <!-- Salvar no Histórico de 1RM -->
+  <div class="card" id="rmSaveCard" style="margin-top:14px;display:none;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Salvar no Histórico</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+      <div style="flex:2;min-width:120px;">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Levantamento</label>
+        <select id="rmHistLift" style="width:100%;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:13px;font-family:var(--sans);"></select>
+      </div>
+      <div style="flex:1;min-width:100px;">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Data</label>
+        <input type="text" id="rmHistDate" placeholder="dd/mm/aaaa" style="width:100%;">
+      </div>
+      <div>
+        <button id="btnSaveRM">+ Salvar</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+      1RM estimado: <span style="color:var(--accent);font-family:var(--mono);font-weight:600;" id="rmHistPreview">—</span>
+    </div>
+  </div>
+
+  <!-- Histórico de 1RM -->
+  <div id="rmHistorySection" style="display:none;">
+    <div class="div"></div>
+    <div class="sh" style="margin-bottom:14px;">
+      <div class="shtitle">Histórico de 1RM</div>
+      <span class="badge bp">Evolução</span>
+    </div>
+    <div class="card" style="position:relative;height:220px;margin-bottom:10px;">
+      <canvas id="rmHistChart"></canvas>
+    </div>
+    <div id="rmHistList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div>
+  </div>
+
 </div>
 
 <!-- ══ CARDIO ══ -->
@@ -186,6 +223,7 @@
     <div class="met"><div class="met-lbl">Meta diária</div><div class="met-val"><input class="rminput" id="cardioDailyGoal" type="number" value="43" step="1" min="1" style="width:60px;font-size:23px;"><span class="mu">min</span></div></div>
     <div class="met"><div class="met-lbl">Excesso acumulado</div><div class="met-val" id="cardioExcess">—<span class="mu">min</span></div></div>
     <div class="met"><div class="met-lbl">Sessões</div><div class="met-val" id="cardioSess">—</div></div>
+    <div class="met"><div class="met-lbl">Sequência</div><div class="met-val" id="cardioStreak">—<span class="mu">sem</span></div></div>
   </div>
 
   <!-- Meta semanal -->
@@ -221,8 +259,18 @@
       <div class="fg3">
         <div><label>Data</label><input type="text" id="cardioDate" placeholder="dd/mm"></div>
         <div><label>Duração (min)</label><input type="number" id="cardioMins" step="1" min="1" placeholder="60"></div>
-        <div style="display:flex;align-items:flex-end;"><button id="btnAddCardio" style="width:100%">+ Registrar</button></div>
+        <div>
+          <label>Tipo</label>
+          <select id="cardioType">
+            <option value="outro">Outro</option>
+            <option value="corrida">Corrida</option>
+            <option value="bike">Bike</option>
+            <option value="natacao">Natação</option>
+            <option value="eliptico">Elíptico</option>
+          </select>
+        </div>
       </div>
+      <button id="btnAddCardio" style="width:100%;margin-top:4px;">+ Registrar</button>
     </div>
     <div class="card" style="max-height:180px;overflow-y:auto;">
       <div style="font-size:13px;font-weight:600;margin-bottom:9px;">Sessões Recentes</div>
@@ -428,6 +476,8 @@
     </div>
   </div>
 </div>
+
+<div id="undoToast"><span class="undo-msg"></span><button class="undo-btn">Desfazer</button></div>
 
 <script src="js/db.js"></script>
 <script src="js/state.js"></script>
