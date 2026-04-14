@@ -275,6 +275,11 @@ function renderRPEBlocks() {
 
     var acts = document.createElement('div'); acts.className = 'rpe-blk-actions';
 
+    var trainBtn = document.createElement('button');
+    trainBtn.style.cssText = 'font-size:11px;padding:5px 12px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:var(--green);';
+    trainBtn.textContent = '▶ Treinar';
+    trainBtn.addEventListener('click', function() { openExecRPEModal(blk); });
+
     var planBtn = document.createElement('button');
     planBtn.style.cssText = 'font-size:11px;padding:5px 12px;background:linear-gradient(135deg,rgba(108,99,255,.25),rgba(45,212,191,.2));border:1px solid rgba(108,99,255,.4);color:#a59eff;';
     planBtn.textContent = '📅 Planejar';
@@ -303,7 +308,7 @@ function renderRPEBlocks() {
     delBtn.className = 'sec'; delBtn.style.cssText = 'font-size:11px;padding:5px 12px;border-color:rgba(255,107,107,.3);color:var(--red);'; delBtn.textContent = '× Remover';
     delBtn.addEventListener('click', function() { rpeBlocks = rpeBlocks.filter(function(b){return b.id!==blk.id;}); renderRPEBlocks(); saveState(); });
 
-    acts.appendChild(planBtn); acts.appendChild(editBtn); acts.appendChild(dupBtn); acts.appendChild(delBtn);
+    acts.appendChild(trainBtn); acts.appendChild(planBtn); acts.appendChild(editBtn); acts.appendChild(dupBtn); acts.appendChild(delBtn);
     card.appendChild(hdr); card.appendChild(exWrap); card.appendChild(acts);
     list.appendChild(card);
   });
@@ -345,4 +350,262 @@ g('btnConfirmPlanRPE').addEventListener('click', function() {
   if (logTab) logTab.classList.add('on');
   var logPage = g('pg-logbook');
   if (logPage) logPage.classList.add('on');
+});
+
+// ── RPE Execution Tracking ────────────────────
+var execRPETarget = null;
+var execStates    = {}; // exIdx → { rm, setRpes[], setTargetRpes[] }
+
+function openExecRPEModal(blk) {
+  execRPETarget = blk;
+  execStates    = {};
+  g('mExecRPETitle').textContent = blk.name;
+  var today  = new Date();
+  var days   = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  var months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  g('mExecRPEDate').textContent = days[today.getDay()] + ', ' + today.getDate() + ' de ' + months[today.getMonth()];
+  buildExecRPEBody(blk);
+  g('mExecRPE').classList.add('on');
+}
+
+function buildExecRPEBody(blk) {
+  var body = g('mExecRPEBody');
+  body.innerHTML = '';
+
+  blk.exercises.forEach(function(ex, exIdx) {
+    // Expandir séries (count × {reps, rpe}) em linhas individuais
+    var expandedSets = [];
+    ex.sets.forEach(function(s) {
+      var w = ex.rm ? calcRPEWeight(ex.rm, s.rpe, s.reps) : null;
+      for (var i = 0; i < s.count; i++) {
+        expandedSets.push({ reps: s.reps, targetRpe: s.rpe, kg: w ? w.rounded : 0 });
+      }
+    });
+
+    execStates[exIdx] = {
+      rm:            ex.rm,
+      setRpes:       expandedSets.map(function() { return null; }),
+      setTargetRpes: expandedSets.map(function(s) { return s.targetRpe; }),
+      setKgs:        expandedSets.map(function(s) { return s.kg; }),
+      setRepsArr:    expandedSets.map(function(s) { return s.reps; }),
+    };
+
+    var primaryTarget = ex.sets.length ? ex.sets[0].rpe : 8;
+    var card = document.createElement('div');
+    card.className = 'exec-ex-card';
+
+    // Cabeçalho: nome + badge RM
+    var hdr = document.createElement('div');
+    hdr.className = 'exec-ex-header';
+    hdr.innerHTML =
+      '<div>'
+      + '<div class="exec-ex-name">' + ex.name + '</div>'
+      + '<div class="exec-ex-sub">' + expandedSets.length + ' série' + (expandedSets.length !== 1 ? 's' : '') + ' · RPE alvo: ' + primaryTarget + '</div>'
+      + '</div>'
+      + '<div class="exec-rm-badge" id="exec-rm-badge-' + exIdx + '" onclick="toggleExecRM(' + exIdx + ')">RM: <span id="exec-rm-val-' + exIdx + '">' + ex.rm + ' kg</span></div>';
+
+    // Header colunas
+    var setsHdr = document.createElement('div');
+    setsHdr.className = 'exec-sets-header';
+    setsHdr.innerHTML = '<span>série</span><span>kg</span><span>reps</span><span>RPE real</span>';
+
+    // Linhas de série
+    var setsWrap = document.createElement('div');
+    expandedSets.forEach(function(s, si) {
+      var row = document.createElement('div');
+      row.className = 'exec-set-row';
+
+      var kgLabel = s.kg ? s.kg + ' kg' : '—';
+
+      // Botões RPE: 5 a 10
+      var rpeBtnsHtml = '';
+      for (var r = 5; r <= 10; r++) {
+        rpeBtnsHtml += '<div class="exec-rpe-btn" data-rpe="' + r + '" onclick="setExecRPE(' + exIdx + ',' + si + ',' + r + ')">' + r + '</div>';
+      }
+
+      row.innerHTML =
+        '<span class="exec-set-num">' + (si + 1) + '</span>'
+        + '<span class="exec-set-val">' + kgLabel + '</span>'
+        + '<span class="exec-set-val">' + s.reps + '</span>'
+        + '<div class="exec-rpe-btns" id="exec-rpe-btns-' + exIdx + '-' + si + '">' + rpeBtnsHtml + '</div>';
+
+      setsWrap.appendChild(row);
+    });
+
+    // Alerta automático
+    var alertBox = document.createElement('div');
+    alertBox.className = 'exec-alert';
+    alertBox.id = 'exec-alert-' + exIdx;
+    alertBox.innerHTML =
+      '<div class="exec-alert-icon">↑</div>'
+      + '<div><div class="exec-alert-title">Você ficou mais forte!</div>'
+      + '<div class="exec-alert-text">Abaixo do RPE alvo em 2+ séries. Estimado: <strong id="exec-alert-rm-' + exIdx + '"></strong></div>'
+      + '<button class="exec-update-btn" onclick="toggleExecRM(' + exIdx + ')">Recalcular RM</button></div>';
+
+    // Painel calculadora RM
+    var rmInit = ex.rm || 100;
+    var rmPanel = document.createElement('div');
+    rmPanel.className = 'exec-rm-panel';
+    rmPanel.id = 'exec-rm-panel-' + exIdx;
+    rmPanel.innerHTML =
+      '<div class="exec-rm-panel-title">Calculadora de RM estimado</div>'
+      + '<div class="exec-rm-row"><span class="exec-rm-label">Peso (kg)</span>'
+      + '<input type="range" class="exec-rm-slider" min="20" max="400" value="' + rmInit + '" step="2.5" id="exec-calc-kg-' + exIdx + '" oninput="calcExecRM(' + exIdx + ')">'
+      + '<span class="exec-rm-value" id="exec-calc-kg-out-' + exIdx + '">' + rmInit + ' kg</span></div>'
+      + '<div class="exec-rm-row"><span class="exec-rm-label">Reps</span>'
+      + '<input type="range" class="exec-rm-slider" min="1" max="10" value="1" step="1" id="exec-calc-reps-' + exIdx + '" oninput="calcExecRM(' + exIdx + ')">'
+      + '<span class="exec-rm-value" id="exec-calc-reps-out-' + exIdx + '">1 rep</span></div>'
+      + '<div class="exec-rm-row"><span class="exec-rm-label">RPE real</span>'
+      + '<input type="range" class="exec-rm-slider" min="5" max="10" value="8" step="0.5" id="exec-calc-rpe-' + exIdx + '" oninput="calcExecRM(' + exIdx + ')">'
+      + '<span class="exec-rm-value" id="exec-calc-rpe-out-' + exIdx + '">RPE 8</span></div>'
+      + '<div class="exec-rm-result">'
+      + '<div><div class="exec-rm-result-label">RM estimado</div><div class="exec-rm-result-value" id="exec-calc-result-' + exIdx + '">—</div></div>'
+      + '<div style="text-align:right"><div class="exec-rm-result-label">RM atual</div>'
+      + '<div style="font-size:12px;color:var(--muted);" id="exec-old-rm-out-' + exIdx + '">' + ex.rm + ' kg</div>'
+      + '<div class="exec-rm-result-diff" id="exec-rm-diff-' + exIdx + '"></div></div>'
+      + '</div>'
+      + '<button class="exec-save-rm-btn" onclick="saveExecRM(' + exIdx + ')">Salvar novo RM</button>';
+
+    card.appendChild(hdr);
+    card.appendChild(setsHdr);
+    card.appendChild(setsWrap);
+    card.appendChild(alertBox);
+    card.appendChild(rmPanel);
+    body.appendChild(card);
+
+    calcExecRM(exIdx);
+  });
+}
+
+function setExecRPE(exIdx, setIdx, rpe) {
+  var state = execStates[exIdx]; if (!state) return;
+  state.setRpes[setIdx] = rpe;
+  var targetRpe = state.setTargetRpes[setIdx];
+
+  var container = g('exec-rpe-btns-' + exIdx + '-' + setIdx);
+  if (!container) return;
+  container.querySelectorAll('.exec-rpe-btn').forEach(function(btn) {
+    var btnRpe = parseFloat(btn.getAttribute('data-rpe'));
+    btn.className = 'exec-rpe-btn';
+    if (btnRpe === rpe) {
+      btn.className = rpe < targetRpe ? 'exec-rpe-btn exec-rpe-low' : 'exec-rpe-btn exec-rpe-active';
+    }
+  });
+
+  checkExecRPELow(exIdx);
+}
+
+function checkExecRPELow(exIdx) {
+  var state = execStates[exIdx]; if (!state) return;
+  var lowCount = state.setRpes.filter(function(r, i) {
+    return r !== null && r < state.setTargetRpes[i];
+  }).length;
+
+  var alertEl = g('exec-alert-' + exIdx);
+  if (lowCount >= 2) {
+    // Melhor estimativa de RM dentre as séries preenchidas
+    var bestRM = state.rm;
+    state.setRpes.forEach(function(r, si) {
+      if (r === null) return;
+      var kg   = state.setKgs[si]    || 0;
+      var reps = state.setRepsArr[si] || 1;
+      if (kg > 0) { var est = estimateExecRM(kg, reps, r); if (est > bestRM) bestRM = est; }
+    });
+    var bestEl = g('exec-alert-rm-' + exIdx);
+    if (bestEl) bestEl.textContent = '~' + bestRM + ' kg';
+
+    // Pré-preencher calculadora com a série de menor RPE (mais folga)
+    var loIdx = -1, loRpe = 99;
+    state.setRpes.forEach(function(r, i) { if (r !== null && r < loRpe) { loRpe = r; loIdx = i; } });
+    if (loIdx >= 0) {
+      var kg   = state.setKgs[loIdx]    || state.rm;
+      var reps = state.setRepsArr[loIdx] || 1;
+      var slKg  = g('exec-calc-kg-' + exIdx);
+      var slRps = g('exec-calc-reps-' + exIdx);
+      var slRpe = g('exec-calc-rpe-' + exIdx);
+      if (slKg)  slKg.value  = kg;
+      if (slRps) slRps.value = reps;
+      if (slRpe) slRpe.value = loRpe;
+      calcExecRM(exIdx);
+    }
+    alertEl.classList.add('show');
+  } else {
+    alertEl.classList.remove('show');
+  }
+}
+
+function estimateExecRM(kg, reps, rpe) {
+  var f = getRPEFactor(rpe, reps);
+  return f && kg ? Math.round(kg / f) : Math.round(kg);
+}
+
+function toggleExecRM(exIdx) {
+  var panel = g('exec-rm-panel-' + exIdx); if (!panel) return;
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) calcExecRM(exIdx);
+}
+
+function calcExecRM(exIdx) {
+  var state = execStates[exIdx]; if (!state) return;
+  var kg   = parseFloat(g('exec-calc-kg-' + exIdx).value)   || state.rm || 100;
+  var reps = parseInt(g('exec-calc-reps-' + exIdx).value)   || 1;
+  var rpe  = parseFloat(g('exec-calc-rpe-' + exIdx).value)  || 8;
+
+  var outKg   = g('exec-calc-kg-out-' + exIdx);
+  var outReps = g('exec-calc-reps-out-' + exIdx);
+  var outRpe  = g('exec-calc-rpe-out-' + exIdx);
+  if (outKg)   outKg.textContent   = kg + ' kg';
+  if (outReps) outReps.textContent = reps + (reps === 1 ? ' rep' : ' reps');
+  if (outRpe)  outRpe.textContent  = 'RPE ' + rpe;
+
+  var est    = estimateExecRM(kg, reps, rpe);
+  var resEl  = g('exec-calc-result-' + exIdx);
+  var oldEl  = g('exec-old-rm-out-'  + exIdx);
+  var diffEl = g('exec-rm-diff-'     + exIdx);
+  if (resEl)  resEl.textContent  = est + ' kg';
+  if (oldEl)  oldEl.textContent  = state.rm + ' kg';
+  if (diffEl) {
+    var diff = est - state.rm;
+    diffEl.textContent = (diff >= 0 ? '+' : '') + diff + ' kg';
+    diffEl.style.color = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--muted)';
+  }
+}
+
+function saveExecRM(exIdx) {
+  var state = execStates[exIdx]; if (!state) return;
+  var resEl = g('exec-calc-result-' + exIdx);
+  var newRM = resEl ? parseInt(resEl.textContent) : 0;
+  if (!newRM || isNaN(newRM)) return;
+
+  state.rm = newRM;
+
+  // Persistir no bloco
+  if (execRPETarget) {
+    execRPETarget.exercises[exIdx].rm = newRM;
+    var blkRef = rpeBlocks.find(function(b) { return b.id === execRPETarget.id; });
+    if (blkRef && blkRef.exercises[exIdx]) blkRef.exercises[exIdx].rm = newRM;
+    saveState();
+    renderRPEBlocks();
+  }
+
+  // Atualizar badge + fechar painel/alerta
+  var valEl = g('exec-rm-val-' + exIdx);  if (valEl) valEl.textContent = newRM + ' kg';
+  var oldEl = g('exec-old-rm-out-' + exIdx); if (oldEl) oldEl.textContent = newRM + ' kg';
+  g('exec-rm-panel-' + exIdx).classList.remove('show');
+  g('exec-alert-' + exIdx).classList.remove('show');
+
+  showExecToast('RM atualizado para ' + newRM + ' kg');
+}
+
+function showExecToast(msg) {
+  var toast = g('execToast'); if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 2500);
+}
+
+g('btnCloseExecRPE').addEventListener('click', function() {
+  g('mExecRPE').classList.remove('on');
+  execRPETarget = null;
+  execStates    = {};
 });

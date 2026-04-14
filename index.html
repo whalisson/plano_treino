@@ -501,6 +501,21 @@
   </div>
 </div>
 
+<!-- Modal: executar bloco RPE com tracking de RPE real -->
+<div class="mbg" id="mExecRPE">
+  <div class="mbox" style="width:440px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:0;">
+    <div style="padding:15px 18px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:1;display:flex;align-items:center;gap:10px;border-radius:13px 13px 0 0;">
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:600;" id="mExecRPETitle"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="mExecRPEDate"></div>
+      </div>
+      <button class="sec" id="btnCloseExecRPE" style="padding:5px 12px;font-size:12px;flex-shrink:0;">✕ Fechar</button>
+    </div>
+    <div id="mExecRPEBody" style="padding:12px 14px 18px;display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+</div>
+
+<div id="execToast"></div>
 <div id="undoToast"><span class="undo-msg"></span><button class="undo-btn">Desfazer</button></div>
 
 <script src="js/db.js"></script>
