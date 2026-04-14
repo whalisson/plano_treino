@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-title" content="Gorila Gym">
 <meta name="theme-color" content="#6c63ff">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="img/icon.svg">
+<link rel="apple-touch-icon" href="img/icon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plano de Treino</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -22,8 +24,12 @@
     <div class="ntab on" data-p="periodizacao">Periodização</div>
     <div class="ntab"    data-p="logbook">Logbook</div>
     <div class="ntab"    data-p="rm">Calc 1RM</div>
-    <div class="ntab"    data-p="bike">Bike</div>
+    <div class="ntab"    data-p="cardio">Cardio</div>
     <div class="ntab"    data-p="rpe">RPE</div>
+  </div>
+  <div class="nav-actions">
+    <button id="btnExport" class="sec" style="font-size:11px;padding:5px 11px;white-space:nowrap;">↑ Exportar</button>
+    <label class="nav-import-label">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
   </div>
 </nav>
 
@@ -90,6 +96,13 @@
     <div class="psb" id="psb-terra"><div id="tbl-terra"></div></div>
   </div>
 
+  <!-- LEVANTAMENTOS PERSONALIZADOS -->
+  <div id="customMetrics" class="metrics" style="display:none;margin-top:-8px;"></div>
+  <div id="customLiftsSection"></div>
+  <div style="margin-bottom:12px;">
+    <button id="btnAddCustomLift" class="sec" style="font-size:12px;">+ Levantamento Personalizado</button>
+  </div>
+
   <div class="div"></div>
   <div class="sh"><div class="shtitle">Divisão Semanal</div><span class="badge ba">do Logbook</span></div>
   <div class="wgrid" id="pgrid"></div>
@@ -139,7 +152,7 @@
 
 <!-- ══ 1RM ══ -->
 <div class="pg" id="pg-rm">
-  <div class="sh"><div class="shtitle">Calculadora 1RM</div><span class="badge bp">Brzycki</span></div>
+  <div class="sh"><div class="shtitle">Calculadora 1RM</div><span class="badge bp">3 Fórmulas</span></div>
   <div class="g2">
     <div class="card">
       <div class="fg">
@@ -147,8 +160,13 @@
         <div><label>Reps realizadas</label><input type="number" id="rmR" value="2" min="1" max="15"></div>
       </div>
       <div style="background:var(--bg3);border-radius:8px;padding:13px;">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">1 REP MAX estimado</div>
-        <div style="font-size:30px;font-weight:700;font-family:var(--mono);color:var(--accent);" id="rmResult">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">1 REP MAX — Média das fórmulas</div>
+        <div style="font-size:30px;font-weight:700;font-family:var(--mono);color:var(--accent);margin-bottom:12px;" id="rmResult">—</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div class="rm-formula-row"><span class="rm-formula-name">Brzycki</span><span class="rm-formula-val" id="rmBrzycki">—</span></div>
+          <div class="rm-formula-row"><span class="rm-formula-name">Epley</span><span class="rm-formula-val" id="rmEpley">—</span></div>
+          <div class="rm-formula-row"><span class="rm-formula-name">Mayhew</span><span class="rm-formula-val" id="rmMayhew">—</span></div>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -160,14 +178,14 @@
   </div>
 </div>
 
-<!-- ══ BIKE ══ -->
-<div class="pg" id="pg-bike">
-  <div class="sh"><div class="shtitle">Bike — Cardio</div><span class="badge bg">Zonas</span></div>
+<!-- ══ CARDIO ══ -->
+<div class="pg" id="pg-cardio">
+  <div class="sh"><div class="shtitle">Cardio</div><span class="badge bg">Zonas</span></div>
   <div class="metrics">
-    <div class="met"><div class="met-lbl">Total registrado</div><div class="met-val" id="bikeTotal">—<span class="mu">min</span></div></div>
-    <div class="met"><div class="met-lbl">Meta diária</div><div class="met-val"><input class="rminput" id="bikeDailyGoal" type="number" value="43" step="1" min="1" style="width:60px;font-size:23px;"><span class="mu">min</span></div></div>
-    <div class="met"><div class="met-lbl">Excesso acumulado</div><div class="met-val" id="bikeExcess">—<span class="mu">min</span></div></div>
-    <div class="met"><div class="met-lbl">Sessões</div><div class="met-val" id="bikeSess">—</div></div>
+    <div class="met"><div class="met-lbl">Total registrado</div><div class="met-val" id="cardioTotal">—<span class="mu">min</span></div></div>
+    <div class="met"><div class="met-lbl">Meta diária</div><div class="met-val"><input class="rminput" id="cardioDailyGoal" type="number" value="43" step="1" min="1" style="width:60px;font-size:23px;"><span class="mu">min</span></div></div>
+    <div class="met"><div class="met-lbl">Excesso acumulado</div><div class="met-val" id="cardioExcess">—<span class="mu">min</span></div></div>
+    <div class="met"><div class="met-lbl">Sessões</div><div class="met-val" id="cardioSess">—</div></div>
   </div>
 
   <!-- Meta semanal -->
@@ -175,40 +193,40 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
       <div>
         <div style="font-size:13px;font-weight:600;margin-bottom:2px;">Meta Semanal</div>
-        <div style="font-size:11px;color:var(--muted);">Semana atual · <span id="bikeWeekRange">—</span></div>
+        <div style="font-size:11px;color:var(--muted);">Semana atual · <span id="cardioWeekRange">—</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--teal);" id="bikeWeekMins">0</span>
+        <span style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--teal);" id="cardioWeekMins">0</span>
         <span style="font-size:12px;color:var(--muted);">/</span>
-        <input type="number" id="bikeGoal" value="300" min="1" step="10"
+        <input type="number" id="cardioGoal" value="300" min="1" step="10"
           style="width:64px;font-size:14px;font-family:var(--mono);text-align:center;padding:4px 6px;">
         <span style="font-size:12px;color:var(--muted);">min</span>
       </div>
     </div>
     <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;">
-      <div id="bikeWeekBar" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--teal),var(--accent));transition:width .4s ease;width:0%;"></div>
+      <div id="cardioWeekBar" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--teal),var(--accent));transition:width .4s ease;width:0%;"></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:5px;">
-      <span style="font-size:10px;color:var(--muted);" id="bikeWeekPct">0%</span>
-      <span style="font-size:10px;color:var(--muted);" id="bikeWeekLeft">—</span>
+      <span style="font-size:10px;color:var(--muted);" id="cardioWeekPct">0%</span>
+      <span style="font-size:10px;color:var(--muted);" id="cardioWeekLeft">—</span>
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:14px;"><div class="chwrap"><canvas id="bikeChart" role="img" aria-label="Histórico bike">Histórico bike.</canvas></div></div>
+  <div class="card" style="margin-bottom:14px;"><div class="chwrap"><canvas id="cardioChart" role="img" aria-label="Histórico cardio">Histórico cardio.</canvas></div></div>
 
   <!-- Registrar sessão + histórico recente -->
   <div class="g2" style="margin-bottom:14px;">
     <div class="card">
       <div style="font-size:14px;font-weight:600;margin-bottom:11px;">Registrar Sessão</div>
       <div class="fg3">
-        <div><label>Data</label><input type="text" id="bikeDate" placeholder="dd/mm"></div>
-        <div><label>Duração (min)</label><input type="number" id="bikeMins" step="1" min="1" placeholder="60"></div>
-        <div style="display:flex;align-items:flex-end;"><button id="btnAddBike" style="width:100%">+ Registrar</button></div>
+        <div><label>Data</label><input type="text" id="cardioDate" placeholder="dd/mm"></div>
+        <div><label>Duração (min)</label><input type="number" id="cardioMins" step="1" min="1" placeholder="60"></div>
+        <div style="display:flex;align-items:flex-end;"><button id="btnAddCardio" style="width:100%">+ Registrar</button></div>
       </div>
     </div>
     <div class="card" style="max-height:180px;overflow-y:auto;">
       <div style="font-size:13px;font-weight:600;margin-bottom:9px;">Sessões Recentes</div>
-      <div id="bikeSessionList"></div>
+      <div id="cardioSessionList"></div>
     </div>
   </div>
 
@@ -374,6 +392,50 @@
   <div id="rpeBlocksList" style="display:flex;flex-direction:column;gap:9px;"></div>
 </div>
 
+<!-- Modal: planejar bloco RPE no Logbook -->
+<div class="mbg" id="mPlanRPE">
+  <div class="mbox" style="width:320px;">
+    <div class="mtitle">Planejar no Logbook</div>
+    <div id="mPlanRPEName" style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:14px;padding:8px 11px;background:var(--bg3);border-radius:7px;"></div>
+    <div style="margin-bottom:14px;">
+      <label>Dia da semana</label>
+      <select id="mPlanRPEDay">
+        <option value="0">Segunda</option>
+        <option value="1">Terça</option>
+        <option value="2">Quarta</option>
+        <option value="3">Quinta</option>
+        <option value="4">Sexta</option>
+        <option value="5">Sábado</option>
+        <option value="6">Domingo</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button id="btnConfirmPlanRPE" style="flex:1;">Adicionar ao dia</button>
+      <button class="sec" id="btnCancelPlanRPE" style="flex:1;">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: adicionar levantamento personalizado -->
+<div class="mbg" id="mAddLift">
+  <div class="mbox">
+    <div class="mtitle">Novo Levantamento</div>
+    <div style="margin-bottom:10px;"><label>Nome</label><input type="text" id="mLiftName" placeholder="Ex: Desenvolvimento"></div>
+    <div style="margin-bottom:12px;"><label>1RM inicial (kg)</label><input type="number" id="mLiftRM" step="0.5" min="0" placeholder="80"></div>
+    <div style="display:flex;gap:8px;">
+      <button id="btnConfirmLift" style="flex:1">Adicionar</button>
+      <button class="sec" id="btnCancelLift" style="flex:1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/state.js"></script>
+<script src="js/periodizacao.js"></script>
+<script src="js/logbook.js"></script>
+<script src="js/rm.js"></script>
+<script src="js/cardio.js"></script>
+<script src="js/rpe.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
