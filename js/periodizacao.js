@@ -1,0 +1,535 @@
+// ── GORILA GYM — periodizacao.js ─────────────
+// Tabela de periodização, lifts customizados, histórico de ciclos e banner de PR
+
+// ── Tabela de periodização (única — antes duplicada 3×) ──
+var periodBase = [
+  { label:'Semana 1',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x4',p:.60}] },
+  { label:'Semana 2',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x4',p:.65}] },
+  { label:'Semana 3',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'5x4',p:.70}] },
+  { label:'Semana 4',  series:[{r:'8 reps',p:.30},{r:'5 reps',p:.55},{r:'5 reps',p:.60},{r:'4x4',p:.75}] },
+  { label:'Semana 5',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.53},{r:'4 reps',p:.65},{r:'4x3',p:.80}] },
+  { label:'Semana 6',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'3x3',p:.85}] },
+  { label:'Semana 7',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'2x2',p:.90}] },
+  { label:'Semana 8',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x3',p:.70}] },
+  { label:'Semana 9',  rest:true, note:'Descanso' },
+  { label:'Semana 10', series:[{r:'8 reps',p:.50},{r:'5 reps',p:.60},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'1 rep',p:.90},{r:'1 rep',p:1.00},{r:'? reps',p:1.05}], note:'Teste Novo RM' },
+  { label:'Semana 11', rest:true, note:'Descansar 1 Semana e Repetir' },
+];
+
+// ── Dicts de aparência por lift (usados no histórico de ciclos) ──
+var LIFT_LABELS = { supino:'Supino', agacha:'Agachamento', terra:'Terra' };
+var LIFT_COLORS = { supino:'rgba(108,99,255,.9)', agacha:'rgba(45,212,191,.9)', terra:'rgba(251,191,36,.9)' };
+var LIFT_FILL   = { supino:'rgba(108,99,255,.12)', agacha:'rgba(45,212,191,.12)', terra:'rgba(251,191,36,.12)' };
+var LIFT_SOLID  = { supino:'#6c63ff', agacha:'#2dd4bf', terra:'#fbbf24' };
+
+// ── Referência de cores para lifts customizados ──
+var CUSTOM_LIFT_PALETTE = ['#f472b6','#fb923c','#a78bfa','#34d399','#60a5fa','#e879f9','#facc15'];
+
+function hexToRgb(hex) {
+  return parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16);
+}
+function getCustomColor(idx) { return CUSTOM_LIFT_PALETTE[idx % CUSTOM_LIFT_PALETTE.length]; }
+
+// ── Construção da tabela semanal ──────────────
+function buildWeekTable(baseWeeks, tid, liftKey, rm) {
+  var c = g(tid);
+  if (!c) return;
+  c.innerHTML = '';
+
+  // Detecta semana atual: primeira não-descanso não concluída, desde que todas anteriores estejam feitas
+  var currentWeekIdx = -1;
+  var allPrevDone    = true;
+  baseWeeks.forEach(function(w, wi) {
+    if (w.rest) return;
+    var totalChecks = 0;
+    w.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
+    var state    = checksState[liftKey][wi] || {};
+    var done     = Object.values(state).filter(Boolean).length;
+    var weekDone = done >= totalChecks;
+    if (currentWeekIdx === -1 && !weekDone) {
+      if (allPrevDone || done > 0) currentWeekIdx = wi;
+    }
+    if (!weekDone) allPrevDone = false;
+  });
+
+  baseWeeks.forEach(function(w, wi) {
+    if (w.rest) {
+      var restEl = document.createElement('div');
+      restEl.style.cssText = 'background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:9px;padding:9px 13px;margin-bottom:9px;font-size:13px;color:var(--amber);';
+      restEl.textContent = '🏖️ ' + w.label + (w.note ? ' — ' + w.note : '');
+      c.appendChild(restEl);
+      return;
+    }
+
+    var totalChecks = 0;
+    w.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
+
+    if (!checksState[liftKey][wi]) checksState[liftKey][wi] = {};
+    var weekState  = checksState[liftKey][wi];
+    var doneCount  = Object.values(weekState).filter(Boolean).length;
+    var weekDone   = doneCount >= totalChecks;
+    var isCurrent  = wi === currentWeekIdx;
+
+    var block = document.createElement('div');
+    block.className = 'week-block' + (weekDone ? ' completed' : '') + (isCurrent ? ' current-week' : '');
+    block.id = 'wb-' + liftKey + '-' + wi;
+
+    var hdr = document.createElement('div');
+    hdr.className = 'week-header';
+    hdr.innerHTML = '<span class="week-header-label">' + w.label + '</span>';
+    if (isCurrent && !weekDone) hdr.innerHTML += '<span class="week-current-badge">▶ Em andamento</span>';
+    if (weekDone)               hdr.innerHTML += '<span class="week-done-badge">✓ Concluída</span>';
+    if (w.note && !weekDone && !isCurrent) hdr.innerHTML += '<span class="week-header-note">' + w.note + '</span>';
+
+    var progWrap = document.createElement('div');
+    progWrap.className = 'week-header-progress';
+    progWrap.innerHTML = '<span class="week-prog-text">' + doneCount + '/' + totalChecks + '</span>'
+      + '<div class="week-prog-bar"><div class="week-prog-fill' + (weekDone ? ' done' : '') + '" id="pf-' + liftKey + '-' + wi + '" style="width:' + Math.round(doneCount / totalChecks * 100) + '%"></div></div>';
+    hdr.appendChild(progWrap);
+    block.appendChild(hdr);
+
+    var colHdr = document.createElement('div');
+    colHdr.className = 'week-cols';
+    colHdr.innerHTML = '<span>Série</span><span>Carga</span><span>% RM</span><span style="text-align:right;">Sets</span>';
+    block.appendChild(colHdr);
+
+    var checkIdx = 0;
+    w.series.forEach(function(s, si) {
+      var isQreps   = s.r === '? reps';
+      var isLast    = si === w.series.length - 1;
+      var isMainSet = w.series.length > 2 && isLast && !isQreps;
+      var numChecks = parseSetCount(s.r);
+      var kg        = round05(rm * s.p);
+
+      var row = document.createElement('div');
+      row.className = 'series-row' + (isMainSet ? ' main-set' : '') + (isQreps ? ' rm-test-set' : '');
+      row.style.borderBottom = si < w.series.length - 1 ? '1px solid var(--border)' : 'none';
+
+      var lbl = document.createElement('span');
+      lbl.className = 'ser-label';
+      lbl.style.color = isQreps ? 'var(--green)' : isMainSet ? 'var(--text)' : 'var(--muted)';
+      lbl.textContent = s.r;
+      row.appendChild(lbl);
+
+      var kgSpan = document.createElement('span');
+      kgSpan.className = 'ser-kg';
+      kgSpan.style.fontWeight = (isMainSet || isQreps) ? 600 : 400;
+      kgSpan.style.color = isQreps ? 'var(--green)' : isMainSet ? 'var(--accent)' : 'var(--text)';
+      kgSpan.textContent = kg + ' kg';
+      row.appendChild(kgSpan);
+
+      var pctSpan = document.createElement('span');
+      pctSpan.className = 'ser-pct';
+      pctSpan.textContent = Math.round(s.p * 100) + '%';
+      row.appendChild(pctSpan);
+
+      var checksWrap = document.createElement('div');
+      checksWrap.className = 'ser-checks';
+      checksWrap.style.justifyContent = 'flex-end';
+
+      if (isQreps) {
+        var testWrap = document.createElement('div');
+        testWrap.className = 'rm-test-input-wrap';
+
+        var inp = document.createElement('input');
+        inp.type = 'number'; inp.step = '0.5'; inp.min = '0';
+        inp.className = 'rm-test-inline';
+        inp.placeholder = '—';
+        inp.title = 'Novo RM (kg)';
+        var savedTest = rmTestValues[liftKey][wi];
+        if (savedTest) inp.value = savedTest;
+
+        var updBtn = document.createElement('button');
+        updBtn.className = 'rm-update-btn' + (savedTest ? ' visible' : '');
+        updBtn.innerHTML = '↑ Atualizar RM';
+        updBtn.title = 'Substituir RM principal pelo novo valor';
+
+        inp.addEventListener('input', function() {
+          var v = parseFloat(inp.value);
+          if (v > 0) {
+            rmTestValues[liftKey][wi] = v;
+            updBtn.classList.add('visible');
+          } else {
+            updBtn.classList.remove('visible');
+          }
+          saveState();
+        });
+
+        updBtn.addEventListener('click', function() {
+          var v = parseFloat(inp.value);
+          if (!v || v <= 0) return;
+          var rmId = { supino:'rm-supino', agacha:'rm-agacha', terra:'rm-terra' }[liftKey]
+            || ('rm-custom-' + liftKey);
+          var rmStart = parseFloat(g(rmId).value) || 0;
+          var rmEnd   = v;
+
+          if (rmStart > 0) {
+            var today  = new Date();
+            var dateEnd = String(today.getDate()).padStart(2,'0') + '/'
+              + String(today.getMonth()+1).padStart(2,'0') + '/' + today.getFullYear();
+
+            var isPR     = rmEnd > rmStart;
+            var prevBest = cycleHistory
+              .filter(function(c) { return c.lift === liftKey; })
+              .reduce(function(max, c) { return Math.max(max, c.rmEnd); }, 0);
+            var isAllTime = isPR && (prevBest === 0 || rmEnd > prevBest);
+
+            cycleHistory.push({
+              lift:      liftKey,
+              rmStart:   rmStart,
+              rmEnd:     rmEnd,
+              gain:      Math.round((rmEnd - rmStart) * 10) / 10,
+              dateStart: cycleStartDates[liftKey] || null,
+              dateEnd:   dateEnd,
+              id:        uid(),
+            });
+            delete cycleStartDates[liftKey];
+            renderCycleHistory();
+
+            if (isPR) {
+              var _liftColors = { supino:'#a59eff', agacha:'#2dd4bf', terra:'#fbbf24' };
+              var _liftLabels = { supino:'Supino',  agacha:'Agachamento', terra:'Terra' };
+              showPRBanner(
+                _liftLabels[liftKey] || (LIFT_LABELS[liftKey] || liftKey),
+                _liftColors[liftKey] || (LIFT_SOLID[liftKey]  || '#a59eff'),
+                rmStart, rmEnd, isAllTime
+              );
+            }
+          }
+
+          g(rmId).value = v;
+          checksState[liftKey]  = {};
+          rmTestValues[liftKey] = {};
+          var _cl = customLifts.find(function(l) { return l.id === liftKey; });
+          if (_cl) {
+            _cl.rm = v;
+            buildWeekTable(periodBase, 'tbl-custom-' + liftKey, liftKey, v);
+          } else {
+            buildAllPeriod();
+          }
+          saveState();
+
+          var rmEl = g(rmId);
+          rmEl.style.transition = 'color .3s';
+          rmEl.style.color = 'var(--green)';
+          setTimeout(function() { rmEl.style.color = ''; }, 1200);
+        });
+
+        var cbWrap = makeCbEl(liftKey, wi, 0, weekState, totalChecks, block, liftKey);
+        testWrap.appendChild(inp);
+        testWrap.appendChild(updBtn);
+        checksWrap.appendChild(cbWrap);
+        checksWrap.appendChild(testWrap);
+      } else {
+        for (var ci = 0; ci < numChecks; ci++) {
+          checksWrap.appendChild(makeCbEl(liftKey, wi, checkIdx + ci, weekState, totalChecks, block, liftKey));
+        }
+      }
+      checkIdx += numChecks;
+      row.appendChild(checksWrap);
+      block.appendChild(row);
+    });
+
+    c.appendChild(block);
+  });
+}
+
+function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl) {
+  var label = document.createElement('label');
+  label.className = 'set-cb';
+  label.title = 'Marcar série concluída';
+
+  var inp = document.createElement('input');
+  inp.type    = 'checkbox';
+  inp.checked = !!weekState[cbKey];
+
+  var box = document.createElement('span');
+  box.className = 'set-cb-box';
+  box.innerHTML = '<svg class="set-cb-check" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  inp.addEventListener('change', function() {
+    weekState[cbKey]         = inp.checked;
+    checksState[liftKey][wi] = weekState;
+
+    // Registra data de início do ciclo na primeira marcação
+    if (inp.checked && !cycleStartDates[liftKey]) {
+      var now = new Date();
+      cycleStartDates[liftKey] = String(now.getDate()).padStart(2,'0') + '/'
+        + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+    }
+
+    var done    = Object.values(weekState).filter(Boolean).length;
+    var allDone = done >= totalChecks;
+    var pf = document.getElementById('pf-' + liftKey + '-' + wi);
+    if (pf) {
+      pf.style.width = Math.round(done / totalChecks * 100) + '%';
+      if (allDone) pf.classList.add('done'); else pf.classList.remove('done');
+    }
+    var progTxt = blockEl.querySelector('.week-prog-text');
+    if (progTxt) progTxt.textContent = done + '/' + totalChecks;
+
+    if (allDone && !blockEl.classList.contains('completed')) {
+      blockEl.classList.add('completed');
+      var hdr = blockEl.querySelector('.week-header');
+      if (hdr && !hdr.querySelector('.week-done-badge')) {
+        var badge = document.createElement('span');
+        badge.className   = 'week-done-badge';
+        badge.textContent = '✓ Concluída';
+        hdr.insertBefore(badge, hdr.children[1] || null);
+      }
+    } else if (!allDone) {
+      blockEl.classList.remove('completed');
+      var badge = blockEl.querySelector('.week-done-badge');
+      if (badge) badge.remove();
+    }
+    saveState();
+  });
+
+  label.appendChild(inp);
+  label.appendChild(box);
+  return label;
+}
+
+function buildAllPeriod() {
+  var sup = parseFloat(g('rm-supino').value) || BASE_SUP;
+  var aga = parseFloat(g('rm-agacha').value) || BASE_AGA;
+  var ter = parseFloat(g('rm-terra').value)  || BASE_TER;
+  buildWeekTable(periodBase, 'tbl-supino', 'supino', sup);
+  buildWeekTable(periodBase, 'tbl-agacha', 'agacha', aga);
+  buildWeekTable(periodBase, 'tbl-terra',  'terra',  ter);
+}
+
+['rm-supino','rm-agacha','rm-terra'].forEach(function(id) {
+  g(id).addEventListener('input', function() { buildAllPeriod(); saveState(); });
+});
+
+['supino','agacha','terra'].forEach(function(k) {
+  g('psh-' + k).addEventListener('click', function() {
+    var b    = g('psb-' + k);
+    var open = b.classList.toggle('on');
+    g('chev-' + k).textContent = open ? '▲' : '▼';
+  });
+});
+
+// ── Lifts Personalizados ──────────────────────
+function renderCustomLifts() {
+  var section    = g('customLiftsSection');
+  var metricsEl  = g('customMetrics');
+  section.innerHTML   = '';
+  metricsEl.innerHTML = '';
+
+  if (!customLifts.length) { metricsEl.style.display = 'none'; return; }
+  metricsEl.style.display = 'grid';
+
+  customLifts.forEach(function(lift, idx) {
+    var color = getCustomColor(idx);
+
+    if (!checksState[lift.id])  checksState[lift.id]  = {};
+    if (!rmTestValues[lift.id]) rmTestValues[lift.id] = {};
+
+    LIFT_LABELS[lift.id] = lift.name;
+    LIFT_COLORS[lift.id] = 'rgba(' + hexToRgb(color) + ',.9)';
+    LIFT_FILL[lift.id]   = 'rgba(' + hexToRgb(color) + ',.12)';
+    LIFT_SOLID[lift.id]  = color;
+
+    // Card de métrica
+    var met = document.createElement('div');
+    met.className = 'met';
+    met.style.cssText = 'position:relative;overflow:visible;';
+    met.innerHTML = '<div class="met-lbl">' + lift.name + ' RM</div>'
+      + '<div style="display:flex;align-items:baseline;gap:4px;">'
+      + '<input class="rminput" id="rm-custom-' + lift.id + '" type="number" value="' + lift.rm + '" step="0.5" min="0">'
+      + '<span class="mu">kg</span></div>';
+    metricsEl.appendChild(met);
+    met.querySelector('input').addEventListener('input', function() {
+      lift.rm = parseFloat(this.value) || 0;
+      buildWeekTable(periodBase, 'tbl-custom-' + lift.id, lift.id, lift.rm);
+      saveState();
+    });
+
+    // Seção colapsável
+    var ps    = document.createElement('div');
+    ps.className = 'ps';
+    var pshId = 'psh-custom-' + lift.id;
+    var psbId = 'psb-custom-' + lift.id;
+    var chevId = 'chev-custom-' + lift.id;
+    var tblId  = 'tbl-custom-' + lift.id;
+    ps.innerHTML =
+      '<div class="psh" id="' + pshId + '">'
+      + '<span class="pstitle" style="color:' + color + ';">' + lift.name + '</span>'
+      + '<span class="pschev" id="' + chevId + '" style="margin-left:8px;">▼</span>'
+      + '<button data-liftid="' + lift.id + '" class="custom-lift-del-btn" style="margin-left:auto;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:11px;padding:3px 9px;border-radius:5px;cursor:pointer;">× Remover</button>'
+      + '</div>'
+      + '<div class="psb" id="' + psbId + '"><div id="' + tblId + '"></div></div>';
+    section.appendChild(ps);
+
+    ps.querySelector('.custom-lift-del-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteCustomLift(lift.id);
+    });
+    ps.querySelector('.psh').addEventListener('click', function(e) {
+      if (e.target.closest('button')) return;
+      var open = g(psbId).classList.toggle('on');
+      g(chevId).textContent = open ? '▲' : '▼';
+    });
+
+    buildWeekTable(periodBase, tblId, lift.id, lift.rm);
+  });
+}
+
+function deleteCustomLift(id) {
+  customLifts = customLifts.filter(function(l) { return l.id !== id; });
+  delete checksState[id];
+  delete rmTestValues[id];
+  delete cycleStartDates[id];
+  delete LIFT_LABELS[id];
+  delete LIFT_COLORS[id];
+  delete LIFT_FILL[id];
+  delete LIFT_SOLID[id];
+  renderCustomLifts();
+  saveState();
+}
+
+g('btnAddCustomLift').addEventListener('click', function() {
+  g('mLiftName').value = '';
+  g('mLiftRM').value   = '';
+  g('mAddLift').classList.add('on');
+  setTimeout(function() { g('mLiftName').focus(); }, 80);
+});
+g('btnCancelLift').addEventListener('click', function() { g('mAddLift').classList.remove('on'); });
+g('btnConfirmLift').addEventListener('click', function() {
+  var name = g('mLiftName').value.trim();
+  if (!name) return;
+  var rm = parseFloat(g('mLiftRM').value) || 0;
+  customLifts.push({ id:uid(), name:name, rm:rm });
+  g('mAddLift').classList.remove('on');
+  renderCustomLifts();
+  saveState();
+});
+
+// ── Histórico de Ciclos ───────────────────────
+var cycleChartInst = null;
+
+function parseCycleDate(dStr) {
+  var p = dStr.split('/');
+  return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+}
+
+function deleteCycle(id) {
+  cycleHistory = cycleHistory.filter(function(c) { return c.id !== id; });
+  renderCycleHistory();
+  saveState();
+}
+
+function renderCycleHistory() {
+  var section = g('cycleHistorySection');
+  var list    = g('cycleList');
+  if (!cycleHistory.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  if (cycleChartInst) { cycleChartInst.destroy(); cycleChartInst = null; }
+
+  var lifts    = ['supino','agacha','terra'].concat(customLifts.map(function(l) { return l.id; }));
+  var allDates = [...new Set(cycleHistory.map(function(c) { return c.dateEnd; }))].sort(function(a,b) {
+    return parseCycleDate(a) - parseCycleDate(b);
+  });
+
+  var datasets = lifts.map(function(lk) {
+    var pts = allDates.map(function(d) {
+      var entries = cycleHistory.filter(function(c) { return c.lift === lk && c.dateEnd === d; });
+      return entries.length ? entries[entries.length - 1].rmEnd : null;
+    });
+    if (pts.every(function(p) { return p === null; })) return null;
+    return {
+      label:              LIFT_LABELS[lk] || lk,
+      data:               pts,
+      borderColor:        LIFT_COLORS[lk] || 'rgba(200,200,200,.9)',
+      backgroundColor:    LIFT_FILL[lk]   || 'rgba(200,200,200,.12)',
+      borderWidth:        2.5,
+      pointRadius:        6,
+      pointHoverRadius:   9,
+      pointBackgroundColor: LIFT_SOLID[lk] || '#ccc',
+      pointBorderColor:   '#0c0c0f',
+      pointBorderWidth:   2,
+      fill:               true,
+      tension:            0.4,
+      spanGaps:           true,
+    };
+  }).filter(Boolean);
+
+  var ctx = g('cycleChart').getContext('2d');
+  cycleChartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels: allDates, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration:900, easing:'easeInOutQuart' },
+      transitions: { active:{ animation:{ duration:200 } } },
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:true, labels:{ color:'#8a8898', font:{size:11}, boxWidth:12, padding:16 } },
+        tooltip: {
+          backgroundColor:'rgba(30,30,40,.95)', borderColor:'rgba(255,255,255,.1)', borderWidth:1,
+          titleColor:'#f0eee8', bodyColor:'#8a8898', padding:10,
+          callbacks: { label:function(ctx) { var v=ctx.parsed.y; return v===null?null:' '+(LIFT_LABELS[ctx.dataset.label]||ctx.dataset.label)+': '+v+' kg'; } }
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#8a8898',font:{size:10}}, grid:{color:'rgba(255,255,255,.04)'} },
+        y: { ticks:{color:'#8a8898',font:{size:10},callback:function(v){return v+' kg';}}, grid:{color:'rgba(255,255,255,.05)'}, beginAtZero:false }
+      }
+    }
+  });
+
+  list.innerHTML = '';
+  cycleHistory.slice().reverse().forEach(function(c) {
+    var gained    = c.gain >= 0;
+    var gainColor = gained ? 'var(--green)' : 'var(--red)';
+    var gainSign  = c.gain > 0 ? '+' : '';
+    var liftColor = LIFT_SOLID[c.lift] || '#aaa';
+    var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + liftColor + ';margin-right:6px;vertical-align:middle;"></span>';
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;transition:border-color .15s;';
+    card.onmouseenter = function() { this.style.borderColor = 'rgba(255,255,255,.15)'; };
+    card.onmouseleave = function() { this.style.borderColor = ''; };
+    card.innerHTML =
+      '<div>'
+      + '<div style="font-size:12px;font-weight:600;margin-bottom:3px;">' + dot + (LIFT_LABELS[c.lift] || c.lift) + '</div>'
+      + '<div style="font-size:11px;color:var(--muted);">'
+      + (c.dateStart ? c.dateStart + ' → ' + c.dateEnd : c.dateEnd)
+      + (c.rmStart ? ' &nbsp;·&nbsp; <span style="font-family:var(--mono);">' + c.rmStart + ' → ' + c.rmEnd + ' kg</span>' : '')
+      + '</div>'
+      + '</div>'
+      + '<div style="text-align:right;"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + gainColor + ';">' + gainSign + c.gain + ' kg</div></div>'
+      + '<button data-cycleid="' + c.id + '" class="cycle-del-btn" style="background:transparent;border:none;color:var(--muted);font-size:16px;padding:0 2px;cursor:pointer;line-height:1;transition:color .15s;" title="Remover">×</button>';
+    card.querySelector('.cycle-del-btn').addEventListener('click', function() {
+      deleteCycle(this.dataset.cycleid);
+    });
+    list.appendChild(card);
+  });
+}
+
+// ── PR Banner ─────────────────────────────────
+var _prDismissTimer = null;
+
+function showPRBanner(liftLabel, liftColor, rmStart, rmEnd, isAllTime) {
+  var gain   = Math.round((rmEnd - rmStart) * 10) / 10;
+  var banner = document.getElementById('pr-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'pr-banner';
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML =
+    '<span class="pr-icon">' + (isAllTime ? '🏆' : '📈') + '</span>'
+    + '<div class="pr-title">' + (isAllTime ? 'Novo Recorde Pessoal!' : 'Evolução no Ciclo!') + '</div>'
+    + '<div class="pr-lift" style="color:' + liftColor + ';">' + liftLabel + '</div>'
+    + '<div class="pr-numbers">' + rmStart + ' kg &rarr; <span class="pr-gain">' + rmEnd + ' kg</span>'
+    + ' &nbsp;&middot;&nbsp; <span class="pr-gain">+' + gain + ' kg</span></div>'
+    + '<span class="pr-dismiss">toque para fechar</span>';
+
+  if (_prDismissTimer) clearTimeout(_prDismissTimer);
+  banner.classList.add('show');
+  _prDismissTimer = setTimeout(function() { banner.classList.remove('show'); }, 5500);
+  banner.onclick = function() { clearTimeout(_prDismissTimer); banner.classList.remove('show'); };
+}

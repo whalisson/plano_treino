@@ -15,6 +15,10 @@ nav{position:sticky;top:0;z-index:100;background:rgba(12,12,15,.95);backdrop-fil
 .ntab:hover{color:var(--text);}.ntab.on{color:var(--accent);border-bottom-color:var(--accent);}
 
 main{max-width:1200px;margin:0 auto;padding:28px 20px;}
+.nav-actions{margin-left:auto;display:flex;gap:6px;padding:12px 0;align-items:center;}
+.nav-import-label{background:transparent;border:1px solid var(--border2);border-radius:7px;color:var(--muted);font-family:var(--font);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;}
+.nav-import-label:hover{color:var(--text);border-color:var(--text);}
+.nav-import-label input{display:none;}
 .pg{display:none;}.pg.on{display:block;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:20px;}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:20px;}
@@ -52,6 +56,9 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .slbl{color:var(--muted);}.sw{font-weight:600;font-family:var(--mono);color:var(--accent);}.sr{color:var(--amber);font-size:10px;}
 
 /* 1RM */
+.rm-formula-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border);}
+.rm-formula-name{font-size:11px;color:var(--muted);}
+.rm-formula-val{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);}
 .rmtbl{width:100%;border-collapse:collapse;}
 .rmtbl th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:7px 11px;text-align:left;border-bottom:1px solid var(--border);}
 .rmtbl td{padding:8px 11px;font-size:13px;font-family:var(--mono);border-bottom:1px solid var(--border);}
