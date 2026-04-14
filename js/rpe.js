@@ -62,7 +62,7 @@ function buildRPERefTable() {
     var rirStr = Number.isInteger(rir) ? rir : rir.toFixed(1);
     var color  = getRPEColor(rpe);
     html += '<tr><td class="rpe-cell-rpe" style="color:' + color + ';">' + rpe + '</td><td class="rpe-cell-rir">' + rirStr + '</td>';
-    repsCols.forEach(function(col, ri) {
+    repsCols.forEach(function(_col, ri) {
       var f   = RPE_TABLE[rpe][ri];
       var pct = (Math.round(f * 1000) / 10).toFixed(1);
       var op  = (0.45 + f * 0.55).toFixed(2);
@@ -330,7 +330,63 @@ function renderRPEBlocks() {
     delBtn.addEventListener('click', function() { rpeBlocks = rpeBlocks.filter(function(b){return b.id!==blk.id;}); renderRPEBlocks(); saveState(); });
 
     acts.appendChild(trainBtn); acts.appendChild(planBtn); acts.appendChild(editBtn); acts.appendChild(dupBtn); acts.appendChild(delBtn);
-    card.appendChild(hdr); card.appendChild(exWrap); card.appendChild(acts);
+
+    // Histórico de execuções
+    if (blk.execHistory && blk.execHistory.length) {
+      var histWrap = document.createElement('div');
+      histWrap.className = 'rpe-blk-hist';
+
+      var histToggle = document.createElement('div');
+      histToggle.className = 'rpe-blk-hist-toggle';
+      histToggle.innerHTML = '<span class="rpe-blk-hist-chev">▶</span> Histórico '
+        + '<span class="rpe-blk-hist-count">' + blk.execHistory.length + ' treino' + (blk.execHistory.length !== 1 ? 's' : '') + '</span>';
+
+      var histBody = document.createElement('div');
+      histBody.className = 'rpe-blk-hist-body';
+
+      blk.execHistory.slice().reverse().slice(0, 5).forEach(function(exec) {
+        var d       = new Date(exec.date);
+        var dateStr = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+        var row = document.createElement('div');
+        row.className = 'rpe-blk-hist-row';
+
+        var dateEl = document.createElement('div');
+        dateEl.className = 'rpe-blk-hist-date';
+        dateEl.textContent = dateStr;
+        row.appendChild(dateEl);
+
+        exec.exercises.forEach(function(ex) {
+          var filled = ex.sets.filter(function(s) { return s.realRpe !== null; });
+          if (!filled.length) return;
+          var avg = filled.reduce(function(a, s) { return a + s.realRpe; }, 0) / filled.length;
+          var rmChanged = ex.rmAfter && ex.rmBefore && ex.rmAfter !== ex.rmBefore;
+
+          var exRow = document.createElement('div');
+          exRow.className = 'rpe-blk-hist-exrow';
+          exRow.innerHTML = '<span class="rpe-blk-hist-exname">' + ex.name + '</span>'
+            + '<span class="rpe-blk-hist-pill">' + filled.length + '/' + ex.sets.length + ' séries</span>'
+            + '<span class="rpe-blk-hist-pill" style="color:' + getRPEColor(Math.round(avg)) + ';border-color:' + getRPEColor(Math.round(avg)).replace('#','rgba(') + '44);">RPE ' + avg.toFixed(1) + '</span>'
+            + (rmChanged ? '<span class="rpe-blk-hist-rm">↑RM ' + ex.rmBefore + '→' + ex.rmAfter + ' kg</span>' : '');
+          row.appendChild(exRow);
+        });
+
+        histBody.appendChild(row);
+      });
+
+      histToggle.addEventListener('click', function() {
+        histBody.classList.toggle('show');
+        histToggle.classList.toggle('open');
+      });
+
+      histWrap.appendChild(histToggle);
+      histWrap.appendChild(histBody);
+    }
+
+    card.appendChild(hdr);
+    card.appendChild(exWrap);
+    if (blk.execHistory && blk.execHistory.length) card.appendChild(histWrap);
+    card.appendChild(acts);
     list.appendChild(card);
   });
 }
@@ -630,3 +686,37 @@ g('btnCloseExecRPE').addEventListener('click', function() {
   execRPETarget = null;
   execStates    = {};
 });
+
+function concludeExecRPE() {
+  if (!execRPETarget) return;
+
+  var execEntry = {
+    date:      Date.now(),
+    exercises: execRPETarget.exercises.map(function(ex, exIdx) {
+      var state = execStates[exIdx] || {};
+      var sets  = (state.setRpes || []).map(function(rpe, si) {
+        return {
+          kg:        state.setKgs      ? state.setKgs[si]      : 0,
+          reps:      state.setRepsArr  ? state.setRepsArr[si]  : 0,
+          targetRpe: state.setTargetRpes ? state.setTargetRpes[si] : null,
+          realRpe:   rpe,
+        };
+      });
+      return { name: ex.name, rmBefore: ex.rm, rmAfter: state.rm || ex.rm, sets: sets };
+    }),
+  };
+
+  var blkRef = rpeBlocks.find(function(b) { return b.id === execRPETarget.id; });
+  if (blkRef) {
+    if (!blkRef.execHistory) blkRef.execHistory = [];
+    blkRef.execHistory.push(execEntry);
+    blkRef.lastUsed = execEntry.date;
+    saveState();
+    renderRPEBlocks();
+  }
+
+  g('mExecRPE').classList.remove('on');
+  execRPETarget = null;
+  execStates    = {};
+  showExecToast('Treino concluído e salvo!');
+}

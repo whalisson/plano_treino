@@ -10,6 +10,7 @@ g('ntabs').addEventListener('click', function(e) {
   tab.classList.add('on');
   g('pg-' + p).classList.add('on');
   if (p === 'cardio') buildCardioChart();
+  if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
 });
 
 // ── Export / Import de dados ──────────────────
@@ -116,6 +117,33 @@ function applyState(saved) {
 }
 
 loadState().then(applyState).catch(function() { applyState(null); });
+
+// ── Scroll para semana atual na Periodização ──
+function scrollToCurrentWeek() {
+  var keys = ['supino', 'agacha', 'terra'];
+  // Adicionar lifts customizados
+  if (typeof customLifts !== 'undefined') {
+    customLifts.forEach(function(l) { keys.push(l.id); });
+  }
+
+  var found = false;
+  keys.forEach(function(k) {
+    var psb = g('psb-' + k); if (!psb) return;
+    var cur = psb.querySelector('.current-week');
+    if (cur && !found) {
+      // Expande a seção se estiver fechada
+      if (!psb.classList.contains('on')) {
+        psb.classList.add('on');
+        var chev = g('chev-' + k);
+        if (chev) chev.textContent = '▲';
+      }
+      setTimeout(function() {
+        cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+      found = true;
+    }
+  });
+}
 
 // ── Service Worker ────────────────────────────
 if ('serviceWorker' in navigator) {

@@ -37,7 +37,7 @@
 
 <!-- ══ PERIODIZAÇÃO ══ -->
 <div class="pg on" id="pg-periodizacao">
-  <div class="sh"><div class="shtitle">Periodização</div><span class="badge bp">12 semanas</span></div>
+  <div class="sh"><div class="shtitle">Periodização</div><span class="badge bp">12 semanas</span><button onclick="scrollToCurrentWeek()" class="sec" style="margin-left:auto;font-size:11px;padding:4px 11px;">▶ Semana atual</button></div>
 
   <div class="metrics">
     <div class="met" style="position:relative;overflow:visible;">
@@ -511,7 +511,11 @@
       </div>
       <button class="sec" id="btnCloseExecRPE" style="padding:5px 12px;font-size:12px;flex-shrink:0;">✕ Fechar</button>
     </div>
-    <div id="mExecRPEBody" style="padding:12px 14px 18px;display:flex;flex-direction:column;gap:10px;"></div>
+    <div id="mExecRPEBody" style="padding:12px 14px 4px;display:flex;flex-direction:column;gap:10px;"></div>
+    <div style="padding:10px 14px 14px;border-top:1px solid var(--border);display:flex;gap:8px;position:sticky;bottom:0;background:var(--card);border-radius:0 0 13px 13px;">
+      <button onclick="concludeExecRPE()" style="flex:1;background:rgba(74,222,128,.18);border:1px solid rgba(74,222,128,.35);color:var(--green);">✓ Concluir Treino</button>
+      <button class="sec" id="btnCloseExecRPE" style="padding:9px 14px;">✕ Fechar</button>
+    </div>
   </div>
 </div>
 
