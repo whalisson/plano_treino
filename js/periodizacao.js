@@ -15,8 +15,8 @@ var periodBase = [
   { label:'Semana 10', rest:true, note:'Descanso Total' },
   { label:'Semana 11', series:[{r:'8 reps',p:.50},{r:'5 reps',p:.60},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'1 rep',p:.90},{r:'1 rep',p:1.00},{r:'? reps',p:1.05}], note:'Teste Novo RM' },
   { label:'Semana 12', byLift:{
-      supino: { deload:true, note:'Volume −50% · Recuperação', series:[{r:'8 reps',p:.50},{r:'2x4',p:.60}] },
-      agacha: { deload:true, note:'Volume −50% · Recuperação', series:[{r:'8 reps',p:.50},{r:'2x4',p:.60}] },
+      supino: { skip:true },
+      agacha: { skip:true },
       terra:  { rest:true, note:'Descanso Total — Terra' },
     }
   },
@@ -47,7 +47,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   var allPrevDone    = true;
   baseWeeks.forEach(function(w, wi) {
     var wEff = (w.byLift && w.byLift[liftKey]) ? Object.assign({}, w, w.byLift[liftKey]) : w;
-    if (wEff.rest) return;
+    if (wEff.skip || wEff.rest) return;
     var totalChecks = 0;
     wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
     var state    = checksState[liftKey][wi] || {};
@@ -61,6 +61,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
 
   baseWeeks.forEach(function(w, wi) {
     var wEff = (w.byLift && w.byLift[liftKey]) ? Object.assign({}, w, w.byLift[liftKey]) : w;
+    if (wEff.skip) return;
     if (wEff.rest) {
       var restEl = document.createElement('div');
       restEl.style.cssText = 'background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:9px;padding:9px 13px;margin-bottom:9px;font-size:13px;color:var(--amber);';
