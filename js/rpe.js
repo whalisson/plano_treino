@@ -132,6 +132,7 @@ function renderRPEExercises() {
     delBtn.addEventListener('click', function() { rpeCurrentExercises.splice(exIdx, 1); renderRPEExercises(); });
     hdr.appendChild(titleEl); hdr.appendChild(delBtn);
 
+    var isCustom = !liftsRM.hasOwnProperty(ex.name);
     var quickWrap = document.createElement('div');
     quickWrap.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px;';
     Object.keys(liftsRM).forEach(function(liftName) {
@@ -149,13 +150,33 @@ function renderRPEExercises() {
       quickWrap.appendChild(btn);
     });
 
+    // Botão "+ Personalizado"
+    var customBtn = document.createElement('button');
+    customBtn.className = 'rpe-quick-btn' + (isCustom ? ' rpe-quick-active' : '');
+    customBtn.textContent = '+ Personalizado';
+    customBtn.addEventListener('click', function() {
+      nameInput.value = ''; rmInput.value = '';
+      ex.name = ''; ex.rm = 0;
+      quickWrap.querySelectorAll('.rpe-quick-btn').forEach(function(b) { b.classList.remove('rpe-quick-active'); });
+      customBtn.classList.add('rpe-quick-active');
+      nameInput.focus();
+      updateAllSetWeights();
+    });
+    quickWrap.appendChild(customBtn);
+
     var nameGrid = document.createElement('div');
     nameGrid.style.cssText = 'display:grid;grid-template-columns:1fr 88px;gap:8px;align-items:end;margin-bottom:10px;';
 
     var nameWrap = document.createElement('div'); nameWrap.innerHTML = '<label>Nome do exercício</label>';
     var nameInput = document.createElement('input');
     nameInput.type = 'text'; nameInput.value = ex.name; nameInput.placeholder = 'Ex: Supino';
-    nameInput.addEventListener('input', function() { ex.name = this.value; });
+    nameInput.addEventListener('input', function() {
+      ex.name = this.value;
+      if (!liftsRM.hasOwnProperty(this.value)) {
+        quickWrap.querySelectorAll('.rpe-quick-btn').forEach(function(b) { b.classList.remove('rpe-quick-active'); });
+        customBtn.classList.add('rpe-quick-active');
+      }
+    });
     nameWrap.appendChild(nameInput);
 
     var rmWrap = document.createElement('div'); rmWrap.innerHTML = '<label>1RM (kg)</label>';
