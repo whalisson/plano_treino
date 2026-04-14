@@ -14,7 +14,12 @@ var periodBase = [
   { label:'Semana 9',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x3',p:.70}] },
   { label:'Semana 10', rest:true, note:'Descanso Total' },
   { label:'Semana 11', series:[{r:'8 reps',p:.50},{r:'5 reps',p:.60},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'1 rep',p:.90},{r:'1 rep',p:1.00},{r:'? reps',p:1.05}], note:'Teste Novo RM' },
-  { label:'Semana 12', rest:true, note:'Descansar 1 Semana e Repetir' },
+  { label:'Semana 12', byLift:{
+      supino: { deload:true, note:'Volume −50% · Recuperação', series:[{r:'8 reps',p:.50},{r:'2x4',p:.60}] },
+      agacha: { deload:true, note:'Volume −50% · Recuperação', series:[{r:'8 reps',p:.50},{r:'2x4',p:.60}] },
+      terra:  { rest:true, note:'Descanso Total — Terra' },
+    }
+  },
 ];
 
 // ── Dicts de aparência por lift (usados no histórico de ciclos) ──
@@ -41,9 +46,10 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   var currentWeekIdx = -1;
   var allPrevDone    = true;
   baseWeeks.forEach(function(w, wi) {
-    if (w.rest) return;
+    var wEff = (w.byLift && w.byLift[liftKey]) ? Object.assign({}, w, w.byLift[liftKey]) : w;
+    if (wEff.rest) return;
     var totalChecks = 0;
-    w.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
+    wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
     var state    = checksState[liftKey][wi] || {};
     var done     = Object.values(state).filter(Boolean).length;
     var weekDone = done >= totalChecks;
@@ -54,16 +60,17 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   });
 
   baseWeeks.forEach(function(w, wi) {
-    if (w.rest) {
+    var wEff = (w.byLift && w.byLift[liftKey]) ? Object.assign({}, w, w.byLift[liftKey]) : w;
+    if (wEff.rest) {
       var restEl = document.createElement('div');
       restEl.style.cssText = 'background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:9px;padding:9px 13px;margin-bottom:9px;font-size:13px;color:var(--amber);';
-      restEl.textContent = '🏖️ ' + w.label + (w.note ? ' — ' + w.note : '');
+      restEl.textContent = '🏖️ ' + w.label + (wEff.note ? ' — ' + wEff.note : '');
       c.appendChild(restEl);
       return;
     }
 
     var totalChecks = 0;
-    w.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
+    wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
 
     if (!checksState[liftKey][wi]) checksState[liftKey][wi] = {};
     var weekState  = checksState[liftKey][wi];
@@ -72,16 +79,16 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     var isCurrent  = wi === currentWeekIdx;
 
     var block = document.createElement('div');
-    block.className = 'week-block' + (weekDone ? ' completed' : '') + (isCurrent ? ' current-week' : '') + (w.deload ? ' deload-week' : '');
+    block.className = 'week-block' + (weekDone ? ' completed' : '') + (isCurrent ? ' current-week' : '') + (wEff.deload ? ' deload-week' : '');
     block.id = 'wb-' + liftKey + '-' + wi;
 
     var hdr = document.createElement('div');
     hdr.className = 'week-header';
     hdr.innerHTML = '<span class="week-header-label">' + w.label + '</span>';
-    if (w.deload && !weekDone) hdr.innerHTML += '<span class="week-deload-badge">⬇ Deload</span>';
+    if (wEff.deload && !weekDone) hdr.innerHTML += '<span class="week-deload-badge">⬇ Deload</span>';
     if (isCurrent && !weekDone) hdr.innerHTML += '<span class="week-current-badge">▶ Em andamento</span>';
-    if (weekDone)               hdr.innerHTML += '<span class="week-done-badge">✓ Concluída</span>';
-    if (w.note && !weekDone) hdr.innerHTML += '<span class="week-header-note">' + w.note + '</span>';
+    if (weekDone)                hdr.innerHTML += '<span class="week-done-badge">✓ Concluída</span>';
+    if (wEff.note && !weekDone) hdr.innerHTML += '<span class="week-header-note">' + wEff.note + '</span>';
 
     var progWrap = document.createElement('div');
     progWrap.className = 'week-header-progress';
@@ -96,16 +103,16 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     block.appendChild(colHdr);
 
     var checkIdx = 0;
-    w.series.forEach(function(s, si) {
+    wEff.series.forEach(function(s, si) {
       var isQreps   = s.r === '? reps';
-      var isLast    = si === w.series.length - 1;
-      var isMainSet = w.series.length > 2 && isLast && !isQreps;
+      var isLast    = si === wEff.series.length - 1;
+      var isMainSet = wEff.series.length > 2 && isLast && !isQreps;
       var numChecks = parseSetCount(s.r);
       var kg        = round05(rm * s.p);
 
       var row = document.createElement('div');
       row.className = 'series-row' + (isMainSet ? ' main-set' : '') + (isQreps ? ' rm-test-set' : '');
-      row.style.borderBottom = si < w.series.length - 1 ? '1px solid var(--border)' : 'none';
+      row.style.borderBottom = si < wEff.series.length - 1 ? '1px solid var(--border)' : 'none';
 
       var lbl = document.createElement('span');
       lbl.className = 'ser-label';
