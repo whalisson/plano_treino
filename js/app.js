@@ -148,10 +148,9 @@ function scrollToCurrentWeek() {
     if (k && todayKeys.indexOf(k) === -1) todayKeys.push(k);
   });
 
-  // Se não há match hoje, cai no comportamento padrão (primeiro com semana atual)
-  var allKeys = ['supino', 'agacha', 'terra'];
-  if (typeof customLifts !== 'undefined') customLifts.forEach(function(l) { allKeys.push(l.id); });
-  var keysToOpen = todayKeys.length ? todayKeys : allKeys;
+  // Se não há match hoje, não abre nada
+  if (!todayKeys.length) return;
+  var keysToOpen = todayKeys;
 
   var firstTarget = null;
   keysToOpen.forEach(function(k) {
