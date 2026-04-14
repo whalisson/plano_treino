@@ -119,30 +119,58 @@ function applyState(saved) {
 loadState().then(applyState).catch(function() { applyState(null); });
 
 // ── Scroll para semana atual na Periodização ──
-function scrollToCurrentWeek() {
-  var keys = ['supino', 'agacha', 'terra'];
-  // Adicionar lifts customizados
-  if (typeof customLifts !== 'undefined') {
-    customLifts.forEach(function(l) { keys.push(l.id); });
-  }
 
-  var found = false;
-  keys.forEach(function(k) {
+// Retorna a chave do lift (ex: 'supino') para um nome de exercício do logbook
+function liftKeyForExerciseName(name) {
+  var n = name.toLowerCase();
+  if (n.includes('supino'))                          return 'supino';
+  if (n.includes('agachamento') || n.includes('agacha') || n.includes('squat')) return 'agacha';
+  if (n.includes('terra') || n.includes('deadlift')) return 'terra';
+  if (typeof customLifts !== 'undefined') {
+    for (var i = 0; i < customLifts.length; i++) {
+      var ln = customLifts[i].name.toLowerCase();
+      if (n.includes(ln) || ln.includes(n)) return customLifts[i].id;
+    }
+  }
+  return null;
+}
+
+function scrollToCurrentWeek() {
+  // board[0]=Segunda … board[6]=Domingo  |  JS getDay(): 0=Dom,1=Seg…6=Sab
+  var jsDay   = new Date().getDay();
+  var boardIdx = (jsDay + 6) % 7;           // converte para índice do board
+  var todayExercises = (typeof board !== 'undefined' && board[boardIdx]) ? board[boardIdx] : [];
+
+  // Lifts do dia de hoje no logbook
+  var todayKeys = [];
+  todayExercises.forEach(function(ex) {
+    var k = liftKeyForExerciseName(ex.name || '');
+    if (k && todayKeys.indexOf(k) === -1) todayKeys.push(k);
+  });
+
+  // Se não há match hoje, cai no comportamento padrão (primeiro com semana atual)
+  var allKeys = ['supino', 'agacha', 'terra'];
+  if (typeof customLifts !== 'undefined') customLifts.forEach(function(l) { allKeys.push(l.id); });
+  var keysToOpen = todayKeys.length ? todayKeys : allKeys;
+
+  var firstTarget = null;
+  keysToOpen.forEach(function(k) {
     var psb = g('psb-' + k); if (!psb) return;
     var cur = psb.querySelector('.current-week');
-    if (cur && !found) {
-      // Expande a seção se estiver fechada
-      if (!psb.classList.contains('on')) {
-        psb.classList.add('on');
-        var chev = g('chev-' + k);
-        if (chev) chev.textContent = '▲';
-      }
-      setTimeout(function() {
-        cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 60);
-      found = true;
+    if (!cur) return;
+    if (!psb.classList.contains('on')) {
+      psb.classList.add('on');
+      var chev = g('chev-' + k);
+      if (chev) chev.textContent = '▲';
     }
+    if (!firstTarget) firstTarget = cur;
   });
+
+  if (firstTarget) {
+    setTimeout(function() {
+      firstTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+  }
 }
 
 // ── Service Worker ────────────────────────────
