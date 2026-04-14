@@ -171,3 +171,11 @@ populateRMLiftSelect();
 g('btnSaveRM').addEventListener('click', saveRMRecord);
 g('rmW').addEventListener('input', calcRM);
 g('rmR').addEventListener('input', calcRM);
+
+g('rmHistDate').addEventListener('input', function() {
+  var digits = this.value.replace(/\D/g, '').slice(0, 8);
+  var v = digits;
+  if (digits.length > 4) v = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+  else if (digits.length > 2) v = digits.slice(0,2) + '/' + digits.slice(2);
+  this.value = v;
+});

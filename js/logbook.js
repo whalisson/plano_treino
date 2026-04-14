@@ -276,8 +276,25 @@ function setupBankDropzone() {
 }
 
 // ── Render ────────────────────────────────────
+function updateWeeklyVolume() {
+  var banner = g('weeklyVolumeBanner');
+  var valEl  = g('weeklyVolumeVal');
+  var daysEl = g('weeklyVolumeDays');
+  if (!banner || !valEl) return;
+  var total    = board.reduce(function(sum, day) { return sum + parseVolume(day); }, 0);
+  var daysWithWork = board.filter(function(day) { return day.length > 0; }).length;
+  if (total > 0) {
+    banner.style.display = 'flex';
+    valEl.textContent  = total >= 1000 ? (total / 1000).toFixed(1) + 't' : total + ' kg';
+    daysEl.textContent = daysWithWork + ' dia' + (daysWithWork !== 1 ? 's' : '') + ' com treino';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 function renderKanban() {
   var kb = g('kboard'); kb.innerHTML = '';
+  updateWeeklyVolume();
   board.forEach(function(items, di) {
     var col  = document.createElement('div'); col.className = 'kcol';
     var kh   = document.createElement('div'); kh.className  = 'kch';

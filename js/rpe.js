@@ -252,8 +252,11 @@ function renderRPEBlocks() {
     var card = document.createElement('div'); card.className = 'rpe-blk-card';
 
     var hdr = document.createElement('div'); hdr.className = 'rpe-blk-header';
+    var createdStr = blk.createdAt ? new Date(blk.createdAt).toLocaleDateString('pt-BR') : '';
+    var lastUsedStr = blk.lastUsed ? ' · último uso ' + new Date(blk.lastUsed).toLocaleDateString('pt-BR') : '';
     hdr.innerHTML = '<span class="rpe-blk-name">' + blk.name + '</span>'
-      + '<span class="rpe-blk-count">' + blk.exercises.length + ' exercício' + (blk.exercises.length !== 1 ? 's' : '') + '</span>';
+      + '<span class="rpe-blk-count">' + blk.exercises.length + ' exercício' + (blk.exercises.length !== 1 ? 's' : '')
+      + (createdStr ? ' · criado ' + createdStr : '') + lastUsedStr + '</span>';
 
     var exWrap = document.createElement('div'); exWrap.className = 'rpe-blk-exercises';
     blk.exercises.forEach(function(ex) {
@@ -324,6 +327,9 @@ g('btnCancelPlanRPE').addEventListener('click', function() { g('mPlanRPE').class
 
 g('btnConfirmPlanRPE').addEventListener('click', function() {
   if (!planRPETarget) return;
+  // registrar data da última execução
+  var blkRef = rpeBlocks.find(function(b) { return b.id === planRPETarget.id; });
+  if (blkRef) { blkRef.lastUsed = Date.now(); saveState(); }
   var dayIdx   = parseInt(g('mPlanRPEDay').value);
   var blk      = planRPETarget;
   var setsLabel = blk.exercises.map(function(ex) {

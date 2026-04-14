@@ -278,6 +278,7 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl) {
     var progTxt = blockEl.querySelector('.week-prog-text');
     if (progTxt) progTxt.textContent = done + '/' + totalChecks;
 
+    buildCycleProgress();
     if (allDone && !blockEl.classList.contains('completed')) {
       blockEl.classList.add('completed');
       var hdr = blockEl.querySelector('.week-header');
@@ -300,6 +301,52 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl) {
   return label;
 }
 
+function buildCycleProgress() {
+  var el = g('cycleProgressList'); if (!el) return;
+  var lifts = [
+    { key:'supino', label:'Supino',       color:'#6c63ff' },
+    { key:'agacha', label:'Agachamento',  color:'#2dd4bf' },
+    { key:'terra',  label:'Terra',        color:'#fbbf24' },
+  ];
+  el.innerHTML = '';
+  lifts.forEach(function(lf) {
+    var total = 0, done = 0, currentLabel = '—';
+    periodBase.forEach(function(w, wi) {
+      var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
+      if (wEff.skip || wEff.rest) return;
+      total++;
+      var checks    = checksState[lf.key][wi] || {};
+      var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
+      var weekDone  = Object.values(checks).filter(Boolean).length >= numChecks;
+      if (weekDone) done++;
+    });
+    // semana atual = primeiro não concluído
+    var found = false;
+    periodBase.forEach(function(w, wi) {
+      if (found) return;
+      var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
+      if (wEff.skip || wEff.rest) return;
+      var checks    = checksState[lf.key][wi] || {};
+      var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
+      var weekDone  = Object.values(checks).filter(Boolean).length >= numChecks;
+      if (!weekDone) { currentLabel = w.label; found = true; }
+    });
+    if (!found) currentLabel = 'Ciclo completo';
+
+    var pct = total > 0 ? Math.round(done / total * 100) : 0;
+    var row = document.createElement('div');
+    row.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+      + '<span style="font-size:12px;font-weight:600;color:' + lf.color + ';">' + lf.label + '</span>'
+      + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);">' + currentLabel + ' · ' + done + '/' + total + ' sem</span>'
+      + '</div>'
+      + '<div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;">'
+      + '<div style="height:100%;border-radius:3px;background:' + lf.color + ';width:' + pct + '%;transition:width .4s ease;opacity:.85;"></div>'
+      + '</div>';
+    el.appendChild(row);
+  });
+}
+
 function buildAllPeriod() {
   var sup = parseFloat(g('rm-supino').value) || BASE_SUP;
   var aga = parseFloat(g('rm-agacha').value) || BASE_AGA;
@@ -307,6 +354,7 @@ function buildAllPeriod() {
   buildWeekTable(periodBase, 'tbl-supino', 'supino', sup);
   buildWeekTable(periodBase, 'tbl-agacha', 'agacha', aga);
   buildWeekTable(periodBase, 'tbl-terra',  'terra',  ter);
+  buildCycleProgress();
 }
 
 ['rm-supino','rm-agacha','rm-terra'].forEach(function(id) {

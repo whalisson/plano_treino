@@ -110,6 +110,7 @@ function refreshCardio() {
   g('cardioSess').textContent = all.length;
   updateWeekGoal();
   renderCardioSessionList();
+  renderMonthlyCardio();
   if (g('pg-cardio').classList.contains('on')) buildCardioChart();
 }
 
@@ -124,12 +125,28 @@ function buildCardioChart() {
     type: 'bar',
     data: {
       labels: all.map(function(d) { return d.d; }),
-      datasets: [{ data: all.map(function(d) { return d.t; }),
-        backgroundColor: all.map(function(d) {
-          return CARDIO_TYPE_COLORS[d.type] || CARDIO_TYPE_COLORS.outro;
-        }),
-        borderWidth:0, borderRadius:3
-      }]
+      datasets: [
+        {
+          data: all.map(function(d) { return d.t; }),
+          backgroundColor: all.map(function(d) {
+            return CARDIO_TYPE_COLORS[d.type] || CARDIO_TYPE_COLORS.outro;
+          }),
+          borderWidth:0, borderRadius:3, order:2
+        },
+        {
+          type: 'line',
+          data: all.map(function() { return daily; }),
+          label: 'Meta diária',
+          borderColor: 'rgba(251,191,36,.7)',
+          borderWidth: 1.5,
+          borderDash: [5, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1
+        }
+      ]
     },
     options: {
       responsive:true, maintainAspectRatio:false,
@@ -142,6 +159,7 @@ function buildCardioChart() {
   });
   updateWeekGoal();
   renderCardioSessionList();
+  renderMonthlyCardio();
 }
 
 g('cardioDate').addEventListener('input', function() {
@@ -158,6 +176,46 @@ g('btnCardioHoje').addEventListener('click', function() {
   var now = new Date();
   g('cardioDate').value = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0');
 });
+
+function renderMonthlyCardio() {
+  var card = g('cardioMonthCard');
+  var list = g('cardioMonthList');
+  if (!card || !list) return;
+  var all = allCardioSessions();
+  if (!all.length) { card.style.display = 'none'; return; }
+
+  var MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var totals = {};
+  all.forEach(function(s) {
+    var p = s.d.split('/');
+    var mon = parseInt(p[1]) || 1;
+    var yr  = p[2] ? (parseInt(p[2]) < 100 ? parseInt(p[2]) + 2000 : parseInt(p[2])) : new Date().getFullYear();
+    var key = yr + '-' + String(mon).padStart(2,'0');
+    totals[key] = (totals[key] || 0) + s.t;
+  });
+
+  var keys = Object.keys(totals).sort();
+  var max  = keys.reduce(function(m, k) { return Math.max(m, totals[k]); }, 0);
+
+  card.style.display = 'block';
+  list.innerHTML = '';
+  keys.slice().reverse().forEach(function(k) {
+    var parts = k.split('-');
+    var label = MONTHS[parseInt(parts[1]) - 1] + ' ' + parts[0];
+    var mins  = totals[k];
+    var pct   = max > 0 ? Math.round(mins / max * 100) : 0;
+    var row   = document.createElement('div');
+    row.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+      + '<span style="font-size:12px;color:var(--muted);">' + label + '</span>'
+      + '<span style="font-size:12px;font-family:var(--mono);font-weight:600;color:var(--teal);">' + mins + ' min</span>'
+      + '</div>'
+      + '<div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">'
+      + '<div style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--teal),var(--accent));width:' + pct + '%;transition:width .4s;"></div>'
+      + '</div>';
+    list.appendChild(row);
+  });
+}
 
 g('btnAddCardio').addEventListener('click', function() {
   var date = g('cardioDate').value.trim();

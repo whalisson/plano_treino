@@ -37,7 +37,7 @@
 
 <!-- ══ PERIODIZAÇÃO ══ -->
 <div class="pg on" id="pg-periodizacao">
-  <div class="sh"><div class="shtitle">Periodização</div><span class="badge bp">10 semanas</span></div>
+  <div class="sh"><div class="shtitle">Periodização</div><span class="badge bp">12 semanas</span></div>
 
   <div class="metrics">
     <div class="met" style="position:relative;overflow:visible;">
@@ -64,6 +64,12 @@
         <span class="mu">kg</span>
       </div>
     </div>
+  </div>
+
+  <!-- Progresso do Ciclo -->
+  <div class="card" id="cycleProgressCard" style="margin-bottom:14px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Progresso do Ciclo</div>
+    <div id="cycleProgressList" style="display:flex;flex-direction:column;gap:10px;"></div>
   </div>
 
   <!-- SUPINO -->
@@ -131,6 +137,12 @@
     <span style="font-size:12px;color:var(--muted);margin-left:4px;">Arraste para o dia desejado</span>
     <span style="font-size:11px;color:var(--muted);margin-left:auto;">Plano fixo · edite arrastando</span>
   </div>
+  <div id="weeklyVolumeBanner" style="display:none;margin-bottom:10px;padding:8px 14px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:12px;">
+    <span style="color:var(--muted);">Volume semanal total</span>
+    <span id="weeklyVolumeVal" style="font-family:var(--mono);font-weight:700;color:var(--teal);font-size:14px;">0</span>
+    <span style="color:var(--muted);">kg</span>
+    <span style="margin-left:auto;font-size:11px;color:var(--muted);" id="weeklyVolumeDays"></span>
+  </div>
   <div class="kboard" id="kboard"></div>
   <div class="div"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
@@ -189,7 +201,7 @@
       </div>
       <div style="flex:1;min-width:100px;">
         <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Data</label>
-        <input type="text" id="rmHistDate" placeholder="dd/mm/aaaa" style="width:100%;">
+        <input type="text" id="rmHistDate" placeholder="dd/mm/aaaa" maxlength="10" style="width:100%;">
       </div>
       <div>
         <button id="btnSaveRM">+ Salvar</button>
@@ -251,6 +263,12 @@
   </div>
 
   <div class="card" style="margin-bottom:14px;"><div class="chwrap"><canvas id="cardioChart" role="img" aria-label="Histórico cardio">Histórico cardio.</canvas></div></div>
+
+  <!-- Resumo Mensal -->
+  <div class="card" id="cardioMonthCard" style="margin-bottom:14px;display:none;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Resumo Mensal</div>
+    <div id="cardioMonthList" style="display:flex;flex-direction:column;gap:7px;"></div>
+  </div>
 
   <!-- Registrar sessão + histórico recente -->
   <div class="g2" style="margin-bottom:14px;">
