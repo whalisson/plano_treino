@@ -80,23 +80,34 @@ function fbInit() {
     _fbDb = firebase.firestore();
     fbSetStatus('init');
 
+    var _authFirstFire = true;
     firebase.auth().onAuthStateChanged(function(user) {
       if (user) {
         _fbUser  = user;
         _fbReady = true;
         fbSetStatus('synced');
         fbUpdateUserDisplay(user);
+        fbHideSignInModal();
 
-        // Carrega dados do Firestore para resolver a Promise de init
         fbLoadByUid(user.uid).then(function(data) {
-          window._fbAuthResolve({ user: user, data: data });
-          // Se havia dados pendentes de sync, envia agora
+          if (_authFirstFire) {
+            // Primeiro disparo — resolve a Promise usada pelo app.js no init
+            _authFirstFire = false;
+            window._fbAuthResolve({ user: user, data: data });
+          } else if (data && typeof applyState === 'function') {
+            // Login feito DEPOIS do app já ter carregado vazio — aplica os dados
+            applyState(data);
+            if (typeof idbSet === 'function') idbSet(RECORD_KEY, data).catch(function() {});
+          }
           if (_fbPendingData) {
             fbSave(_fbPendingData);
             _fbPendingData = null;
           }
         }).catch(function() {
-          window._fbAuthResolve({ user: user, data: null });
+          if (_authFirstFire) {
+            _authFirstFire = false;
+            window._fbAuthResolve({ user: user, data: null });
+          }
         });
 
       } else {
@@ -104,7 +115,10 @@ function fbInit() {
         _fbReady = false;
         fbSetStatus('off');
         fbUpdateUserDisplay(null);
-        window._fbAuthResolve(null);
+        if (_authFirstFire) {
+          _authFirstFire = false;
+          window._fbAuthResolve(null);
+        }
       }
     });
 
