@@ -1,0 +1,29 @@
+{
+  "name": "gorila-gym",
+  "version": "1.0.0",
+  "description": "Gorila Gym — PWA de planejamento e registro de treinos",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFiles": ["./tests/setup.js"],
+    "testMatch": ["**/tests/**/*.test.js"],
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "js/state.js",
+      "js/rm.js",
+      "js/rpe.js",
+      "js/logbook.js",
+      "js/cardio.js",
+      "js/periodizacao.js"
+    ],
+    "coverageReporters": ["text", "lcov", "html"]
+  }
+}

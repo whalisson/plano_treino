@@ -1,6 +1,12 @@
 # Claude Code — configurações locais do assistente
 .claude/
 
+# Dependências
+node_modules/
+
+# Relatórios de cobertura de testes (gerado pelo Jest)
+coverage/
+
 # Sistema operacional
 .DS_Store
 Thumbs.db
