@@ -4,6 +4,9 @@
 # Dependências
 node_modules/
 
+# Config Firebase — nunca versionar (use GitHub Secrets + deploy.yml)
+js/firebase-config.js
+
 # Relatórios de cobertura de testes (gerado pelo Jest)
 coverage/
 
