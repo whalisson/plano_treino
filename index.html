@@ -19,21 +19,23 @@
 <body>
 
 <nav>
-  <div class="logo">⬡ TREINO</div>
-  <div class="ntabs" id="ntabs">
-    <div class="ntab on" data-p="periodizacao">Periodização</div>
-    <div class="ntab"    data-p="logbook">Logbook</div>
-    <div class="ntab"    data-p="rm">Calc 1RM</div>
-    <div class="ntab"    data-p="cardio">Cardio</div>
-    <div class="ntab"    data-p="rpe">RPE</div>
-  </div>
-  <div class="nav-actions">
-    <button id="btnExport" class="sec" style="font-size:11px;padding:5px 11px;white-space:nowrap;">↑ Exportar</button>
-    <label class="nav-import-label">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
-    <!-- Indicador de sync Firebase -->
-    <span id="fbStatus" style="font-size:10px;color:var(--muted);white-space:nowrap;cursor:default;" title="Sincronização Firebase">☁ Sem nuvem</span>
-    <!-- Usuário logado / botão entrar -->
-    <div id="fbUserWrap" style="display:none;align-items:center;"></div>
+  <div class="nav-inner" id="navInner">
+    <div class="logo">⬡ TREINO</div>
+    <div class="ntabs" id="ntabs">
+      <div class="ntab on" data-p="periodizacao">Periodização</div>
+      <div class="ntab"    data-p="logbook">Logbook</div>
+      <div class="ntab"    data-p="rm">Calc 1RM</div>
+      <div class="ntab"    data-p="cardio">Cardio</div>
+      <div class="ntab"    data-p="rpe">RPE</div>
+    </div>
+    <div class="nav-actions">
+      <button id="btnExport" class="sec" style="font-size:11px;padding:5px 11px;white-space:nowrap;">↑ Exportar</button>
+      <label class="nav-import-label">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
+      <!-- Indicador de sync Firebase -->
+      <span id="fbStatus" style="font-size:10px;color:var(--muted);white-space:nowrap;cursor:default;" title="Sincronização Firebase">☁ Sem nuvem</span>
+      <!-- Usuário logado / botão entrar -->
+      <div id="fbUserWrap" style="display:none;align-items:center;"></div>
+    </div>
   </div>
 </nav>
 

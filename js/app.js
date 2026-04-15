@@ -199,6 +199,33 @@ function scrollToCurrentWeek() {
   }
 }
 
+// ── Nav drag-to-scroll ────────────────────────
+(function() {
+  var el = document.getElementById('navInner');
+  if (!el) return;
+  var down = false, startX, scrollLeft;
+
+  el.addEventListener('mousedown', function(e) {
+    // Ignora cliques em botões/inputs dentro da nav
+    if (e.target.closest('button, input, label, a')) return;
+    down = true;
+    startX    = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+    el.classList.add('dragging');
+  });
+  document.addEventListener('mouseup',   function() { down = false; el.classList.remove('dragging'); });
+  document.addEventListener('mouseleave', function() { down = false; el.classList.remove('dragging'); });
+  el.addEventListener('mousemove', function(e) {
+    if (!down) return;
+    e.preventDefault();
+    var x    = e.pageX - el.offsetLeft;
+    var walk = (x - startX) * 1.2;
+    el.scrollLeft = scrollLeft - walk;
+  });
+
+  // Touch: já funciona nativamente via overflow-x:auto + -webkit-overflow-scrolling:touch
+})();
+
 // ── Service Worker ────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
@@ -207,3 +234,4 @@ if ('serviceWorker' in navigator) {
       .catch(function(err) { console.warn('[SW] Registration failed:', err); });
   });
 }
+
