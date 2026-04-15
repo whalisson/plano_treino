@@ -1,5 +1,5 @@
-// Gorila Gym — Service Worker v8
-const CACHE = 'gorila-gym-v11';
+// Gorila Gym — Service Worker v9
+const CACHE = 'gorila-gym-v12';
 const ASSETS = [
   './index.html',
   './css/styles.css',

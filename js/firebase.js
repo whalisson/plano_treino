@@ -1,121 +1,156 @@
 // ── GORILA GYM — firebase.js ──────────────────
-// Sincronização em nuvem via Firebase Firestore.
+// Sincronização em nuvem via Firebase + Google Sign-In.
 //
-// Estratégia:
-//   • Cada usuário tem um Código de Backup de 6 caracteres (ex: "A3X9KM")
-//   • O código é o ID do documento no Firestore — guarda-o em local seguro
-//   • Ao salvar localmente, sincroniza automaticamente (debounce de 4 s)
-//   • Se o app for apagado e o código estiver disponível, os dados voltam
+// Fluxo:
+//   • Usuário entra com Google (UID é permanente entre reinstalações)
+//   • Dados salvos automaticamente no Firestore (debounce 4 s)
+//   • Ao reinstalar e fazer login, os dados voltam sozinhos
 
-var FB_CODE_KEY    = 'gorila_bkp';
 var FB_COLLECTION  = 'gorila_gym';
 var _fbReady       = false;
 var _fbDb          = null;
+var _fbUser        = null;
 var _fbSyncTimer   = null;
 var _fbPendingData = null;
 
-// ── Código de backup ──────────────────────────
-
-function fbGenerateCode() {
-  // Alfanumérico sem caracteres ambíguos (0/O, 1/I/L)
-  var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  var code  = '';
-  for (var i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
-function fbGetCode() {
-  return localStorage.getItem(FB_CODE_KEY) || null;
-}
-
-function fbGetOrCreateCode() {
-  var code = fbGetCode();
-  if (!code) {
-    code = fbGenerateCode();
-    localStorage.setItem(FB_CODE_KEY, code);
-  }
-  return code;
-}
+// Promise resolvida quando o estado de auth é determinado pela 1ª vez
+// Resolve com { user, data } ou null (não autenticado)
+var _fbAuthPromise = new Promise(function(resolve) {
+  window._fbAuthResolve = resolve;
+});
 
 // ── Status visual na UI ───────────────────────
 function fbSetStatus(status) {
   var el = document.getElementById('fbStatus');
   if (!el) return;
   var map = {
-    init:    { icon: '☁',  text: 'Conectando…', color: 'var(--muted)'  },
-    syncing: { icon: '⟳',  text: 'Salvando…',   color: 'var(--amber)'  },
-    synced:  { icon: '☁',  text: 'Salvo',        color: 'var(--teal)'   },
-    error:   { icon: '☁',  text: 'Erro sync',    color: 'var(--red)'    },
-    offline: { icon: '☁',  text: 'Offline',      color: 'var(--muted)'  },
-    off:     { icon: '☁',  text: 'Sem nuvem',    color: 'var(--muted)'  },
+    init:    { icon: '☁', text: 'Conectando…', color: 'var(--muted)' },
+    syncing: { icon: '⟳', text: 'Salvando…',   color: 'var(--amber)' },
+    synced:  { icon: '☁', text: 'Salvo',        color: 'var(--teal)'  },
+    error:   { icon: '☁', text: 'Erro sync',    color: 'var(--red)'   },
+    offline: { icon: '☁', text: 'Offline',      color: 'var(--muted)' },
+    off:     { icon: '☁', text: 'Sem nuvem',    color: 'var(--muted)' },
   };
   var s = map[status] || map.off;
   el.innerHTML = '<span style="margin-right:3px;">' + s.icon + '</span>' + s.text;
   el.style.color = s.color;
 }
 
+// ── UI: exibe avatar/nome do usuário logado ───
+function fbUpdateUserDisplay(user) {
+  var wrap = document.getElementById('fbUserWrap');
+  if (!wrap) return;
+  if (user) {
+    var name  = (user.displayName || 'Usuário').split(' ')[0];
+    var photo = user.photoURL;
+    var avatar = photo
+      ? '<img src="' + photo + '" style="width:20px;height:20px;border-radius:50%;object-fit:cover;" alt="">'
+      : '<span style="width:20px;height:20px;border-radius:50%;background:var(--teal);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000;">' + name[0].toUpperCase() + '</span>';
+    wrap.innerHTML =
+      '<span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">' +
+        avatar +
+        '<span style="color:var(--text);">' + name + '</span>' +
+        '<button onclick="fbSignOut()" style="background:transparent;border:none;color:var(--muted);font-size:10px;padding:0 2px;cursor:pointer;" title="Sair">✕</button>' +
+      '</span>';
+    wrap.style.display = 'flex';
+  } else {
+    wrap.innerHTML =
+      '<button onclick="fbShowSignInModal()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;white-space:nowrap;">Entrar com Google</button>';
+    wrap.style.display = 'flex';
+  }
+}
+
 // ── Inicialização ─────────────────────────────
 function fbInit() {
-  // Verifica se a config foi preenchida pelo usuário
   if (typeof FIREBASE_CONFIG === 'undefined' || FIREBASE_CONFIG.apiKey === 'COLE_AQUI') {
     fbSetStatus('off');
+    window._fbAuthResolve(null);
     return;
   }
-
-  // Verifica se o SDK foi carregado
   if (typeof firebase === 'undefined') {
     fbSetStatus('off');
+    window._fbAuthResolve(null);
     return;
   }
 
   try {
-    // Evita inicializar duas vezes (ex: hot-reload)
     if (!firebase.apps.length) {
       firebase.initializeApp(FIREBASE_CONFIG);
     }
     _fbDb = firebase.firestore();
     fbSetStatus('init');
 
-    // Login anônimo — necessário para as regras de segurança do Firestore
-    firebase.auth().signInAnonymously()
-      .then(function() {
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        _fbUser  = user;
         _fbReady = true;
         fbSetStatus('synced');
-        fbUpdateCodeDisplay();
+        fbUpdateUserDisplay(user);
 
-        // Se havia dados pendentes de sincronizar, envia agora
-        if (_fbPendingData) {
-          fbSave(_fbPendingData);
-          _fbPendingData = null;
-        }
-      })
-      .catch(function(err) {
-        console.warn('[Firebase] Auth falhou:', err.message);
-        fbSetStatus('offline');
-      });
+        // Carrega dados do Firestore para resolver a Promise de init
+        fbLoadByUid(user.uid).then(function(data) {
+          window._fbAuthResolve({ user: user, data: data });
+          // Se havia dados pendentes de sync, envia agora
+          if (_fbPendingData) {
+            fbSave(_fbPendingData);
+            _fbPendingData = null;
+          }
+        }).catch(function() {
+          window._fbAuthResolve({ user: user, data: null });
+        });
+
+      } else {
+        _fbUser  = null;
+        _fbReady = false;
+        fbSetStatus('off');
+        fbUpdateUserDisplay(null);
+        window._fbAuthResolve(null);
+      }
+    });
 
   } catch (err) {
     console.warn('[Firebase] Init falhou:', err.message);
     fbSetStatus('off');
+    window._fbAuthResolve(null);
   }
 }
 
-// ── Salvar no Firestore (debounced) ───────────
+// ── Login / Logout ────────────────────────────
+function fbSignIn() {
+  if (typeof firebase === 'undefined') return;
+  var provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(function(err) {
+    console.warn('[Firebase] Sign-in falhou:', err.message);
+  });
+}
+
+function fbSignOut() {
+  if (typeof firebase === 'undefined') return;
+  firebase.auth().signOut();
+}
+
+// ── Modal de login ────────────────────────────
+function fbShowSignInModal() {
+  var m = document.getElementById('mFbLogin');
+  if (m) m.classList.add('on');
+}
+
+function fbHideSignInModal() {
+  var m = document.getElementById('mFbLogin');
+  if (m) m.classList.remove('on');
+}
+
+// ── Salvar no Firestore (debounced 4 s) ───────
 function fbSave(data) {
-  if (!_fbReady || !_fbDb) {
-    _fbPendingData = data; // guarda para quando conectar
+  if (!_fbReady || !_fbDb || !_fbUser) {
+    _fbPendingData = data;
     return;
   }
   clearTimeout(_fbSyncTimer);
   _fbSyncTimer = setTimeout(function() {
-    var code = fbGetOrCreateCode();
     fbSetStatus('syncing');
-    // Serializa como JSON para evitar limitações do Firestore
-    // (arrays aninhados, undefined, objetos com chaves inválidas, etc.)
     var doc = { payload: JSON.stringify(data), savedAt: Date.now() };
-    _fbDb.collection(FB_COLLECTION).doc(code).set(doc)
+    _fbDb.collection(FB_COLLECTION).doc(_fbUser.uid).set(doc)
       .then(function()  { fbSetStatus('synced'); })
       .catch(function(err) {
         console.warn('[Firebase] Save falhou:', err.message);
@@ -124,98 +159,18 @@ function fbSave(data) {
   }, 4000);
 }
 
-// ── Carregar do Firestore por código ──────────
-function fbLoad(code) {
+// ── Carregar do Firestore pelo UID ────────────
+function fbLoadByUid(uid) {
   if (!_fbDb) return Promise.reject(new Error('Firebase não inicializado'));
-  return _fbDb.collection(FB_COLLECTION).doc(code.toUpperCase().trim()).get()
+  return _fbDb.collection(FB_COLLECTION).doc(uid).get()
     .then(function(doc) {
       if (!doc.exists) return null;
       var d = doc.data();
-      // Suporta formato antigo (objeto direto) e novo (payload JSON)
-      if (d.payload) {
+      if (d && d.payload) {
         try { return JSON.parse(d.payload); } catch(e) { return null; }
       }
-      return d;
+      return d || null;
     });
-}
-
-// ── UI: exibe e gerencia o código de backup ───
-function fbUpdateCodeDisplay() {
-  var code = fbGetOrCreateCode();
-
-  var display = document.getElementById('fbCodeDisplay');
-  if (display) display.textContent = code;
-
-  var wrap = document.getElementById('fbCodeWrap');
-  if (wrap) wrap.style.display = 'flex';
-}
-
-function fbCopyCode() {
-  var code = fbGetOrCreateCode();
-  navigator.clipboard.writeText(code).then(function() {
-    var btn = document.getElementById('fbCopyBtn');
-    if (!btn) return;
-    var orig = btn.textContent;
-    btn.textContent = '✓';
-    btn.style.color = 'var(--green)';
-    setTimeout(function() { btn.textContent = orig; btn.style.color = ''; }, 1500);
-  });
-}
-
-// ── UI: modal de restauração ──────────────────
-function fbOpenRestoreModal() {
-  var m = document.getElementById('mFbRestore');
-  if (m) { m.classList.add('on'); document.getElementById('fbRestoreInput').value = ''; }
-}
-
-function fbCloseRestoreModal() {
-  var m = document.getElementById('mFbRestore');
-  if (m) m.classList.remove('on');
-}
-
-function fbConfirmRestore() {
-  var input = document.getElementById('fbRestoreInput');
-  var code  = input ? input.value.trim().toUpperCase() : '';
-  if (code.length !== 6) {
-    alert('Código inválido. O código tem 6 caracteres (ex: A3X9KM).');
-    return;
-  }
-
-  var btn = document.getElementById('fbRestoreBtn');
-  if (btn) { btn.textContent = 'Buscando…'; btn.disabled = true; }
-
-  // Espera o Firebase estar pronto (pode não estar se acabou de abrir o app)
-  function tryLoad() {
-    if (!_fbDb) {
-      setTimeout(tryLoad, 500);
-      return;
-    }
-    fbLoad(code)
-      .then(function(data) {
-        if (!data) {
-          alert('Nenhum dado encontrado para o código "' + code + '". Verifique e tente novamente.');
-          if (btn) { btn.textContent = 'Restaurar'; btn.disabled = false; }
-          return;
-        }
-        // Salva o novo código localmente
-        localStorage.setItem(FB_CODE_KEY, code);
-
-        // Aplica os dados e salva no IndexedDB
-        customLifts = [];
-        applyState(data);
-        idbSet(RECORD_KEY, data).catch(function() {});
-        fbCloseRestoreModal();
-        fbUpdateCodeDisplay();
-
-        showUndo('Dados restaurados com sucesso!', function() {}, function() {});
-      })
-      .catch(function(err) {
-        console.warn('[Firebase] Restore falhou:', err);
-        alert('Erro ao buscar dados. Verifique sua conexão.');
-        if (btn) { btn.textContent = 'Restaurar'; btn.disabled = false; }
-      });
-  }
-  tryLoad();
 }
 
 // Inicia assim que o DOM estiver pronto

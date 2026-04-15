@@ -32,33 +32,34 @@
     <label class="nav-import-label">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
     <!-- Indicador de sync Firebase -->
     <span id="fbStatus" style="font-size:10px;color:var(--muted);white-space:nowrap;cursor:default;" title="Sincronização Firebase">☁ Sem nuvem</span>
-    <!-- Código de backup (aparece quando Firebase está ativo) -->
-    <div id="fbCodeWrap" style="display:none;align-items:center;gap:4px;font-size:10px;color:var(--muted);">
-      <span>Cód:</span>
-      <span id="fbCodeDisplay" style="font-family:var(--mono);font-weight:700;color:var(--text);letter-spacing:1px;"></span>
-      <button id="fbCopyBtn" onclick="fbCopyCode()" style="background:transparent;border:none;color:var(--muted);font-size:12px;padding:0 2px;cursor:pointer;" title="Copiar código de backup">⎘</button>
-      <button onclick="fbOpenRestoreModal()" style="background:transparent;border:none;color:var(--muted);font-size:10px;padding:0 2px;cursor:pointer;white-space:nowrap;">↩ Restaurar</button>
-    </div>
+    <!-- Usuário logado / botão entrar -->
+    <div id="fbUserWrap" style="display:none;align-items:center;"></div>
   </div>
 </nav>
 
-<!-- ══ MODAL: Restaurar pelo Código de Backup ══ -->
-<div id="mFbRestore" class="modal">
-  <div class="modal-box" style="max-width:340px;">
-    <div class="modal-title">↩ Restaurar Backup</div>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 14px;">
-      Digite o seu <strong style="color:var(--text);">Código de Backup</strong> de 6 caracteres
-      para recuperar seus dados do Firebase.
+<!-- ══ MODAL: Login com Google ══ -->
+<div id="mFbLogin" class="modal">
+  <div class="modal-box" style="max-width:340px;text-align:center;">
+    <div class="modal-title" style="justify-content:center;">☁ Sincronização na nuvem</div>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 6px;">
+      Entre com sua conta Google para salvar seus treinos na nuvem.
     </p>
-    <input id="fbRestoreInput" type="text" maxlength="6" placeholder="ex: A3X9KM"
-      style="width:100%;text-transform:uppercase;font-family:var(--mono);font-size:20px;
-             letter-spacing:4px;text-align:center;padding:10px;margin-bottom:14px;
-             background:var(--bg3);border:1px solid var(--border);border-radius:8px;
-             color:var(--text);">
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button class="sec" onclick="fbCloseRestoreModal()" style="font-size:12px;">Cancelar</button>
-      <button id="fbRestoreBtn" onclick="fbConfirmRestore()" style="font-size:12px;">Restaurar</button>
-    </div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 20px;">
+      Ao reinstalar o app, seus dados voltam automaticamente ao fazer login — sem precisar digitar código nenhum.
+    </p>
+    <button onclick="fbSignIn();fbHideSignInModal();"
+      style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+             padding:12px;border-radius:8px;font-size:14px;font-weight:600;
+             background:var(--bg3);border:1px solid var(--border);color:var(--text);cursor:pointer;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Entrar com Google
+    </button>
+    <button class="sec" onclick="fbHideSignInModal()" style="width:100%;margin-top:10px;font-size:12px;">
+      Continuar sem conta
+    </button>
+    <p style="font-size:10px;color:var(--muted);margin:14px 0 0;">
+      Seus dados ficam privados e vinculados apenas à sua conta Google.
+    </p>
   </div>
 </div>
 
