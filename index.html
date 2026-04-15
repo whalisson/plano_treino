@@ -150,6 +150,13 @@
     <button id="btnAddEx">+ Novo Exercício</button>
   </div>
   <input type="text" id="bankSearch" placeholder="Buscar exercício..." style="margin-bottom:8px;font-family:var(--font);">
+  <div id="bankGroupFilter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
+    <button class="bank-filter-btn active" data-group="">Todos</button>
+    <button class="bank-filter-btn" data-group="push">Push</button>
+    <button class="bank-filter-btn" data-group="pull">Pull</button>
+    <button class="bank-filter-btn" data-group="legs">Legs</button>
+    <button class="bank-filter-btn" data-group="core">Core</button>
+  </div>
   <div id="ebank" style="display:flex;flex-wrap:wrap;gap:7px;min-height:52px;padding:11px;background:var(--bg3);border:2px dashed var(--border2);border-radius:10px;"
     data-dropzone="bank"></div>
 
@@ -409,6 +416,16 @@
     <div class="fg">
       <div><label>Carga (kg)</label><input type="number" id="mExKg" step="0.5" placeholder="60"></div>
       <div><label>Reps / Séries</label><input type="text" id="mExReps" placeholder="3x10"></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label>Grupo muscular</label>
+      <select id="mExGroup">
+        <option value="">— Sem categoria —</option>
+        <option value="push">Push</option>
+        <option value="pull">Pull</option>
+        <option value="legs">Legs</option>
+        <option value="core">Core</option>
+      </select>
     </div>
     <div style="display:flex;gap:8px;">
       <button id="btnConfirmEx" style="flex:1">Adicionar</button>

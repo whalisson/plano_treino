@@ -3,6 +3,10 @@
 
 var DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 var _bankQuery = '';
+var _bankGroup = '';
+
+var GROUP_CSS = { push:'bpg-push', pull:'bpg-pull', legs:'bpg-legs', core:'bpg-core' };
+var GROUP_LABEL = { push:'Push', pull:'Pull', legs:'Legs', core:'Core' };
 
 function parseVolume(items) {
   return items.reduce(function(total, ex) {
@@ -14,15 +18,15 @@ function parseVolume(items) {
 }
 var board = DAYS.map(function() { return []; });
 var bank  = [
-  { id:uid(), name:'Elev. Lateral Halt.',  kg:25,  reps:'3x12' },
-  { id:uid(), name:'Crux. Inv. Máquina',   kg:20,  reps:'3x12' },
-  { id:uid(), name:'Elev. Lat. Máquina',   kg:95,  reps:'3x10' },
-  { id:uid(), name:'Hip Thrust',           kg:135, reps:'3x10' },
-  { id:uid(), name:'Flexora',              kg:200, reps:'3x10' },
-  { id:uid(), name:'Bulgaro Uni.',          kg:0,   reps:'3x8'  },
-  { id:uid(), name:'Maq. Puxada',          kg:60,  reps:'3x10' },
-  { id:uid(), name:'Maq. Remada',          kg:55,  reps:'3x10' },
-  { id:uid(), name:'Low Row',              kg:85,  reps:'3x10' },
+  { id:uid(), name:'Elev. Lateral Halt.',  kg:25,  reps:'3x12', group:'push' },
+  { id:uid(), name:'Crux. Inv. Máquina',   kg:20,  reps:'3x12', group:'push' },
+  { id:uid(), name:'Elev. Lat. Máquina',   kg:95,  reps:'3x10', group:'push' },
+  { id:uid(), name:'Hip Thrust',           kg:135, reps:'3x10', group:'legs' },
+  { id:uid(), name:'Flexora',              kg:200, reps:'3x10', group:'legs' },
+  { id:uid(), name:'Bulgaro Uni.',          kg:0,   reps:'3x8',  group:'legs' },
+  { id:uid(), name:'Maq. Puxada',          kg:60,  reps:'3x10', group:'pull' },
+  { id:uid(), name:'Maq. Remada',          kg:55,  reps:'3x10', group:'pull' },
+  { id:uid(), name:'Low Row',              kg:85,  reps:'3x10', group:'pull' },
 ];
 
 // ── Drag & Drop ───────────────────────────────
@@ -167,8 +171,11 @@ function makeBankPill(ex) {
   el.style.position    = 'relative';
   el.style.paddingRight = '52px';
 
+  var groupBadge = ex.group && GROUP_CSS[ex.group]
+    ? ' <span class="bpgroup ' + GROUP_CSS[ex.group] + '">' + GROUP_LABEL[ex.group] + '</span>'
+    : '';
   var info = document.createElement('div');
-  info.innerHTML = '<div class="bpname">' + ex.name + '</div>'
+  info.innerHTML = '<div class="bpname">' + ex.name + groupBadge + '</div>'
     + '<div class="bpmeta">' + (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps + '</div>';
   info.draggable = false;
   el.appendChild(info);
@@ -314,9 +321,13 @@ function renderKanban() {
 function renderBank() {
   var bk = g('ebank'); bk.innerHTML = '';
   var q  = _bankQuery.toLowerCase();
-  var filtered = q ? bank.filter(function(ex) { return ex.name.toLowerCase().indexOf(q) !== -1; }) : bank;
+  var filtered = bank.filter(function(ex) {
+    var matchQ = !q || ex.name.toLowerCase().indexOf(q) !== -1;
+    var matchG = !_bankGroup || (ex.group || '') === _bankGroup;
+    return matchQ && matchG;
+  });
   if (!filtered.length) {
-    bk.innerHTML = '<span class="bank-drop-hint">' + (q ? 'Nenhum exercício encontrado.' : 'Adicione exercícios com o botão acima ↑') + '</span>';
+    bk.innerHTML = '<span class="bank-drop-hint">' + (q || _bankGroup ? 'Nenhum exercício encontrado.' : 'Adicione exercícios com o botão acima ↑') + '</span>';
     return;
   }
   filtered.forEach(function(ex) { bk.appendChild(makeBankPill(ex)); });
@@ -340,6 +351,7 @@ function openAddModal() {
   editingExId = null;
   g('mExTitle').textContent = 'Novo Exercício';
   g('mExName').value = ''; g('mExKg').value = ''; g('mExReps').value = '';
+  g('mExGroup').value = _bankGroup || '';
   g('btnConfirmEx').textContent = 'Adicionar';
   g('mExDeleteWrap').style.display = 'none';
   g('mAddEx').classList.add('on');
@@ -351,6 +363,7 @@ function openEditModal(id) {
   editingExId = id;
   g('mExTitle').textContent = 'Editar Exercício';
   g('mExName').value = ex.name; g('mExKg').value = ex.kg || ''; g('mExReps').value = ex.reps || '';
+  g('mExGroup').value = ex.group || '';
   g('btnConfirmEx').textContent = 'Salvar';
   g('mExDeleteWrap').style.display = 'block';
   g('mAddEx').classList.add('on');
@@ -361,10 +374,19 @@ g('bankSearch').addEventListener('input', function() { _bankQuery = this.value.t
 g('btnAddEx').addEventListener('click', openAddModal);
 g('btnCancelEx').addEventListener('click', function() { g('mAddEx').classList.remove('on'); });
 
+g('bankGroupFilter').addEventListener('click', function(e) {
+  var btn = e.target.closest('.bank-filter-btn'); if (!btn) return;
+  _bankGroup = btn.dataset.group;
+  document.querySelectorAll('.bank-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderBank();
+});
+
 g('btnConfirmEx').addEventListener('click', function() {
-  var name = g('mExName').value.trim(); if (!name) return;
-  var kg   = parseFloat(g('mExKg').value) || 0;
-  var reps = g('mExReps').value.trim() || '3x10';
+  var name  = g('mExName').value.trim(); if (!name) return;
+  var kg    = parseFloat(g('mExKg').value) || 0;
+  var reps  = g('mExReps').value.trim() || '3x10';
+  var group = g('mExGroup').value;
   if (editingExId) {
     var ex      = bank.find(function(b) { return b.id === editingExId; });
     var oldName = ex ? ex.name : null;
@@ -375,7 +397,7 @@ g('btnConfirmEx').addEventListener('click', function() {
       var hist = kgHistory[editingExId];
       if (hist.length === 0 && oldKg > 0) hist.push({ date:now, kg:oldKg, name:ex.name, note:'inicial' });
       if (kg !== oldKg && kg > 0)         hist.push({ date:now, kg:kg, name:name, note:'editado' });
-      ex.name = name; ex.kg = kg; ex.reps = reps;
+      ex.name = name; ex.kg = kg; ex.reps = reps; ex.group = group;
     }
     board.forEach(function(day) {
       day.forEach(function(item) {
@@ -387,7 +409,7 @@ g('btnConfirmEx').addEventListener('click', function() {
     });
     renderKanban(); renderPeriodGrid();
   } else {
-    bank.push({ id:uid(), name:name, kg:kg, reps:reps });
+    bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group });
   }
   g('mAddEx').classList.remove('on');
   renderBank();
