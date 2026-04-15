@@ -1,5 +1,5 @@
 // Gorila Gym — Service Worker v8
-const CACHE = 'gorila-gym-v10';
+const CACHE = 'gorila-gym-v11';
 const ASSETS = [
   './index.html',
   './css/styles.css',
@@ -40,24 +40,35 @@ self.addEventListener('activate', function(e){
 });
 
 self.addEventListener('fetch', function(e){
-  // Network first for Google Fonts and CDN, cache first for everything else
   var url = e.request.url;
-  if(url.includes('fonts.googleapis') || url.includes('cdnjs.cloudflare')){
+
+  // Ignora requisições não-GET (Firebase Auth usa POST) e URLs externas
+  // que não sejam os CDNs conhecidos — nunca tentar cachear essas
+  var isExternal = !url.startsWith(self.location.origin);
+  var isCDN      = url.includes('fonts.googleapis') || url.includes('cdnjs.cloudflare');
+  var isFirebase = url.includes('firestore.googleapis') || url.includes('firebase') ||
+                   url.includes('identitytoolkit') || url.includes('securetoken');
+
+  if (isFirebase) return; // deixa o Firebase passar sem interferência
+
+  if (isCDN) {
+    // Network first para fontes e Chart.js
     e.respondWith(
       fetch(e.request).then(function(r){
         var clone = r.clone();
-        caches.open(CACHE).then(function(c){c.put(e.request, clone);});
+        caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
         return r;
       }).catch(function(){
         return caches.match(e.request);
       })
     );
-  } else {
+  } else if (!isExternal && e.request.method === 'GET') {
+    // Cache first apenas para assets do próprio app (GET)
     e.respondWith(
       caches.match(e.request).then(function(r){
         return r || fetch(e.request).then(function(fr){
           var clone = fr.clone();
-          caches.open(CACHE).then(function(c){c.put(e.request, clone);});
+          caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
           return fr;
         });
       })
