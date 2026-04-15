@@ -28,8 +28,12 @@ function idbSet(key, value) {
       var tx  = db.transaction(STORE_NAME, 'readwrite');
       var st  = tx.objectStore(STORE_NAME);
       var req = st.put(value, key);
-      req.onsuccess = function() { resolve(); };
-      req.onerror   = function() { reject(req.error); };
+      req.onsuccess = function() {
+        resolve();
+        // Sincroniza com Firebase em segundo plano (fire-and-forget)
+        if (typeof fbSave === 'function') fbSave(value);
+      };
+      req.onerror = function() { reject(req.error); };
     });
   });
 }

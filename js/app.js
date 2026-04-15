@@ -116,7 +116,40 @@ function applyState(saved) {
   };
 }
 
-loadState().then(applyState).catch(function() { applyState(null); });
+loadState().then(function(saved) {
+  if (saved) { applyState(saved); return; }
+
+  // IndexedDB vazio — tenta restaurar do Firebase usando o código salvo
+  var localCode = (typeof fbGetCode === 'function') ? fbGetCode() : null;
+  if (localCode && typeof fbLoad === 'function') {
+    function tryFbRestore() {
+      fbLoad(localCode)
+        .then(function(fbData) {
+          if (fbData) {
+            applyState(fbData);
+            idbSet(RECORD_KEY, fbData).catch(function() {});
+          } else {
+            applyState(null);
+          }
+        })
+        .catch(function() { applyState(null); });
+    }
+    // Firebase pode não estar pronto imediatamente — aguarda até 3 s
+    var _tries = 0;
+    var _wait = setInterval(function() {
+      _tries++;
+      if (typeof _fbReady !== 'undefined' && _fbReady) {
+        clearInterval(_wait);
+        tryFbRestore();
+      } else if (_tries >= 6) {
+        clearInterval(_wait);
+        applyState(null);
+      }
+    }, 500);
+  } else {
+    applyState(null);
+  }
+}).catch(function() { applyState(null); });
 
 // ── Scroll para semana atual na Periodização ──
 

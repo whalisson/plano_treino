@@ -30,8 +30,37 @@
   <div class="nav-actions">
     <button id="btnExport" class="sec" style="font-size:11px;padding:5px 11px;white-space:nowrap;">↑ Exportar</button>
     <label class="nav-import-label">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
+    <!-- Indicador de sync Firebase -->
+    <span id="fbStatus" style="font-size:10px;color:var(--muted);white-space:nowrap;cursor:default;" title="Sincronização Firebase">☁ Sem nuvem</span>
+    <!-- Código de backup (aparece quando Firebase está ativo) -->
+    <div id="fbCodeWrap" style="display:none;align-items:center;gap:4px;font-size:10px;color:var(--muted);">
+      <span>Cód:</span>
+      <span id="fbCodeDisplay" style="font-family:var(--mono);font-weight:700;color:var(--text);letter-spacing:1px;"></span>
+      <button id="fbCopyBtn" onclick="fbCopyCode()" style="background:transparent;border:none;color:var(--muted);font-size:12px;padding:0 2px;cursor:pointer;" title="Copiar código de backup">⎘</button>
+      <button onclick="fbOpenRestoreModal()" style="background:transparent;border:none;color:var(--muted);font-size:10px;padding:0 2px;cursor:pointer;white-space:nowrap;">↩ Restaurar</button>
+    </div>
   </div>
 </nav>
+
+<!-- ══ MODAL: Restaurar pelo Código de Backup ══ -->
+<div id="mFbRestore" class="modal">
+  <div class="modal-box" style="max-width:340px;">
+    <div class="modal-title">↩ Restaurar Backup</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 14px;">
+      Digite o seu <strong style="color:var(--text);">Código de Backup</strong> de 6 caracteres
+      para recuperar seus dados do Firebase.
+    </p>
+    <input id="fbRestoreInput" type="text" maxlength="6" placeholder="ex: A3X9KM"
+      style="width:100%;text-transform:uppercase;font-family:var(--mono);font-size:20px;
+             letter-spacing:4px;text-align:center;padding:10px;margin-bottom:14px;
+             background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+             color:var(--text);">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="sec" onclick="fbCloseRestoreModal()" style="font-size:12px;">Cancelar</button>
+      <button id="fbRestoreBtn" onclick="fbConfirmRestore()" style="font-size:12px;">Restaurar</button>
+    </div>
+  </div>
+</div>
 
 <main>
 
@@ -539,6 +568,13 @@
 <div id="execToast"></div>
 <div id="undoToast"><span class="undo-msg"></span><button class="undo-btn">Desfazer</button></div>
 
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- App -->
+<script src="js/firebase-config.js"></script>
 <script src="js/db.js"></script>
 <script src="js/state.js"></script>
 <script src="js/periodizacao.js"></script>
@@ -546,6 +582,7 @@
 <script src="js/rm.js"></script>
 <script src="js/cardio.js"></script>
 <script src="js/rpe.js"></script>
+<script src="js/firebase.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
