@@ -243,6 +243,8 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .kex{background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:7px 8px;position:relative;cursor:grab;user-select:none;transition:opacity .15s,transform .1s;}
 .kex:active{cursor:grabbing;opacity:.7;transform:scale(.97);}
 .kex.dragging{opacity:.35;}
+.kex.drop-before{border-top:2px solid var(--accent);margin-top:-1px;}
+.kex.drop-after{border-bottom:2px solid var(--accent);margin-bottom:-1px;}
 /* touch: prevent text selection during drag */
 .kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:manipulation;-webkit-touch-callout:none;}
 .kexname{font-size:11px;font-weight:600;padding-right:16px;line-height:1.3;}

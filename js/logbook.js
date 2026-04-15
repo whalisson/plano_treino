@@ -57,6 +57,7 @@ var bank  = [
 
 // ── Drag & Drop ───────────────────────────────
 var dragItem  = null;
+var dragOverCard = null; // { day, idx, before } — posição de inserção dentro da coluna
 var isTouch   = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 var touchGhost      = null;
 var touchLastTarget = null;
@@ -65,6 +66,13 @@ var touchLongPressTimer = null;
 var LONG_PRESS_MS = 400;
 var autoScrollRAF = null;
 var autoScrollVel = 0;
+
+function clearCardDropIndicators() {
+  document.querySelectorAll('.kex.drop-before,.kex.drop-after').forEach(function(el) {
+    el.classList.remove('drop-before', 'drop-after');
+  });
+  dragOverCard = null;
+}
 
 function runAutoScroll() {
   if (autoScrollVel !== 0 && dragItem) {
@@ -94,7 +102,7 @@ function getTouchDropTarget(x, y) {
   var el = document.elementFromPoint(x, y);
   if (touchGhost) touchGhost.style.display = '';
   if (!el) return null;
-  return el.closest('.kcol') || el.closest('#ebank') || null;
+  return el.closest('.kex') || el.closest('.kcol') || el.closest('#ebank') || null;
 }
 
 function addTouchDrag(el, getItemFn) {
@@ -136,12 +144,23 @@ function addTouchDrag(el, getItemFn) {
 
     var target = getTouchDropTarget(t.clientX, t.clientY);
     if (target !== touchLastTarget) {
-      if (touchLastTarget) { touchLastTarget.classList.remove('drag-over'); touchLastTarget.style.borderColor = ''; }
-      if (target) {
-        if (target.classList.contains('kcol')) target.classList.add('drag-over');
-        else target.style.borderColor = 'var(--accent)';
+      if (touchLastTarget) {
+        touchLastTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+        touchLastTarget.style.borderColor = '';
       }
       touchLastTarget = target;
+    }
+    if (target) {
+      if (target.classList.contains('kex')) {
+        var rect   = target.getBoundingClientRect();
+        var before = t.clientY < rect.top + rect.height / 2;
+        target.classList.toggle('drop-before', before);
+        target.classList.toggle('drop-after',  !before);
+      } else if (target.classList.contains('kcol')) {
+        target.classList.add('drag-over');
+      } else {
+        target.style.borderColor = 'var(--accent)';
+      }
     }
   }, { passive:false });
 
@@ -157,7 +176,31 @@ function addTouchDrag(el, getItemFn) {
     var t      = e.changedTouches[0];
     var target = getTouchDropTarget(t.clientX, t.clientY);
     if (target) {
-      if (target.classList.contains('kcol')) {
+      if (target.classList.contains('kex')) {
+        // Drop sobre um card — insere antes ou depois
+        var colEl = target.closest('.kcol');
+        var cols  = Array.from(document.querySelectorAll('.kcol'));
+        var di    = cols.indexOf(colEl);
+        var cards = Array.from(colEl.querySelectorAll('.kex'));
+        var cardIdx = cards.indexOf(target);
+        var rect    = target.getBoundingClientRect();
+        var before  = t.clientY < rect.top + rect.height / 2;
+        var insertIdx = before ? cardIdx : cardIdx + 1;
+        if (di >= 0) {
+          if (dragItem.type === 'bank') {
+            var ex = bank.find(function(b) { return b.id === dragItem.id; });
+            if (ex) board[di].splice(insertIdx, 0, { id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps });
+          } else if (dragItem.type === 'board') {
+            var fromDay = dragItem.fromDay, fromIdx = dragItem.fromIdx;
+            var item = board[fromDay].splice(fromIdx, 1)[0];
+            if (item) {
+              if (fromDay === di && fromIdx < insertIdx) insertIdx--;
+              board[di].splice(Math.max(0, insertIdx), 0, item);
+            }
+          }
+          renderKanban(); renderPeriodGrid();
+        }
+      } else if (target.classList.contains('kcol')) {
         var cols = Array.from(document.querySelectorAll('.kcol'));
         var di   = cols.indexOf(target);
         if (di >= 0) {
@@ -270,25 +313,79 @@ function makeBoardCard(ex, di, ei) {
 
   if (!isTouch) {
     el.draggable = true;
-    el.addEventListener('dragstart', function(e) { dragItem = { type:'board', id:ex.id, fromDay:di, fromIdx:ei }; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
-    el.addEventListener('dragend',   function()  { el.classList.remove('dragging'); dragItem = null; });
+    el.addEventListener('dragstart', function(e) {
+      dragItem = { type:'board', id:ex.id, fromDay:di, fromIdx:ei };
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', function() {
+      el.classList.remove('dragging');
+      clearCardDropIndicators();
+      dragItem = null;
+    });
+    el.addEventListener('dragover', function(e) {
+      if (!dragItem) return;
+      e.preventDefault();
+      e.stopPropagation(); // não propaga para a coluna (evita flash do indicador da coluna)
+      var rect   = el.getBoundingClientRect();
+      var before = e.clientY < rect.top + rect.height / 2;
+      clearCardDropIndicators();
+      el.classList.toggle('drop-before', before);
+      el.classList.toggle('drop-after',  !before);
+      dragOverCard = { day: di, idx: ei, before: before };
+    });
+    el.addEventListener('dragleave', function(e) {
+      if (el.contains(e.relatedTarget)) return;
+      el.classList.remove('drop-before', 'drop-after');
+      dragOverCard = null;
+    });
+    el.addEventListener('drop', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.remove('drop-before', 'drop-after');
+      if (!dragItem) return;
+      var before    = dragOverCard ? dragOverCard.before : true;
+      var insertIdx = before ? ei : ei + 1;
+      if (dragItem.type === 'bank') {
+        var ex2 = bank.find(function(b) { return b.id === dragItem.id; });
+        if (ex2) board[di].splice(insertIdx, 0, { id:uid(), srcId:ex2.id, name:ex2.name, kg:ex2.kg, reps:ex2.reps });
+      } else if (dragItem.type === 'board') {
+        var fromDay = dragItem.fromDay, fromIdx = dragItem.fromIdx;
+        var item = board[fromDay].splice(fromIdx, 1)[0];
+        if (item) {
+          if (fromDay === di && fromIdx < insertIdx) insertIdx--;
+          board[di].splice(Math.max(0, insertIdx), 0, item);
+        }
+      }
+      dragOverCard = null;
+      renderKanban(); renderPeriodGrid();
+    });
   }
   addTouchDrag(el, function() { return { type:'board', id:ex.id, fromDay:di, fromIdx:ei }; });
   return el;
 }
 
 function setupDropzone(colEl, dayIndex) {
-  colEl.addEventListener('dragover', function(e) { e.preventDefault(); colEl.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; });
-  colEl.addEventListener('dragleave', function(e) { if (!colEl.contains(e.relatedTarget)) colEl.classList.remove('drag-over'); });
+  colEl.addEventListener('dragover', function(e) {
+    // Se o dragover veio de um card filho ele já foi stopPropagated — só chega aqui no espaço vazio
+    e.preventDefault();
+    colEl.classList.add('drag-over');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  colEl.addEventListener('dragleave', function(e) {
+    if (!colEl.contains(e.relatedTarget)) colEl.classList.remove('drag-over');
+  });
   colEl.addEventListener('drop', function(e) {
-    e.preventDefault(); colEl.classList.remove('drag-over');
+    e.preventDefault();
+    colEl.classList.remove('drag-over');
+    clearCardDropIndicators();
     if (!dragItem) return;
     if (dragItem.type === 'bank') {
       var ex = bank.find(function(b) { return b.id === dragItem.id; });
       if (!ex) return;
       board[dayIndex].push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps });
     } else if (dragItem.type === 'board') {
-      if (dragItem.fromDay === dayIndex) return;
+      if (dragItem.fromDay === dayIndex) return; // solto no espaço vazio da mesma coluna → sem mudança
       var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
       if (item) board[dayIndex].push(item);
     }
