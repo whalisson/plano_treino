@@ -5,8 +5,30 @@ var DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 var _bankQuery = '';
 var _bankGroup = '';
 
-var GROUP_CSS = { push:'bpg-push', pull:'bpg-pull', legs:'bpg-legs', core:'bpg-core' };
+var GROUP_CSS   = { push:'bpg-push', pull:'bpg-pull', legs:'bpg-legs', core:'bpg-core' };
 var GROUP_LABEL = { push:'Push', pull:'Pull', legs:'Legs', core:'Core' };
+
+// ── Detecção automática de grupo por palavras-chave ──
+function detectExerciseGroup(rawName) {
+  if (!rawName || !rawName.trim()) return '';
+  var n = rawName.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
+    .replace(/[^a-z0-9\s]/g, ' ');                     // pontuação → espaço
+
+  // ── CORE ────────────────────────────────────────────
+  if (/abdom|crunch|sit.?up|prancha|plank|obliq|twist|russian|vacuum|hipopressiv|bird.?dog|hollow.?body|dragon.?flag|ab.?wheel|roda.?ab|rollout|elevacao.*perna.*sus|hanging.*leg|knee.*raise|\bcore\b|hipopress/.test(n)) return 'core';
+
+  // ── LEGS ────────────────────────────────────────────
+  if (/agacham|squat|leg.?press|leg.?curl|leg.?extens|leg.?day|perna|afundo|lunge|bulgar|passada|hip.?thrust|glut|flexora|extensora|cadeira.?flex|cadeira.?ext|panturrilha|calf|\bgemeo|\bgemeos|stiff|rdl|romanian|hack.?squat|sissy|wall.?sit|step.?up|box.?jump|good.?morning|nordic.?curl|45.?grau|aducao|abducao|adutor|abdutor|coice|elevacao.?pelvica|ponte.?glut|donkey|plie|sumo.?agach|terra.?sumo|terra.?conv|elevacao.?quadril|\bleg\b/.test(n)) return 'legs';
+
+  // ── PULL ────────────────────────────────────────────
+  if (/remada|row|puxada|pulldown|pull.?up|chin.?up|barra.?fixa|\blat\b|levant.*terra|\bterra\b|deadlift|sumo.?dead|rosca|curl|\bbicep|\bbiceps|hammer|martelo|zottman|face.?pull|encolhim|shrug|trapez|high.?row|seal.?row|meadow|pendlay|yates|t.?bar|kroc|pullov|pullover|rack.?pull|block.?pull|snatch.?grip|halter.*costas|remada.*unilat|remada.*baixo/.test(n)) return 'pull';
+
+  // ── PUSH ────────────────────────────────────────────
+  if (/supino|bench|\bpress\b|desenvolv|overhead|militar|arnold|crucifixo|\bfly\b|flye|\bpec\b|peito|chest|\bdip\b|mergulho|tricep|extens.*tri|pushdown|skull|testa|frances|kickback|push.?up|flexao|elev.*front|elev.*later|lateral.*raise|front.*raise|\bombro|shoulder|deltoid|close.?grip|cgbp|pike.?press|pike|handstand|hspu|chest.?press|cable.?cross|cross.*over/.test(n)) return 'push';
+
+  return '';
+}
 
 function parseVolume(items) {
   return items.reduce(function(total, ex) {
@@ -370,6 +392,10 @@ function openEditModal(id) {
 }
 
 g('bankSearch').addEventListener('input', function() { _bankQuery = this.value.trim(); renderBank(); });
+
+g('mExName').addEventListener('input', function() {
+  g('mExGroup').value = detectExerciseGroup(this.value);
+});
 
 g('btnAddEx').addEventListener('click', openAddModal);
 g('btnCancelEx').addEventListener('click', function() { g('mAddEx').classList.remove('on'); });
