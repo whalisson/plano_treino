@@ -8,7 +8,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;}
 
-nav{position:sticky;top:0;z-index:100;background:rgba(12,12,15,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;}
+nav{position:sticky;top:0;z-index:100;background:rgba(12,12,15,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;overflow:hidden;}
 .logo{font-size:15px;font-weight:700;color:var(--accent);padding:16px 0;margin-right:24px;letter-spacing:-.5px;}
 .ntabs{display:flex;}
 .ntab{padding:18px 13px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;user-select:none;}
@@ -270,7 +270,11 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .wval{font-weight:600;font-family:var(--mono);text-align:right;}
 
 @media(max-width:900px){.wgrid,.kboard{grid-template-columns:repeat(4,1fr)!important;}.g2{grid-template-columns:1fr;}}
-@media(max-width:600px){.wgrid,.kboard{grid-template-columns:repeat(2,1fr)!important;}.fg3{grid-template-columns:1fr 1fr;}.ntab{padding:15px 8px;font-size:11px;}}
+@media(max-width:600px){.wgrid,.kboard{grid-template-columns:repeat(2,1fr)!important;}.fg3{grid-template-columns:1fr 1fr;}.ntab{padding:15px 8px;font-size:11px;}
+  #btnExport,.nav-import-label{display:none!important;}
+  .nav-actions{gap:4px;}
+  #fbUserWrap button[onclick*="fbShowSignInModal"]{font-size:10px;padding:3px 6px;}
+}
 /* Current week highlight */
 .current-week{
   border-color:rgba(45,212,191,.45) !important;
