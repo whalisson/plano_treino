@@ -15,6 +15,7 @@ var _fbSyncTimer   = null;
 var _fbPendingData = null;
 
 // ── Código de backup ──────────────────────────
+
 function fbGenerateCode() {
   // Alfanumérico sem caracteres ambíguos (0/O, 1/I/L)
   var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -111,7 +112,10 @@ function fbSave(data) {
   _fbSyncTimer = setTimeout(function() {
     var code = fbGetOrCreateCode();
     fbSetStatus('syncing');
-    _fbDb.collection(FB_COLLECTION).doc(code).set(data)
+    // Serializa como JSON para evitar limitações do Firestore
+    // (arrays aninhados, undefined, objetos com chaves inválidas, etc.)
+    var doc = { payload: JSON.stringify(data), savedAt: Date.now() };
+    _fbDb.collection(FB_COLLECTION).doc(code).set(doc)
       .then(function()  { fbSetStatus('synced'); })
       .catch(function(err) {
         console.warn('[Firebase] Save falhou:', err.message);
@@ -125,7 +129,13 @@ function fbLoad(code) {
   if (!_fbDb) return Promise.reject(new Error('Firebase não inicializado'));
   return _fbDb.collection(FB_COLLECTION).doc(code.toUpperCase().trim()).get()
     .then(function(doc) {
-      return doc.exists ? doc.data() : null;
+      if (!doc.exists) return null;
+      var d = doc.data();
+      // Suporta formato antigo (objeto direto) e novo (payload JSON)
+      if (d.payload) {
+        try { return JSON.parse(d.payload); } catch(e) { return null; }
+      }
+      return d;
     });
 }
 
