@@ -477,7 +477,7 @@ export function renderCustomLifts() {
   var rmDash = g('customRmCards');
   if (rmDash) {
     rmDash.innerHTML = '';
-    rmDash.style.display = customLifts.length ? 'flex' : 'none';
+    rmDash.style.display = customLifts.length ? 'grid' : 'none';
   }
 
   customLifts.forEach(function(lift, idx) {

@@ -63,11 +63,9 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .rm-c-terra .rm-inp{color:var(--mag);}
 .rm-custom-del{position:absolute;top:8px;right:8px;background:rgba(255,85,85,.12);border:1px solid rgba(255,85,85,.28);color:var(--red);font-size:13px;padding:1px 7px;border-radius:4px;cursor:pointer;line-height:1.4;z-index:1;box-shadow:none;transform:none;}
 .rm-custom-del:hover{background:rgba(255,85,85,.28);box-shadow:none;transform:none;}
-/* Container de lifts personalizados — flex horizontal arrastável */
-#customRmCards{flex-direction:row;gap:10px;overflow-x:auto;overflow-y:visible;margin-bottom:16px;margin-top:-6px;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;cursor:grab;}
-#customRmCards:active{cursor:grabbing;}
-#customRmCards .rm-card{flex:0 0 260px;min-width:220px;}
-@media(max-width:600px){#customRmCards .rm-card{flex:0 0 78vw;}}
+/* Container de lifts personalizados — mesmo grid do rm-dash */
+#customRmCards{grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+@media(max-width:600px){#customRmCards{grid-template-columns:1fr;}}
 .rm-c-terra .rm-prox-badge{border-color:rgba(255,79,216,.3);color:var(--mag);}
 /* ── Cycle Progress ── */
 .cycle-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 16px 12px;margin-bottom:14px;}
