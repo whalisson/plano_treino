@@ -23,7 +23,7 @@ nav{position:sticky;top:0;z-index:100;background:linear-gradient(180deg,var(--bg
 
 main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .nav-actions{margin-left:auto;display:flex;gap:6px;padding:12px 0;align-items:center;flex-shrink:0;}
-.nav-import-label{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:500;padding:5px 10px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s,box-shadow .2s;letter-spacing:.04em;text-transform:uppercase;}
+.nav-import-label{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:500;padding:5px 10px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s,box-shadow .2s;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1;}
 .nav-import-label:hover{color:var(--lime);border-color:var(--lime);box-shadow:0 0 12px rgba(201,255,58,.15);}
 .nav-import-label input{display:none;}
 .pg{display:none;}.pg.on{display:block;}
@@ -287,7 +287,7 @@ button{
 }
 button:hover{opacity:.92;box-shadow:0 0 20px rgba(201,255,58,.35),0 0 40px rgba(201,255,58,.12);}
 button:active{transform:scale(.96);}
-button.sec{background:transparent;border:1px solid var(--border);color:var(--muted);box-shadow:none;}
+button.sec{background:transparent;border:1px solid var(--border);color:var(--muted);box-shadow:none;line-height:1;}
 button.sec:hover{color:var(--lime);border-color:var(--lime);box-shadow:0 0 12px rgba(201,255,58,.15);}
 button.mag{background:var(--mag);color:#fff;box-shadow:none;}
 button.mag:hover{box-shadow:0 0 20px rgba(255,79,216,.4),0 0 40px rgba(255,79,216,.15);}
