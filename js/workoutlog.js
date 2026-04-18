@@ -245,6 +245,37 @@ export function finishWorkoutLog() {
   _activeSession = null;
   saveState();
   g('mWorkoutLog').classList.remove('on');
+  renderWorkoutHistory();
+}
+
+export function renderWorkoutHistory() {
+  var section = g('wlHistorySection');
+  var container = g('wlHistoryCharts');
+  if (!section || !container) return;
+
+  // Coleta nomes únicos de exercícios de todas as sessões finalizadas
+  var names = [];
+  workoutLog.filter(function(s) { return s.finishedAt !== null; }).forEach(function(s) {
+    s.exercises.forEach(function(ex) {
+      if (ex.sets.length && names.indexOf(ex.name) === -1) names.push(ex.name);
+    });
+  });
+
+  if (!names.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  container.innerHTML = names.map(function(name) {
+    var hist = getExerciseHistory(workoutLog, name).slice(-5);
+    var rows = hist.map(function(entry) {
+      var setsStr = entry.sets.map(function(s) { return s.kg + 'kg×' + s.reps; }).join(' · ');
+      return '<tr><td>' + entry.date + '</td><td>' + setsStr + '</td>' +
+        '<td style="font-family:var(--mono);color:var(--teal);">' +
+          Math.round(entry.sets.reduce(function(t,s){ return t + s.kg*s.reps; }, 0)) + ' kg</td></tr>';
+    }).join('');
+    return '<div class="wlh-card"><div class="wlh-name">' + name + '</div>' +
+      '<table class="wlh-table"><thead><tr><th>Data</th><th>Séries</th><th>Volume</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
+  }).join('');
 }
 
 // Evento de fechar modal

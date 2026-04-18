@@ -16,7 +16,7 @@ import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
 import { rpeBlocks, setRpeBlocks, renderRPEBlocks,
   toggleRPETable, concludeExecRPE } from './rpe.js';
 import { workoutLog, setWorkoutLog,
-  openWorkoutLogModal, wlAddSet, wlRemoveSet } from './workoutlog.js';
+  openWorkoutLogModal, wlAddSet, wlRemoveSet, renderWorkoutHistory } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
@@ -45,6 +45,7 @@ globalThis.addMWktSegment       = addMWktSegment;
 globalThis.openWorkoutLogModal  = function(dayIdx) { openWorkoutLogModal(board, dayIdx); };
 globalThis.wlAddSet             = wlAddSet;
 globalThis.wlRemoveSet          = wlRemoveSet;
+globalThis.renderWorkoutHistory = renderWorkoutHistory;
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
@@ -182,6 +183,7 @@ export function applyState(saved) {
   if (typeof globalThis.renderSavedWorkouts === 'function') globalThis.renderSavedWorkouts();
   if (typeof globalThis.renderCycleHistory === 'function') globalThis.renderCycleHistory();
   if (typeof globalThis.renderRPEBlocks === 'function') globalThis.renderRPEBlocks();
+  if (typeof globalThis.renderWorkoutHistory === 'function') globalThis.renderWorkoutHistory();
   // Persiste após cada renderização do kanban
   var _boardLoaded = !!(saved && saved.board);
   var _origRenderKanban = globalThis.renderKanban;

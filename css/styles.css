@@ -494,6 +494,15 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 .wl-add-btn{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--purple);background:rgba(108,99,255,.12);color:var(--purple);cursor:pointer;white-space:nowrap;}
 .wl-add-btn:hover{background:rgba(108,99,255,.25);}
 
+/* Histórico de execução */
+.wlh-card{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;}
+.wlh-name{font-size:13px;font-weight:600;color:var(--fg);margin-bottom:10px;}
+.wlh-table{width:100%;border-collapse:collapse;font-size:12px;}
+.wlh-table th{text-align:left;color:var(--muted);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:0 0 6px;}
+.wlh-table td{padding:5px 0;border-top:1px solid var(--border);color:var(--fg);vertical-align:top;}
+.wlh-table td:first-child{color:var(--muted);white-space:nowrap;padding-right:12px;font-family:var(--mono);font-size:11px;}
+.wlh-table td:nth-child(2){font-family:var(--mono);}
+
 /* Tipo de atividade no cardio */
 .act-type{font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;font-family:var(--mono);white-space:nowrap;}
 .act-corrida{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);}

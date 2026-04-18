@@ -153,6 +153,10 @@ vi.hoisted(() => {
       <button class="undo-btn">Desfazer</button>
     </div>
 
+    <!-- Histórico de execução -->
+    <div    id="wlHistorySection" style="display:none;"></div>
+    <div    id="wlHistoryCharts"></div>
+
     <!-- Registro de treino -->
     <div    id="mWorkoutLog"></div>
     <div    id="mWorkoutLogTitle"></div>
@@ -213,7 +217,7 @@ import { board, setBoard, bank, setBank } from '../js/logbook.js';
 import { rmHistory, setRmHistory } from '../js/rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts, cardioBase } from '../js/cardio.js';
 import { rpeBlocks, setRpeBlocks } from '../js/rpe.js';
-import { workoutLog, setWorkoutLog } from '../js/workoutlog.js';
+import { workoutLog, setWorkoutLog, renderWorkoutHistory } from '../js/workoutlog.js';
 import * as periodizacaoModule from '../js/periodizacao.js';
 
 // ── 4. Expose simple globals (uid, g, round05, etc.) ────────────────────────
@@ -276,6 +280,7 @@ globalThis.getRPEColor = getRPEColor;
 globalThis.estimateExecRM = estimateExecRM;
 globalThis.execStates = execStates;
 globalThis.renderRPEBlocks = renderRPEBlocks;
+globalThis.renderWorkoutHistory = renderWorkoutHistory;
 globalThis.buildAllPeriod = buildAllPeriod;
 globalThis.renderCustomLifts = renderCustomLifts;
 globalThis.renderCycleHistory = renderCycleHistory;
