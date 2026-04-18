@@ -1,8 +1,13 @@
 // ── GORILA GYM — periodizacao.js ─────────────
 // Tabela de periodização, lifts customizados, histórico de ciclos e banner de PR
 
+import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
+  BASE_SUP, BASE_AGA, BASE_TER,
+  checksState, setChecksState, rmTestValues, setRmTestValues,
+  customLifts, cycleHistory, setCycleHistory, cycleStartDates } from './state.js';
+
 // ── Tabela de periodização (única — antes duplicada 3×) ──
-var periodBase = [
+export var periodBase = [
   { label:'Semana 1',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x4',p:.60}] },
   { label:'Semana 2',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x4',p:.65}] },
   { label:'Semana 3',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'5x4',p:.70}] },
@@ -23,18 +28,18 @@ var periodBase = [
 ];
 
 // ── Dicts de aparência por lift (usados no histórico de ciclos) ──
-var LIFT_LABELS = { supino:'Supino', agacha:'Agachamento', terra:'Terra' };
-var LIFT_COLORS = { supino:'rgba(108,99,255,.9)', agacha:'rgba(45,212,191,.9)', terra:'rgba(251,191,36,.9)' };
-var LIFT_FILL   = { supino:'rgba(108,99,255,.12)', agacha:'rgba(45,212,191,.12)', terra:'rgba(251,191,36,.12)' };
-var LIFT_SOLID  = { supino:'#6c63ff', agacha:'#2dd4bf', terra:'#fbbf24' };
+export var LIFT_LABELS = { supino:'Supino', agacha:'Agachamento', terra:'Terra' };
+export var LIFT_COLORS = { supino:'rgba(108,99,255,.9)', agacha:'rgba(45,212,191,.9)', terra:'rgba(251,191,36,.9)' };
+export var LIFT_FILL   = { supino:'rgba(108,99,255,.12)', agacha:'rgba(45,212,191,.12)', terra:'rgba(251,191,36,.12)' };
+export var LIFT_SOLID  = { supino:'#6c63ff', agacha:'#2dd4bf', terra:'#fbbf24' };
 
 // ── Referência de cores para lifts customizados ──
-var CUSTOM_LIFT_PALETTE = ['#f472b6','#fb923c','#a78bfa','#34d399','#60a5fa','#e879f9','#facc15'];
+export var CUSTOM_LIFT_PALETTE = ['#f472b6','#fb923c','#a78bfa','#34d399','#60a5fa','#e879f9','#facc15'];
 
-function hexToRgb(hex) {
+export function hexToRgb(hex) {
   return parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16);
 }
-function getCustomColor(idx) { return CUSTOM_LIFT_PALETTE[idx % CUSTOM_LIFT_PALETTE.length]; }
+export function getCustomColor(idx) { return CUSTOM_LIFT_PALETTE[idx % CUSTOM_LIFT_PALETTE.length]; }
 
 // ── Construção da tabela semanal ──────────────
 function buildWeekTable(baseWeeks, tid, liftKey, rm) {
@@ -347,7 +352,7 @@ function buildCycleProgress() {
   });
 }
 
-function buildAllPeriod() {
+export function buildAllPeriod() {
   var sup = parseFloat(g('rm-supino').value) || BASE_SUP;
   var aga = parseFloat(g('rm-agacha').value) || BASE_AGA;
   var ter = parseFloat(g('rm-terra').value)  || BASE_TER;
@@ -370,7 +375,7 @@ function buildAllPeriod() {
 });
 
 // ── Lifts Personalizados ──────────────────────
-function renderCustomLifts() {
+export function renderCustomLifts() {
   var section    = g('customLiftsSection');
   var metricsEl  = g('customMetrics');
   section.innerHTML   = '';
@@ -434,11 +439,15 @@ function renderCustomLifts() {
     buildWeekTable(periodBase, tblId, lift.id, lift.rm);
   });
 
-  populateRMLiftSelect();
+  // Notify rm.js to update lift select (avoid circular import)
+  if (typeof globalThis.populateRMLiftSelect === 'function') globalThis.populateRMLiftSelect();
 }
 
 function deleteCustomLift(id) {
-  customLifts = customLifts.filter(function(l) { return l.id !== id; });
+  var newCustomLifts = customLifts.filter(function(l) { return l.id !== id; });
+  // Mutate in-place to avoid ES module rebinding issues
+  customLifts.length = 0;
+  newCustomLifts.forEach(function(l) { customLifts.push(l); });
   delete checksState[id];
   delete rmTestValues[id];
   delete cycleStartDates[id];
@@ -470,18 +479,19 @@ g('btnConfirmLift').addEventListener('click', function() {
 // ── Histórico de Ciclos ───────────────────────
 var cycleChartInst = null;
 
-function parseCycleDate(dStr) {
+export function parseCycleDate(dStr) {
   var p = dStr.split('/');
   return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
 }
 
 function deleteCycle(id) {
-  cycleHistory = cycleHistory.filter(function(c) { return c.id !== id; });
+  var newCycleHistory = cycleHistory.filter(function(c) { return c.id !== id; });
+  setCycleHistory(newCycleHistory);
   renderCycleHistory();
   saveState();
 }
 
-function renderCycleHistory() {
+export function renderCycleHistory() {
   var section = g('cycleHistorySection');
   var list    = g('cycleList');
   if (!cycleHistory.length) { section.style.display = 'none'; return; }

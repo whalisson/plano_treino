@@ -1,11 +1,13 @@
 // ── GORILA GYM — state.js ────────────────────
 // Utilitários, constantes de base e estado global compartilhado
 
-function uid() { return Math.random().toString(36).slice(2, 9); }
-function g(id) { return document.getElementById(id); }
-function round05(v) { return Math.round(v * 2) / 2; }
+import { idbSet, idbGet, RECORD_KEY } from './db.js';
 
-function getWeekRange() {
+export function uid() { return Math.random().toString(36).slice(2, 9); }
+export function g(id) { return document.getElementById(id); }
+export function round05(v) { return Math.round(v * 2) / 2; }
+
+export function getWeekRange() {
   var now    = new Date();
   var dow    = now.getDay();
   var monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1)); monday.setHours(0,0,0,0);
@@ -14,8 +16,8 @@ function getWeekRange() {
 }
 
 // ── Undo Toast ────────────────────────────────
-var _undoTimer = null;
-function showUndo(message, undoFn, commitFn) {
+let _undoTimer = null;
+export function showUndo(message, undoFn, commitFn) {
   clearTimeout(_undoTimer);
   var toast = g('undoToast');
   toast.querySelector('.undo-msg').textContent = message;
@@ -35,63 +37,49 @@ function showUndo(message, undoFn, commitFn) {
 }
 
 // Parse "NxM" → número de séries
-function parseSetCount(rStr) {
+export function parseSetCount(rStr) {
   var m = rStr.match(/^(\d+)x(\d+)$/);
   if (m) return parseInt(m[1]);
   return 1;
 }
 
 // ── Valores-base dos RMs ──────────────────────
-var BASE_SUP = 74;
-var BASE_AGA = 93;
-var BASE_TER = 110;
+export var BASE_SUP = 74;
+export var BASE_AGA = 93;
+export var BASE_TER = 110;
 
 // ── Estado global ─────────────────────────────
 // checksState[lift][weekIdx][serIdx] = bool
-var checksState = { supino: {}, agacha: {}, terra: {} };
+export let checksState = { supino: {}, agacha: {}, terra: {} };
 // rmTestValues[lift][weekIdx] = kg inserido pelo usuário
-var rmTestValues = { supino: {}, agacha: {}, terra: {} };
+export let rmTestValues = { supino: {}, agacha: {}, terra: {} };
 // kgHistory[exId] = [{date, kg, name}]
-var kgHistory = {};
+export let kgHistory = {};
 // cycleHistory = [{lift, rmStart, rmEnd, dateStart, dateEnd, gain, id}]
-var cycleHistory = [];
+export let cycleHistory = [];
 // customLifts = [{id, name, rm}]
-var customLifts = [];
+export let customLifts = [];
 // cycleStartDates[liftKey] = 'dd/mm/yyyy' — primeiro check do ciclo
-var cycleStartDates = {};
+export let cycleStartDates = {};
+
+export function setChecksState(v) { checksState = v; }
+export function setRmTestValues(v) { rmTestValues = v; }
+export function setKgHistory(v) { kgHistory = v; }
+export function setCycleHistory(v) { cycleHistory = v; }
+export function setCustomLifts(v) { customLifts = v; }
+export function setCycleStartDates(v) { cycleStartDates = v; }
 
 // ── Persistência ──────────────────────────────
-var _saveTimer = null;
+let _saveTimer = null;
 
-function saveState() {
+export function saveState() {
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(function() {
-    var data = {
-      rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
-      rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
-      rmTerra:       parseFloat(g('rm-terra').value)  || BASE_TER,
-      checks:        checksState,
-      rmTests:       rmTestValues,
-      board:         board,
-      bank:          bank,
-      kgHistory:     kgHistory,
-      cycleHistory:  cycleHistory,
-      rmHistory:       rmHistory,
-      cardioExtra:     cardioExtra,
-      cardioGoal:      parseInt(g('cardioGoal').value)      || 300,
-      cardioDailyGoal: parseInt(g('cardioDailyGoal').value) || 43,
-      savedWorkouts: savedWorkouts,
-      rpeBlocks:     rpeBlocks,
-      customLifts:   customLifts,
-      cycleStartDates: cycleStartDates,
-    };
-    idbSet(RECORD_KEY, data).catch(function() {
-      try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
-    });
+    document.dispatchEvent(new CustomEvent('gorila-save'));
   }, 400);
 }
 
-function loadState() {
+export function loadState() {
   return idbGet(RECORD_KEY).then(function(data) {
     if (data) return data;
     // Migrar de localStorage antigo

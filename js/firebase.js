@@ -13,12 +13,6 @@ var _fbUser        = null;
 var _fbSyncTimer   = null;
 var _fbPendingData = null;
 
-// Promise resolvida quando o estado de auth é determinado pela 1ª vez
-// Resolve com { user, data } ou null (não autenticado)
-var _fbAuthPromise = new Promise(function(resolve) {
-  window._fbAuthResolve = resolve;
-});
-
 // ── Status visual na UI ───────────────────────
 function fbSetStatus(status) {
   var el = document.getElementById('fbStatus');
@@ -64,12 +58,12 @@ function fbUpdateUserDisplay(user) {
 function fbInit() {
   if (typeof FIREBASE_CONFIG === 'undefined' || FIREBASE_CONFIG.apiKey === 'COLE_AQUI') {
     fbSetStatus('off');
-    window._fbAuthResolve(null);
+    document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: null }));
     return;
   }
   if (typeof firebase === 'undefined') {
     fbSetStatus('off');
-    window._fbAuthResolve(null);
+    document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: null }));
     return;
   }
 
@@ -91,13 +85,12 @@ function fbInit() {
 
         fbLoadByUid(user.uid).then(function(data) {
           if (_authFirstFire) {
-            // Primeiro disparo — resolve a Promise usada pelo app.js no init
+            // Primeiro disparo — resolve via CustomEvent para app.js
             _authFirstFire = false;
-            window._fbAuthResolve({ user: user, data: data });
-          } else if (data && typeof applyState === 'function') {
+            document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: { user: user, data: data } }));
+          } else if (data) {
             // Login feito DEPOIS do app já ter carregado vazio — aplica os dados
-            applyState(data);
-            if (typeof idbSet === 'function') idbSet(RECORD_KEY, data).catch(function() {});
+            document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: { user: user, data: data } }));
           }
           if (_fbPendingData) {
             fbSave(_fbPendingData);
@@ -106,7 +99,7 @@ function fbInit() {
         }).catch(function() {
           if (_authFirstFire) {
             _authFirstFire = false;
-            window._fbAuthResolve({ user: user, data: null });
+            document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: { user: user, data: null } }));
           }
         });
 
@@ -117,7 +110,7 @@ function fbInit() {
         fbUpdateUserDisplay(null);
         if (_authFirstFire) {
           _authFirstFire = false;
-          window._fbAuthResolve(null);
+          document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: null }));
         }
       }
     });
@@ -125,7 +118,7 @@ function fbInit() {
   } catch (err) {
     console.warn('[Firebase] Init falhou:', err.message);
     fbSetStatus('off');
-    window._fbAuthResolve(null);
+    document.dispatchEvent(new CustomEvent('gorila-state-loaded', { detail: null }));
   }
 }
 
@@ -187,5 +180,4 @@ function fbLoadByUid(uid) {
     });
 }
 
-// Inicia assim que o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', fbInit);
+// fbInit() é chamado explicitamente por app.js após o carregamento dos módulos

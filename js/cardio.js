@@ -1,22 +1,26 @@
 // ── GORILA GYM — cardio.js ─────────────────────
 // Cardio, metas semanais e construtor de treinos por zona
 
-var cardioBase  = [];
-var cardioExtra = [];
+import { uid, g, getWeekRange, showUndo, saveState, customLifts } from './state.js';
+
+export let cardioBase  = [];
+export let cardioExtra = [];
 var cardioCI    = null;
 
-var CARDIO_TYPE_COLORS = {
+export var CARDIO_TYPE_COLORS = {
   corrida:  'rgba(74,222,128,.85)',
   bike:     'rgba(45,212,191,.85)',
   natacao:  'rgba(147,197,253,.85)',
   eliptico: 'rgba(251,191,36,.85)',
   outro:    'rgba(108,99,255,.75)',
 };
-var CARDIO_TYPE_LABELS = { corrida:'Corrida', bike:'Bike', natacao:'Natação', eliptico:'Elíptico', outro:'Outro' };
+export var CARDIO_TYPE_LABELS = { corrida:'Corrida', bike:'Bike', natacao:'Natação', eliptico:'Elíptico', outro:'Outro' };
 
-function allCardioSessions() { return cardioBase.concat(cardioExtra); }
+export function setCardioExtra(v) { cardioExtra = v; }
 
-function parseCardioDate(dStr) {
+export function allCardioSessions() { return cardioBase.concat(cardioExtra); }
+
+export function parseCardioDate(dStr) {
   var p   = dStr.split('/');
   var day = parseInt(p[0]) || 1;
   var mon = parseInt(p[1]) || 1;
@@ -24,7 +28,7 @@ function parseCardioDate(dStr) {
   return new Date(yr, mon - 1, day);
 }
 
-function calcCardioStreak() {
+export function calcCardioStreak() {
   var goal  = parseInt(g('cardioGoal').value) || 300;
   var all   = allCardioSessions();
   var range = getWeekRange();
@@ -41,7 +45,7 @@ function calcCardioStreak() {
   return streak;
 }
 
-function updateWeekGoal() {
+export function updateWeekGoal() {
   var goal    = parseInt(g('cardioGoal').value) || 300;
   var range   = getWeekRange();
   var weekMins = allCardioSessions().filter(function(s) {
@@ -66,7 +70,7 @@ function updateWeekGoal() {
   g('cardioStreak').innerHTML = streak > 0 ? streak + '<span class="mu">sem</span>' : '—<span class="mu">sem</span>';
 }
 
-function renderCardioSessionList() {
+export function renderCardioSessionList() {
   var list     = g('cardioSessionList');
   var sessions = cardioExtra.slice().reverse();
   if (!sessions.length) {
@@ -95,14 +99,14 @@ function renderCardioSessionList() {
   });
 }
 
-function removeCardioSession(idx) {
+export function removeCardioSession(idx) {
   var saved = JSON.parse(JSON.stringify(cardioExtra[idx]));
   cardioExtra.splice(idx, 1);
   refreshCardio();
   showUndo('Sessão de ' + saved.t + ' min removida', function() { cardioExtra.splice(idx, 0, saved); refreshCardio(); }, saveState);
 }
 
-function refreshCardio() {
+export function refreshCardio() {
   var all   = allCardioSessions();
   var daily = parseInt(g('cardioDailyGoal').value) || 43;
   g('cardioTotal').innerHTML  = all.reduce(function(a,b){return a+b.t;},0) + '<span class="mu">min</span>';
@@ -114,7 +118,7 @@ function refreshCardio() {
   if (g('pg-cardio').classList.contains('on')) buildCardioChart();
 }
 
-function buildCardioChart() {
+export function buildCardioChart() {
   if (cardioCI) { cardioCI.destroy(); cardioCI = null; }
   var all   = allCardioSessions();
   var daily = parseInt(g('cardioDailyGoal').value) || 43;
@@ -177,7 +181,7 @@ g('btnCardioHoje').addEventListener('click', function() {
   g('cardioDate').value = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0');
 });
 
-function renderMonthlyCardio() {
+export function renderMonthlyCardio() {
   var card = g('cardioMonthCard');
   var list = g('cardioMonthList');
   if (!card || !list) return;
@@ -232,13 +236,15 @@ g('cardioGoal').addEventListener('input',      function() { updateWeekGoal(); sa
 g('cardioDailyGoal').addEventListener('input', function() { refreshCardio();  saveState(); });
 
 // ── Construtor de Treinos (Zonas) ─────────────
-var savedWorkouts = [];
+export let savedWorkouts = [];
+export function setSavedWorkouts(v) { savedWorkouts = v; }
+
 var editingWktId  = null;
 var builderSegs   = [];
 var modalSegs     = [];
 
-var ZONE_COLORS = { Z1:'#bfdbfe', Z2:'#93c5fd', Z3:'#4ade80', Z4:'#fbbf24', Z5:'#ff6b6b' };
-var ZONE_LABELS = {
+export var ZONE_COLORS = { Z1:'#bfdbfe', Z2:'#93c5fd', Z3:'#4ade80', Z4:'#fbbf24', Z5:'#ff6b6b' };
+export var ZONE_LABELS = {
   Z1:'Muito Leve — Recuperação ativa',
   Z2:'Leve — Base aeróbica',
   Z3:'Moderado — Condicionamento',
@@ -249,7 +255,7 @@ var ZONE_LABELS = {
 function zoneClass(z) { return z.toLowerCase() + '-row'; }
 function segClass(z)  { return z.toLowerCase() + '-seg'; }
 
-function renderTimeline(segs, containerId) {
+export function renderTimeline(segs, containerId) {
   var el = g(containerId); el.innerHTML = '';
   var total = segs.reduce(function(a, s) { return a + s.mins; }, 0);
   if (!total) { el.style.background = 'var(--bg3)'; return; }
@@ -270,7 +276,7 @@ function updateBuilderTimeline() {
   g('wktTotalMin').textContent = total ? total + ' min' : '';
 }
 
-function renderBuilderSegs() {
+export function renderBuilderSegs() {
   var c = g('wktSegments'); c.innerHTML = '';
   builderSegs.forEach(function(s, i) { c.appendChild(makeSegRow(s, i, builderSegs, 'wktSegments', updateBuilderTimeline)); });
   updateBuilderTimeline();
@@ -306,7 +312,7 @@ function makeSegRow(s, i, arr, containerId, onUpdate) {
   return row;
 }
 
-function addWktSegment(zone, mins) { builderSegs.push({ zone:zone, mins:mins }); renderBuilderSegs(); }
+export function addWktSegment(zone, mins) { builderSegs.push({ zone:zone, mins:mins }); renderBuilderSegs(); }
 
 function clearBuilder() {
   builderSegs = []; g('wktName').value = '';
@@ -329,7 +335,7 @@ g('btnSaveWkt').addEventListener('click', function() {
   clearBuilder(); renderSavedWorkouts(); saveState();
 });
 
-function renderSavedWorkouts() {
+export function renderSavedWorkouts() {
   var c = g('savedWktsList');
   if (!savedWorkouts.length) {
     c.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0;">Nenhum treino salvo ainda. Crie um acima ↑</div>';

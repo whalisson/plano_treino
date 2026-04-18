@@ -100,46 +100,43 @@ describe('getWeekRange()', () => {
 // ── saveState() ──────────────────────────────────────────────────────────────
 
 describe('saveState()', () => {
+  let listener;
   beforeEach(() => {
     vi.useFakeTimers();
-    global.idbSet = vi.fn().mockResolvedValue(undefined);
+    listener = vi.fn();
+    document.addEventListener('gorila-save', listener);
   });
   afterEach(() => {
+    document.removeEventListener('gorila-save', listener);
     vi.useRealTimers();
   });
 
-  test('debounce: múltiplas chamadas rápidas resultam em apenas 1 idbSet', () => {
+  test('debounce: múltiplas chamadas rápidas resultam em apenas 1 gorila-save', () => {
     saveState();
     saveState();
     saveState();
     vi.runAllTimers();
-    expect(global.idbSet).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  test('chama idbSet com RECORD_KEY e objeto de dados', () => {
+  test('despacha gorila-save com RECORD_KEY após debounce', () => {
     saveState();
     vi.runAllTimers();
-    expect(global.idbSet).toHaveBeenCalledWith(RECORD_KEY, expect.any(Object));
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  test('objeto salvo contém campo checks (checksState)', () => {
-    saveState();
-    vi.runAllTimers();
-    const data = global.idbSet.mock.calls[0][1];
-    expect(data).toHaveProperty('checks');
-  });
-
-  test('objeto salvo contém campo board', () => {
-    saveState();
-    vi.runAllTimers();
-    const data = global.idbSet.mock.calls[0][1];
-    expect(data).toHaveProperty('board');
-  });
-
-  test('não chama idbSet se o timeout for cancelado antes dos 400ms', () => {
+  test('não despacha gorila-save se o timeout for cancelado antes dos 400ms', () => {
     saveState();
     vi.advanceTimersByTime(399);
-    expect(global.idbSet).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  test('despacha gorila-save após exatamente 400ms', () => {
+    saveState();
+    vi.advanceTimersByTime(399);
+    expect(listener).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 

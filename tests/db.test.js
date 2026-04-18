@@ -1,31 +1,20 @@
+// db.test.js needs the REAL db.js implementation, not the mock from setup.js
+vi.unmock('../js/db.js');
+
 import 'fake-indexeddb/auto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-function loadDB() {
-  const code = fs.readFileSync(path.resolve(__dirname, '../js/db.js'), 'utf8');
-  (0, eval)(code);
-}
-
-beforeEach(() => {
-  global._db = null;
-  loadDB();
-});
+import { idbSet, idbGet, DB_NAME, RECORD_KEY, STORE_NAME } from '../js/db.js';
 
 describe('constantes', () => {
   test('DB_NAME é gorila-gym', () => {
-    expect(global.DB_NAME).toBe('gorila-gym');
+    expect(DB_NAME).toBe('gorila-gym');
   });
 
   test('RECORD_KEY é main', () => {
-    expect(global.RECORD_KEY).toBe('main');
+    expect(RECORD_KEY).toBe('main');
   });
 
   test('STORE_NAME é state', () => {
-    expect(global.STORE_NAME).toBe('state');
+    expect(STORE_NAME).toBe('state');
   });
 });
 
@@ -47,22 +36,22 @@ describe('idbSet + idbGet (round-trip)', () => {
 
 describe('trigger de fbSave', () => {
   beforeEach(() => {
-    global.fbSave = vi.fn();
+    globalThis.fbSave = vi.fn();
   });
 
   afterEach(() => {
-    delete global.fbSave;
+    delete globalThis.fbSave;
   });
 
   test('chama fbSave com o valor gravado quando fbSave é função', async () => {
     const value = { foo: 'bar' };
     await idbSet('main', value);
-    expect(global.fbSave).toHaveBeenCalledOnce();
-    expect(global.fbSave).toHaveBeenCalledWith(value);
+    expect(globalThis.fbSave).toHaveBeenCalledOnce();
+    expect(globalThis.fbSave).toHaveBeenCalledWith(value);
   });
 
   test('não lança erro quando fbSave não está definido', async () => {
-    delete global.fbSave;
+    delete globalThis.fbSave;
     await expect(idbSet('main', { x: 1 })).resolves.toBeUndefined();
   });
 });

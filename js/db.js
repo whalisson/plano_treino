@@ -1,13 +1,13 @@
 // ── GORILA GYM — db.js ───────────────────────
 // IndexedDB persistence layer
 
-var DB_NAME    = 'gorila-gym';
-var DB_VERSION = 1;
-var STORE_NAME = 'state';
-var RECORD_KEY = 'main';
+export var DB_NAME    = 'gorila-gym';
+export var DB_VERSION = 1;
+export var STORE_NAME = 'state';
+export var RECORD_KEY = 'main';
 var _db        = null;
 
-function openDB() {
+export function openDB() {
   return new Promise(function(resolve, reject) {
     if (_db) { resolve(_db); return; }
     var req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -22,7 +22,7 @@ function openDB() {
   });
 }
 
-function idbSet(key, value) {
+export function idbSet(key, value) {
   return openDB().then(function(db) {
     return new Promise(function(resolve, reject) {
       var tx  = db.transaction(STORE_NAME, 'readwrite');
@@ -38,7 +38,7 @@ function idbSet(key, value) {
   });
 }
 
-function idbGet(key) {
+export function idbGet(key) {
   return openDB().then(function(db) {
     return new Promise(function(resolve, reject) {
       var tx  = db.transaction(STORE_NAME, 'readonly');

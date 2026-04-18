@@ -1,6 +1,8 @@
 // ── GORILA GYM — logbook.js ──────────────────
 // Kanban, banco de exercícios, drag-and-drop e progresso de carga
 
+import { uid, g, round05, parseSetCount, getWeekRange, showUndo, saveState, kgHistory } from './state.js';
+
 var DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 var _bankQuery = '';
 var _bankGroup = '';
@@ -9,7 +11,7 @@ var GROUP_CSS   = { push:'bpg-push', pull:'bpg-pull', legs:'bpg-legs', core:'bpg
 var GROUP_LABEL = { push:'Push', pull:'Pull', legs:'Legs', core:'Core' };
 
 // ── Detecção automática de grupo por palavras-chave ──
-function detectExerciseGroup(rawName) {
+export function detectExerciseGroup(rawName) {
   if (!rawName || !rawName.trim()) return '';
   var n = rawName.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
@@ -34,7 +36,7 @@ function detectExerciseGroup(rawName) {
   return '';
 }
 
-function parseVolume(items) {
+export function parseVolume(items) {
   return items.reduce(function(total, ex) {
     if (!ex.kg || ex.kg <= 0) return total;
     var m = String(ex.reps).match(/^(\d+)x(\d+)/i);
@@ -42,8 +44,8 @@ function parseVolume(items) {
     return total + r * ex.kg;
   }, 0);
 }
-var board = DAYS.map(function() { return []; });
-var bank  = [
+export let board = DAYS.map(function() { return []; });
+export let bank  = [
   { id:uid(), name:'Elev. Lateral Halt.',  kg:25,  reps:'3x12', group:'push' },
   { id:uid(), name:'Crux. Inv. Máquina',   kg:20,  reps:'3x12', group:'push' },
   { id:uid(), name:'Elev. Lat. Máquina',   kg:95,  reps:'3x10', group:'push' },
@@ -55,10 +57,13 @@ var bank  = [
   { id:uid(), name:'Low Row',              kg:85,  reps:'3x10', group:'pull' },
 ];
 
+export function setBoard(v) { board = v; }
+export function setBank(v) { bank = v; }
+
 // ── Drag & Drop ───────────────────────────────
 var dragItem  = null;
 var dragOverCard = null; // { day, idx, before } — posição de inserção dentro da coluna
-var isTouch   = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+let isTouch   = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 var touchGhost      = null;
 var touchLastTarget = null;
 var touchScrollBlocked = false;
@@ -67,7 +72,7 @@ var LONG_PRESS_MS = 400;
 var autoScrollRAF = null;
 var autoScrollVel = 0;
 
-function clearCardDropIndicators() {
+export function clearCardDropIndicators() {
   document.querySelectorAll('.kex.drop-before,.kex.drop-after').forEach(function(el) {
     el.classList.remove('drop-before', 'drop-after');
   });
@@ -393,7 +398,7 @@ function setupDropzone(colEl, dayIndex) {
   });
 }
 
-function setupBankDropzone() {
+export function setupBankDropzone() {
   var bk = g('ebank');
   bk.addEventListener('dragover',  function(e) { if (dragItem && dragItem.type === 'board') { e.preventDefault(); bk.style.borderColor = 'var(--accent)'; } });
   bk.addEventListener('dragleave', function()  { bk.style.borderColor = ''; });
@@ -422,7 +427,7 @@ function updateWeeklyVolume() {
   }
 }
 
-function renderKanban() {
+export function renderKanban() {
   var kb = g('kboard'); kb.innerHTML = '';
   updateWeeklyVolume();
   board.forEach(function(items, di) {
@@ -441,7 +446,7 @@ function renderKanban() {
   });
 }
 
-function renderBank() {
+export function renderBank() {
   var bk = g('ebank'); bk.innerHTML = '';
   var q  = _bankQuery.toLowerCase();
   var filtered = bank.filter(function(ex) {
@@ -456,7 +461,7 @@ function renderBank() {
   filtered.forEach(function(ex) { bk.appendChild(makeBankPill(ex)); });
 }
 
-function renderPeriodGrid() {
+export function renderPeriodGrid() {
   var pg = g('pgrid'); if (!pg) return; pg.innerHTML = '';
   board.forEach(function(items, di) {
     var card = document.createElement('div'); card.className = 'wcol';
@@ -555,7 +560,7 @@ g('btnDeleteEx').addEventListener('click', function() {
 // ── Progresso de Carga ────────────────────────
 var progressChartInstances = {};
 
-function renderProgressCharts() {
+export function renderProgressCharts() {
   var ids       = Object.keys(kgHistory).filter(function(id) { return kgHistory[id].length >= 1; });
   var section   = g('progressSection');
   var container = g('progressCharts');

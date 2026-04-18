@@ -1,10 +1,15 @@
 // ── GORILA GYM — rm.js ───────────────────────
 // Calculadora de 1RM com 3 fórmulas (Brzycki, Epley, Mayhew) + histórico
 
-var rmHistory  = [];
-var _rmLastAvg = 0;
+import { uid, g, round05, saveState, BASE_SUP, BASE_AGA, BASE_TER, customLifts } from './state.js';
+import { LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID } from './periodizacao.js';
 
-function calcRM() {
+export let rmHistory  = [];
+let _rmLastAvg = 0;
+
+export function setRmHistory(v) { rmHistory = v; }
+
+export function calcRM() {
   var w = parseFloat(g('rmW').value) || 0;
   var r = parseInt(g('rmR').value)   || 1;
   if (r < 1 || r > 36 || !w) {
@@ -41,7 +46,7 @@ function calcRM() {
   g('rmSaveCard').style.display = 'block';
 }
 
-function populateRMLiftSelect() {
+export function populateRMLiftSelect() {
   var sel = g('rmHistLift');
   if (!sel) return;
   var prev = sel.value;
@@ -60,7 +65,7 @@ function populateRMLiftSelect() {
   if (prev) sel.value = prev;
 }
 
-function saveRMRecord() {
+export function saveRMRecord() {
   if (!_rmLastAvg) return;
   var lift = g('rmHistLift').value;
   var date = g('rmHistDate').value.trim();
@@ -75,20 +80,20 @@ function saveRMRecord() {
   setTimeout(function() { btn.textContent = orig; btn.style.background = ''; }, 1500);
 }
 
-function deleteRMRecord(id) {
+export function deleteRMRecord(id) {
   rmHistory = rmHistory.filter(function(r) { return r.id !== id; });
   renderRMHistory();
   saveState();
 }
 
-var rmHistChartInst = null;
+let rmHistChartInst = null;
 
-function parseRMDate(dStr) {
+export function parseRMDate(dStr) {
   var p = dStr.split('/');
   return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
 }
 
-function renderRMHistory() {
+export function renderRMHistory() {
   var section = g('rmHistorySection');
   if (!rmHistory.length) { section.style.display = 'none'; return; }
   section.style.display = 'block';

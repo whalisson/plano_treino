@@ -1,6 +1,42 @@
 // ── GORILA GYM — app.js ──────────────────────
 // Ponto de entrada: navegação, export/import e inicialização
 
+import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
+  checksState, setChecksState, rmTestValues, setRmTestValues,
+  kgHistory, setKgHistory, cycleHistory, setCycleHistory,
+  customLifts, setCustomLifts, cycleStartDates, setCycleStartDates } from './state.js';
+import { idbSet, RECORD_KEY } from './db.js';
+import { board, bank, setBoard, setBank } from './logbook.js';
+import { rmHistory, setRmHistory } from './rm.js';
+import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts } from './cardio.js';
+import { rpeBlocks, setRpeBlocks } from './rpe.js';
+
+// ── gorila-save event handler ─────────────────
+document.addEventListener('gorila-save', function() {
+  var data = {
+    rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
+    rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
+    rmTerra:       parseFloat(g('rm-terra').value)  || BASE_TER,
+    checks:        checksState,
+    rmTests:       rmTestValues,
+    board:         board,
+    bank:          bank,
+    kgHistory:     kgHistory,
+    cycleHistory:  cycleHistory,
+    rmHistory:       rmHistory,
+    cardioExtra:     cardioExtra,
+    cardioGoal:      parseInt(g('cardioGoal').value)      || 300,
+    cardioDailyGoal: parseInt(g('cardioDailyGoal').value) || 43,
+    savedWorkouts: savedWorkouts,
+    rpeBlocks:     rpeBlocks,
+    customLifts:   customLifts,
+    cycleStartDates: cycleStartDates,
+  };
+  idbSet(RECORD_KEY, data).catch(function() {
+    try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
+  });
+});
+
 // ── Navegação entre abas ──────────────────────
 g('ntabs').addEventListener('click', function(e) {
   var tab = e.target.closest('.ntab'); if (!tab) return;
@@ -14,7 +50,7 @@ g('ntabs').addEventListener('click', function(e) {
 });
 
 // ── Export / Import de dados ──────────────────
-function exportData() {
+export function exportData() {
   var data = {
     _version:      1,
     _exportedAt:   new Date().toISOString(),
@@ -46,6 +82,7 @@ function exportData() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+globalThis.exportData = exportData;
 
 g('btnExport').addEventListener('click', exportData);
 
@@ -56,7 +93,7 @@ g('inputImport').addEventListener('change', function(e) {
     try {
       var data = JSON.parse(ev.target.result);
       if (typeof data !== 'object' || data === null) throw new Error('invalid');
-      customLifts = [];
+      setCustomLifts([]);
       applyState(data);
       idbSet(RECORD_KEY, data).catch(function() {});
       g('inputImport').value = '';
@@ -72,100 +109,110 @@ g('inputImport').addEventListener('change', function(e) {
 });
 
 // ── Init: aplica estado salvo e renderiza tudo ─
-function applyState(saved) {
+export function applyState(saved) {
   if (saved) {
     if (saved.rmSupino)       g('rm-supino').value = saved.rmSupino;
     if (saved.rmAgacha)       g('rm-agacha').value = saved.rmAgacha;
     if (saved.rmTerra)        g('rm-terra').value  = saved.rmTerra;
-    if (saved.checks)         checksState      = saved.checks;
-    if (saved.rmTests)        rmTestValues     = saved.rmTests;
-    if (saved.board && saved.board.length === 7) board = saved.board;
-    if (saved.bank)           bank             = saved.bank;
-    if (saved.kgHistory)      kgHistory        = saved.kgHistory;
-    if (saved.cycleHistory)   cycleHistory     = saved.cycleHistory;
-    if (saved.rmHistory)        rmHistory                = saved.rmHistory;
-    if (saved.cardioExtra)      cardioExtra              = saved.cardioExtra;
+    if (saved.checks)         setChecksState(saved.checks);
+    if (saved.rmTests)        setRmTestValues(saved.rmTests);
+    if (saved.board && saved.board.length === 7) setBoard(saved.board);
+    if (saved.bank)           setBank(saved.bank);
+    if (saved.kgHistory)      setKgHistory(saved.kgHistory);
+    if (saved.cycleHistory)   setCycleHistory(saved.cycleHistory);
+    if (saved.rmHistory)        setRmHistory(saved.rmHistory);
+    if (saved.cardioExtra)      setCardioExtra(saved.cardioExtra);
     if (saved.cardioGoal)       g('cardioGoal').value      = saved.cardioGoal;
     if (saved.cardioDailyGoal)  g('cardioDailyGoal').value = saved.cardioDailyGoal;
-    if (saved.savedWorkouts)  savedWorkouts    = saved.savedWorkouts;
-    if (saved.rpeBlocks)      rpeBlocks        = saved.rpeBlocks;
-    if (saved.customLifts)    customLifts      = saved.customLifts;
-    if (saved.cycleStartDates) cycleStartDates = saved.cycleStartDates;
+    if (saved.savedWorkouts)  setSavedWorkouts(saved.savedWorkouts);
+    if (saved.rpeBlocks)      setRpeBlocks(saved.rpeBlocks);
+    if (saved.customLifts)    setCustomLifts(saved.customLifts);
+    if (saved.cycleStartDates) setCycleStartDates(saved.cycleStartDates);
   }
-  buildAllPeriod();
-  calcRM();
-  renderCustomLifts();
-  populateRMLiftSelect();
-  renderRMHistory();
-  renderKanban(); renderBank(); setupBankDropzone();
-  renderPeriodGrid();
-  renderProgressCharts();
-  renderBuilderSegs();
-  renderSavedWorkouts();
-  renderCycleHistory();
-  renderRPEBlocks();
+  // Call render functions — use globalThis lookups so tests can mock them
+  if (typeof globalThis.buildAllPeriod === 'function') globalThis.buildAllPeriod();
+  if (typeof globalThis.calcRM === 'function') globalThis.calcRM();
+  if (typeof globalThis.renderCustomLifts === 'function') globalThis.renderCustomLifts();
+  if (typeof globalThis.populateRMLiftSelect === 'function') globalThis.populateRMLiftSelect();
+  if (typeof globalThis.renderRMHistory === 'function') globalThis.renderRMHistory();
+  if (typeof globalThis.renderKanban === 'function') globalThis.renderKanban();
+  if (typeof globalThis.renderBank === 'function') globalThis.renderBank();
+  if (typeof globalThis.setupBankDropzone === 'function') globalThis.setupBankDropzone();
+  if (typeof globalThis.renderPeriodGrid === 'function') globalThis.renderPeriodGrid();
+  if (typeof globalThis.renderProgressCharts === 'function') globalThis.renderProgressCharts();
+  if (typeof globalThis.renderBuilderSegs === 'function') globalThis.renderBuilderSegs();
+  if (typeof globalThis.renderSavedWorkouts === 'function') globalThis.renderSavedWorkouts();
+  if (typeof globalThis.renderCycleHistory === 'function') globalThis.renderCycleHistory();
+  if (typeof globalThis.renderRPEBlocks === 'function') globalThis.renderRPEBlocks();
   // Persiste após cada renderização do kanban
-  // Só salva se houver ao menos um exercício no board OU se o estado salvo já foi carregado,
-  // para evitar sobrescrever dados válidos com um board vazio em caso de falha no load.
   var _boardLoaded = !!(saved && saved.board);
-  var _origRenderKanban = renderKanban;
-  renderKanban = function() {
-    _origRenderKanban();
+  var _origRenderKanban = globalThis.renderKanban;
+  globalThis.renderKanban = function() {
+    if (typeof _origRenderKanban === 'function') _origRenderKanban();
     var hasItems = board.some(function(day) { return day.length > 0; });
     if (hasItems || _boardLoaded) saveState();
   };
 }
+globalThis.applyState = applyState;
 
 loadState().then(function(saved) {
   if (saved) { applyState(saved); return; }
 
-  // IndexedDB vazio — aguarda o Firebase determinar o estado de auth
-  // _fbAuthPromise resolve com { user, data } (logado) ou null (não logado)
-  var firebaseReady = (typeof _fbAuthPromise !== 'undefined')
-    ? _fbAuthPromise
-    : Promise.resolve(null);
-
-  // Timeout de 5 s para não travar o app se o Firebase demorar
-  var timeout = new Promise(function(resolve) { setTimeout(resolve, 5000, null); });
-
-  Promise.race([firebaseReady, timeout]).then(function(result) {
+  // No local data — wait for gorila-state-loaded (from firebase.js) or timeout
+  var timeout = setTimeout(function() {
+    applyState(null);
+    if (typeof fbShowSignInModal === 'function') fbShowSignInModal();
+  }, 5000);
+  document.addEventListener('gorila-state-loaded', function handler(e) {
+    clearTimeout(timeout);
+    document.removeEventListener('gorila-state-loaded', handler);
+    var result = e.detail;
     if (result && result.data) {
-      // Usuário logado e tem dados na nuvem — restaura automaticamente
       applyState(result.data);
       idbSet(RECORD_KEY, result.data).catch(function() {});
     } else if (result && result.user) {
-      // Logado mas sem dados no Firestore ainda (primeiro uso)
       applyState(null);
     } else {
-      // Não logado ou timeout — carrega vazio e mostra modal de login
       applyState(null);
-      if (typeof fbShowSignInModal === 'function') fbShowSignInModal();
     }
-  });
+  }, { once: true });
 }).catch(function() { applyState(null); });
+
+// gorila-state-loaded event (for firebase integration)
+document.addEventListener('gorila-state-loaded', function(e) {
+  var result = e.detail;
+  if (result && result.data) {
+    applyState(result.data);
+    idbSet(RECORD_KEY, result.data).catch(function() {});
+  } else if (result && result.user) {
+    applyState(null);
+  }
+});
 
 // ── Scroll para semana atual na Periodização ──
 
 // Retorna a chave do lift (ex: 'supino') para um nome de exercício do logbook
-function liftKeyForExerciseName(name) {
+export function liftKeyForExerciseName(name) {
   var n = name.toLowerCase();
   if (n.includes('supino'))                          return 'supino';
   if (n.includes('agachamento') || n.includes('agacha') || n.includes('squat')) return 'agacha';
   if (n.includes('terra') || n.includes('deadlift')) return 'terra';
-  if (typeof customLifts !== 'undefined') {
-    for (var i = 0; i < customLifts.length; i++) {
-      var ln = customLifts[i].name.toLowerCase();
-      if (n.includes(ln) || ln.includes(n)) return customLifts[i].id;
+  var _customLifts = customLifts;
+  if (_customLifts) {
+    for (var i = 0; i < _customLifts.length; i++) {
+      var ln = _customLifts[i].name.toLowerCase();
+      if (n.includes(ln) || ln.includes(n)) return _customLifts[i].id;
     }
   }
   return null;
 }
+globalThis.liftKeyForExerciseName = liftKeyForExerciseName;
 
-function scrollToCurrentWeek() {
+export function scrollToCurrentWeek() {
   // board[0]=Segunda … board[6]=Domingo  |  JS getDay(): 0=Dom,1=Seg…6=Sab
   var jsDay   = new Date().getDay();
   var boardIdx = (jsDay + 6) % 7;           // converte para índice do board
-  var todayExercises = (typeof board !== 'undefined' && board[boardIdx]) ? board[boardIdx] : [];
+  var todayExercises = board[boardIdx] ? board[boardIdx] : [];
 
   // Lifts do dia de hoje no logbook
   var todayKeys = [];
@@ -198,6 +245,7 @@ function scrollToCurrentWeek() {
     }, 60);
   }
 }
+globalThis.scrollToCurrentWeek = scrollToCurrentWeek;
 
 // ── Nav drag-to-scroll ────────────────────────
 (function() {
@@ -235,3 +283,5 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Call fbInit if available (firebase.js is a regular script)
+if (typeof fbInit === 'function') fbInit();

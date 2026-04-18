@@ -1,8 +1,11 @@
 // ── GORILA GYM — rpe.js ──────────────────────
 // Blocos de treino por RPE e integração com Logbook
 
-var RPE_ROWS  = [10,9.5,9,8.5,8,7.5,7,6.5,6,5.5,5,4.5,4,3.5,3];
-var RPE_TABLE = {
+import { uid, g, round05, parseSetCount, getWeekRange, showUndo, saveState, customLifts, cycleStartDates } from './state.js';
+import { board, bank, renderKanban, renderPeriodGrid } from './logbook.js';
+
+export var RPE_ROWS  = [10,9.5,9,8.5,8,7.5,7,6.5,6,5.5,5,4.5,4,3.5,3];
+export var RPE_TABLE = {
   10:  [1,     0.955, 0.922, 0.892, 0.863, 0.837, 0.811, 0.786, 0.762, 0.739, 0.707, 0.680, 0.653, 0.626, 0.599],
   9.5: [0.9775,0.9385,0.907, 0.8775,0.850, 0.824, 0.7985,0.774, 0.7505,0.723, 0.6935,0.6665,0.6395,0.6125,0.5855],
   9:   [0.955, 0.922, 0.892, 0.863, 0.837, 0.811, 0.786, 0.762, 0.739, 0.707, 0.680, 0.653, 0.626, 0.599, 0.572],
@@ -20,21 +23,26 @@ var RPE_TABLE = {
   3:   [0.786, 0.762, 0.739, 0.707, 0.680, 0.653, 0.626, 0.599, 0.572, 0.545, 0.518, 0.491, 0.464, 0.437, 0.410],
 };
 
-var rpeBlocks           = [];
+export let rpeBlocks           = [];
 var rpeCurrentExercises = [];
-var editingRPEBlockId   = null;
+let editingRPEBlockId   = null;
+let planRPETarget = null;
+let execRPETarget = null;
+export let execStates = {}; // exIdx → { rm, setRpes[], setTargetRpes[] }
 
-function getRPEFactor(rpe, reps) {
+export function setRpeBlocks(v) { rpeBlocks = v; }
+
+export function getRPEFactor(rpe, reps) {
   var row = RPE_TABLE[parseFloat(rpe)]; if (!row) return null;
   return row[Math.min(Math.max(parseInt(reps) - 1, 0), 14)];
 }
-function calcRPEWeight(rm, rpe, reps) {
+export function calcRPEWeight(rm, rpe, reps) {
   var f = getRPEFactor(rpe, reps); if (!f || !rm) return null;
   var exact   = rm * f;
   var rounded = Math.round(exact / 2.5) * 2.5;
   return { exact:exact, rounded:rounded };
 }
-function getRPEColor(rpe) {
+export function getRPEColor(rpe) {
   var r = parseFloat(rpe);
   if (r >= 9.5) return '#ff6b6b';
   if (r >= 8.5) return '#a59eff';
@@ -43,14 +51,14 @@ function getRPEColor(rpe) {
   return '#8a8898';
 }
 
-function toggleRPETable() {
+export function toggleRPETable() {
   var psb  = g('psb-rpetable');
   var chev = g('chev-rpetable');
   if (psb.classList.contains('on')) { psb.classList.remove('on'); chev.textContent = '▼'; }
   else { psb.classList.add('on'); chev.textContent = '▲'; buildRPERefTable(); }
 }
 
-function buildRPERefTable() {
+export function buildRPERefTable() {
   var wrap = g('rpe-table-wrap');
   if (!wrap || wrap.innerHTML) return;
   var repsCols = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
@@ -74,7 +82,7 @@ function buildRPERefTable() {
   wrap.innerHTML = html;
 }
 
-function getCurrentLiftsRM() {
+export function getCurrentLiftsRM() {
   return {
     'Supino':      parseFloat(g('rm-supino').value) || 0,
     'Agachamento': parseFloat(g('rm-agacha').value) || 0,
@@ -263,7 +271,7 @@ g('btnSaveRPEBlock').addEventListener('click', function() {
   renderRPEExercises(); renderRPEBlocks(); saveState();
 });
 
-function renderRPEBlocks() {
+export function renderRPEBlocks() {
   var list = g('rpeBlocksList'); list.innerHTML = '';
   if (!rpeBlocks.length) {
     list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Nenhum bloco salvo. Monte um bloco acima e clique em "Salvar Bloco".</div>';
@@ -392,9 +400,7 @@ function renderRPEBlocks() {
 }
 
 // ── RPE → Logbook ─────────────────────────────
-var planRPETarget = null;
-
-function openPlanRPEModal(blk) {
+export function openPlanRPEModal(blk) {
   planRPETarget = blk;
   var totalSets = blk.exercises.reduce(function(a, ex) {
     return a + ex.sets.reduce(function(b, s) { return b + s.count; }, 0);
@@ -430,10 +436,7 @@ g('btnConfirmPlanRPE').addEventListener('click', function() {
 });
 
 // ── RPE Execution Tracking ────────────────────
-var execRPETarget = null;
-var execStates    = {}; // exIdx → { rm, setRpes[], setTargetRpes[] }
-
-function openExecRPEModal(blk) {
+export function openExecRPEModal(blk) {
   execRPETarget = blk;
   execStates    = {};
   g('mExecRPETitle').textContent = blk.name;
@@ -445,7 +448,7 @@ function openExecRPEModal(blk) {
   g('mExecRPE').classList.add('on');
 }
 
-function buildExecRPEBody(blk) {
+export function buildExecRPEBody(blk) {
   var body = g('mExecRPEBody');
   body.innerHTML = '';
 
@@ -554,7 +557,7 @@ function buildExecRPEBody(blk) {
   });
 }
 
-function setExecRPE(exIdx, setIdx, rpe) {
+export function setExecRPE(exIdx, setIdx, rpe) {
   var state = execStates[exIdx]; if (!state) return;
   state.setRpes[setIdx] = rpe;
   var targetRpe = state.setTargetRpes[setIdx];
@@ -611,7 +614,7 @@ function checkExecRPELow(exIdx) {
   }
 }
 
-function estimateExecRM(kg, reps, rpe) {
+export function estimateExecRM(kg, reps, rpe) {
   var f = getRPEFactor(rpe, reps);
   return f && kg ? Math.round(kg / f) : Math.round(kg);
 }
@@ -687,7 +690,7 @@ g('btnCloseExecRPE').addEventListener('click', function() {
   execStates    = {};
 });
 
-function concludeExecRPE() {
+export function concludeExecRPE() {
   if (!execRPETarget) return;
 
   var execEntry = {
@@ -720,3 +723,13 @@ function concludeExecRPE() {
   execStates    = {};
   showExecToast('Treino concluído e salvo!');
 }
+
+// Expose functions needed by inline onclick handlers (for browser compatibility)
+// These are needed because buildExecRPEBody uses inline onclick="toggleExecRM(...)" etc.
+if (typeof window !== 'undefined') {
+  window.toggleExecRM = toggleExecRM;
+  window.calcExecRM = calcExecRM;
+  window.saveExecRM = saveExecRM;
+  window.setExecRPE = setExecRPE;
+}
+
