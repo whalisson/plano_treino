@@ -293,32 +293,27 @@ export function scrollToCurrentWeek() {
 }
 globalThis.scrollToCurrentWeek = scrollToCurrentWeek;
 
-// ── Nav drag-to-scroll ────────────────────────
-(function() {
-  var el = document.getElementById('navInner');
+// ── Drag-to-scroll genérico ───────────────────
+function makeDraggable(el) {
   if (!el) return;
   var down = false, startX, scrollLeft;
-
   el.addEventListener('mousedown', function(e) {
-    // Ignora cliques em botões/inputs dentro da nav
     if (e.target.closest('button, input, label, a')) return;
-    down = true;
-    startX    = e.pageX - el.offsetLeft;
-    scrollLeft = el.scrollLeft;
+    down = true; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft;
     el.classList.add('dragging');
   });
-  document.addEventListener('mouseup',   function() { down = false; el.classList.remove('dragging'); });
+  document.addEventListener('mouseup',    function() { down = false; el.classList.remove('dragging'); });
   document.addEventListener('mouseleave', function() { down = false; el.classList.remove('dragging'); });
   el.addEventListener('mousemove', function(e) {
     if (!down) return;
     e.preventDefault();
-    var x    = e.pageX - el.offsetLeft;
-    var walk = (x - startX) * 1.2;
-    el.scrollLeft = scrollLeft - walk;
+    el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX) * 1.2;
   });
+}
+makeDraggable(document.getElementById('customRmCards'));
 
-  // Touch: já funciona nativamente via overflow-x:auto + -webkit-overflow-scrolling:touch
-})();
+// ── Nav drag-to-scroll ────────────────────────
+makeDraggable(document.getElementById('navInner'));
 
 // ── Service Worker ────────────────────────────
 if ('serviceWorker' in navigator) {

@@ -470,14 +470,14 @@ export function buildAllPeriod() {
 export function renderCustomLifts() {
   var section   = g('customLiftsSection');
   var metricsEl = g('customMetrics');
-  section.innerHTML = '';
+  if (section) section.innerHTML = '';
   if (metricsEl) { metricsEl.innerHTML = ''; metricsEl.style.display = 'none'; }
 
-  // Container dedicado para cards de lifts personalizados
+  // Container de cards personalizados (flex horizontal com scroll)
   var rmDash = g('customRmCards');
   if (rmDash) {
     rmDash.innerHTML = '';
-    rmDash.style.display = customLifts.length ? 'grid' : 'none';
+    rmDash.style.display = customLifts.length ? 'flex' : 'none';
   }
 
   customLifts.forEach(function(lift, idx) {
@@ -547,7 +547,7 @@ export function renderCustomLifts() {
       + '<span class="pschev" id="' + chevId + '" style="margin-left:8px;">▼</span>'
       + '</div>'
       + '<div class="psb" id="' + psbId + '"><div id="' + tblId + '"></div></div>';
-    section.appendChild(ps);
+    if (section) section.appendChild(ps);
 
     ps.querySelector('.psh').addEventListener('click', function() {
       var open = g(psbId).classList.toggle('on');
