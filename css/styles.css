@@ -526,8 +526,8 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .wlh-card{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:14px 16px;}
 .wlh-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .wlh-name{font-size:12px;font-weight:600;color:var(--text);letter-spacing:-.01em;}
-.wlh-del{background:none;border:none;cursor:pointer;font-size:14px;opacity:.3;padding:2px 4px;border-radius:3px;transition:opacity .15s;}
-.wlh-del:hover{opacity:1;background:rgba(255,79,216,.12);}
+.wlh-del{background:none;border:none;cursor:pointer;font-size:14px;opacity:.65;padding:2px 4px;border-radius:3px;transition:opacity .15s,background .15s;filter:brightness(1.4);}
+.wlh-del:hover{opacity:1;background:rgba(255,79,216,.15);filter:brightness(1.8);}
 .wlh-table{width:100%;border-collapse:collapse;font-size:12px;}
 .wlh-table th{font-family:var(--mono);text-align:left;color:var(--muted);font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:0 0 7px;}
 .wlh-table td{padding:6px 0;border-top:1px solid var(--border);color:var(--text);vertical-align:top;}
