@@ -473,10 +473,11 @@ export function renderCustomLifts() {
   section.innerHTML = '';
   if (metricsEl) { metricsEl.innerHTML = ''; metricsEl.style.display = 'none'; }
 
-  // Remove custom cards já inseridos no rm-dash
-  var rmDash = document.querySelector('.rm-dash');
+  // Container dedicado para cards de lifts personalizados
+  var rmDash = g('customRmCards');
   if (rmDash) {
-    rmDash.querySelectorAll('.rm-card-custom').forEach(function(el) { el.remove(); });
+    rmDash.innerHTML = '';
+    rmDash.style.display = customLifts.length ? 'grid' : 'none';
   }
 
   customLifts.forEach(function(lift, idx) {
