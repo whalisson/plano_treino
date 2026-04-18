@@ -6,11 +6,33 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
   customLifts, setCustomLifts, cycleStartDates, setCycleStartDates } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
-import { board, bank, setBoard, setBank } from './logbook.js';
-import { rmHistory, setRmHistory } from './rm.js';
-import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts } from './cardio.js';
-import { rpeBlocks, setRpeBlocks } from './rpe.js';
+import { board, bank, setBoard, setBank,
+  renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts } from './logbook.js';
+import { rmHistory, setRmHistory,
+  calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
+import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
+  buildCardioChart, renderBuilderSegs, renderSavedWorkouts } from './cardio.js';
+import { rpeBlocks, setRpeBlocks, renderRPEBlocks } from './rpe.js';
 import { workoutLog, setWorkoutLog } from './workoutlog.js';
+import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
+
+// ── Expor render functions no globalThis para que applyState as encontre ──────
+// (testes substituem via global.* no beforeEach; produção usa as funções reais)
+globalThis.buildAllPeriod       = buildAllPeriod;
+globalThis.calcRM               = calcRM;
+globalThis.renderCustomLifts    = renderCustomLifts;
+globalThis.populateRMLiftSelect = populateRMLiftSelect;
+globalThis.renderRMHistory      = renderRMHistory;
+globalThis.renderKanban         = renderKanban;
+globalThis.renderBank           = renderBank;
+globalThis.setupBankDropzone    = setupBankDropzone;
+globalThis.renderPeriodGrid     = renderPeriodGrid;
+globalThis.renderProgressCharts = renderProgressCharts;
+globalThis.renderBuilderSegs    = renderBuilderSegs;
+globalThis.renderSavedWorkouts  = renderSavedWorkouts;
+globalThis.renderCycleHistory   = renderCycleHistory;
+globalThis.renderRPEBlocks      = renderRPEBlocks;
+globalThis.buildCardioChart     = buildCardioChart;
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
