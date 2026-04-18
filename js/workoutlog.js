@@ -248,6 +248,18 @@ export function finishWorkoutLog() {
   renderWorkoutHistory();
 }
 
+export function deleteExerciseHistory(name) {
+  workoutLog = workoutLog.map(function(s) {
+    var newExercises = s.exercises.map(function(ex) {
+      if (ex.name !== name) return ex;
+      return Object.assign({}, ex, { sets: [] });
+    });
+    return Object.assign({}, s, { exercises: newExercises });
+  });
+  saveState();
+  renderWorkoutHistory();
+}
+
 export function renderWorkoutHistory() {
   var section = g('wlHistorySection');
   var container = g('wlHistoryCharts');
@@ -266,16 +278,29 @@ export function renderWorkoutHistory() {
 
   container.innerHTML = names.map(function(name) {
     var hist = getExerciseHistory(workoutLog, name).slice(-5);
+    var safeId = name.replace(/[^a-z0-9]/gi, '_');
     var rows = hist.map(function(entry) {
       var setsStr = entry.sets.map(function(s) { return s.kg + 'kg×' + s.reps; }).join(' · ');
       return '<tr><td>' + entry.date + '</td><td>' + setsStr + '</td>' +
         '<td style="font-family:var(--mono);color:var(--teal);">' +
           Math.round(entry.sets.reduce(function(t,s){ return t + s.kg*s.reps; }, 0)) + ' kg</td></tr>';
     }).join('');
-    return '<div class="wlh-card"><div class="wlh-name">' + name + '</div>' +
+    return '<div class="wlh-card">' +
+      '<div class="wlh-header">' +
+        '<span class="wlh-name">' + name + '</span>' +
+        '<button class="wlh-del" onclick="wlDeleteExHistory(\'' + safeId + '\')" data-name="' + name + '" title="Apagar histórico">🗑</button>' +
+      '</div>' +
       '<table class="wlh-table"><thead><tr><th>Data</th><th>Séries</th><th>Volume</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>';
   }).join('');
+
+  // Wires up delete buttons (safer than inline — avoids quoting issues with special chars)
+  container.querySelectorAll('.wlh-del').forEach(function(btn) {
+    btn.onclick = function() {
+      var n = btn.getAttribute('data-name');
+      if (confirm('Apagar todo o histórico de "' + n + '"?')) deleteExerciseHistory(n);
+    };
+  });
 }
 
 // Evento de fechar modal
