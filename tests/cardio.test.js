@@ -116,3 +116,71 @@ describe('Constantes de tipo de cardio', () => {
     });
   });
 });
+
+// ── Novos testes: cardioExtra schema ──────────────────────────────────
+
+describe('cardioExtra — schema', () => {
+  beforeEach(() => {
+    cardioExtra.length = 0;
+  });
+
+  test('cardioExtra é um array', () => {
+    expect(Array.isArray(cardioExtra)).toBe(true);
+  });
+
+  test('sessão cardioExtra tem campos: d (string), t (número), type (string)', () => {
+    cardioExtra.push({ d: '10/04', t: 30, type: 'corrida' });
+    const s = cardioExtra[0];
+    expect(typeof s.d).toBe('string');
+    expect(typeof s.t).toBe('number');
+    expect(typeof s.type).toBe('string');
+  });
+
+  test('d está em formato dd/mm ou dd/mm/aaaa', () => {
+    cardioExtra.push({ d: '10/04', t: 30, type: 'bike' });
+    cardioExtra.push({ d: '15/06/2025', t: 45, type: 'natacao' });
+    const reShort = /^\d{2}\/\d{2}$/;
+    const reLong  = /^\d{2}\/\d{2}\/\d{4}$/;
+    cardioExtra.forEach(s => {
+      expect(reShort.test(s.d) || reLong.test(s.d)).toBe(true);
+    });
+  });
+
+  test('t é o tempo em minutos (número positivo)', () => {
+    cardioExtra.push({ d: '20/05', t: 43, type: 'eliptico' });
+    expect(cardioExtra[0].t).toBeGreaterThan(0);
+    expect(Number.isInteger(cardioExtra[0].t)).toBe(true);
+  });
+
+  test('type é uma chave de CARDIO_TYPE_LABELS', () => {
+    cardioExtra.push({ d: '01/01', t: 60, type: 'outro' });
+    cardioExtra.forEach(s => {
+      expect(Object.keys(CARDIO_TYPE_LABELS)).toContain(s.type);
+    });
+  });
+});
+
+// ── Novos testes: savedWorkouts schema ────────────────────────────────
+
+describe('savedWorkouts — schema', () => {
+  beforeEach(() => {
+    savedWorkouts.length = 0;
+  });
+
+  test('savedWorkouts é um array', () => {
+    expect(Array.isArray(savedWorkouts)).toBe(true);
+  });
+
+  test('workout salvo tem campos: id, name, segs (array)', () => {
+    savedWorkouts.push({
+      id:   'wkt-1',
+      name: 'Treino Teste',
+      segs: [{ zone: 'Z2', mins: 20 }, { zone: 'Z4', mins: 10 }],
+    });
+    const w = savedWorkouts[0];
+    expect(w).toHaveProperty('id');
+    expect(w).toHaveProperty('name');
+    expect(w).toHaveProperty('segs');
+    expect(Array.isArray(w.segs)).toBe(true);
+  });
+});

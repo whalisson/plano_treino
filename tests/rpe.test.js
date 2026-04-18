@@ -112,3 +112,120 @@ describe('getRPEColor()', () => {
     expect(getRPEColor(3)).toBe('#8a8898');
   });
 });
+
+// ── Novos testes — Unit 6 ───────────────────────────────────────────────────
+
+describe('rpeBlocks — schema e estrutura', () => {
+  beforeEach(() => {
+    // Limpa o array sem quebrar a referência global
+    rpeBlocks.length = 0;
+  });
+
+  test('rpeBlocks é um array', () => {
+    expect(Array.isArray(rpeBlocks)).toBe(true);
+  });
+
+  test('rpeBlocks começa vazio após reset', () => {
+    expect(rpeBlocks.length).toBe(0);
+  });
+
+  test('bloco RPE tem campos esperados: id, name, exercises (array), createdAt', () => {
+    const bloco = {
+      id:        'blk-1',
+      name:      'Bloco Teste',
+      exercises: [],
+      createdAt: Date.now(),
+    };
+    rpeBlocks.push(bloco);
+
+    const b = rpeBlocks[0];
+    expect(b).toHaveProperty('id');
+    expect(b).toHaveProperty('name');
+    expect(b).toHaveProperty('exercises');
+    expect(Array.isArray(b.exercises)).toBe(true);
+    expect(b).toHaveProperty('createdAt');
+  });
+
+  test('exercício dentro do bloco tem campos: name, rm, sets (array)', () => {
+    const ex = { name: 'Supino', rm: 100, sets: [] };
+    const bloco = { id: 'blk-2', name: 'B', exercises: [ex], createdAt: Date.now() };
+    rpeBlocks.push(bloco);
+
+    const exercise = rpeBlocks[0].exercises[0];
+    expect(exercise).toHaveProperty('name');
+    expect(exercise).toHaveProperty('rm');
+    expect(exercise).toHaveProperty('sets');
+    expect(Array.isArray(exercise.sets)).toBe(true);
+  });
+
+  test('set dentro do exercício tem campos: count, reps, rpe', () => {
+    const set = { count: 3, reps: 5, rpe: 8 };
+    const ex  = { name: 'Terra', rm: 110, sets: [set] };
+    const bloco = { id: 'blk-3', name: 'C', exercises: [ex], createdAt: Date.now() };
+    rpeBlocks.push(bloco);
+
+    const s = rpeBlocks[0].exercises[0].sets[0];
+    expect(s).toHaveProperty('count');
+    expect(s).toHaveProperty('reps');
+    expect(s).toHaveProperty('rpe');
+  });
+
+  test('adicionar bloco ao array aumenta length em 1', () => {
+    expect(rpeBlocks.length).toBe(0);
+    rpeBlocks.push({ id: 'blk-4', name: 'D', exercises: [], createdAt: Date.now() });
+    expect(rpeBlocks.length).toBe(1);
+    rpeBlocks.push({ id: 'blk-5', name: 'E', exercises: [], createdAt: Date.now() });
+    expect(rpeBlocks.length).toBe(2);
+  });
+});
+
+describe('execStates — estrutura inicializada por openExecRPEModal', () => {
+  test('execStates começa como objeto vazio {}', () => {
+    // Após o carregamento do módulo execStates é {}
+    // Verificamos o tipo e que começa sem chaves
+    expect(typeof execStates).toBe('object');
+    expect(execStates).not.toBeNull();
+    expect(Array.isArray(execStates)).toBe(false);
+  });
+});
+
+describe('estimateExecRM()', () => {
+  test('retorna número positivo para inputs válidos (kg=100, reps=5, rpe=8)', () => {
+    const result = estimateExecRM(100, 5, 8);
+    expect(typeof result).toBe('number');
+    expect(result).toBeGreaterThan(0);
+  });
+
+  test('kg=0 retorna 0 sem lançar exceção', () => {
+    let result;
+    expect(() => { result = estimateExecRM(0, 5, 8); }).not.toThrow();
+    // getRPEFactor válido mas kg=0 → Math.round(0/f) = 0
+    expect(result).toBe(0);
+  });
+
+  test('estimativa sobe conforme kg sobe (mesmos reps e rpe)', () => {
+    const est80  = estimateExecRM(80,  5, 8);
+    const est100 = estimateExecRM(100, 5, 8);
+    expect(est100).toBeGreaterThan(est80);
+  });
+
+  test('RPE inválido: retorna Math.round(kg) como fallback', () => {
+    // getRPEFactor retorna null para rpe=11 → fallback Math.round(kg)
+    const result = estimateExecRM(100, 5, 11);
+    expect(result).toBe(Math.round(100));
+  });
+});
+
+describe('calcRPEWeight() — casos adicionais', () => {
+  test('com RM=120, RPE=9, reps=3 → rounded é múltiplo de 2.5', () => {
+    const result = calcRPEWeight(120, 9, 3);
+    expect(result).not.toBeNull();
+    expect(result.rounded % 2.5).toBeCloseTo(0, 5);
+  });
+
+  test('RPE 6.5 é válido (retorna resultado não-null)', () => {
+    const result = calcRPEWeight(100, 6.5, 5);
+    expect(result).not.toBeNull();
+    expect(result.rounded).toBeGreaterThan(0);
+  });
+});

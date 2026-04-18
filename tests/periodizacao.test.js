@@ -106,3 +106,142 @@ describe('parseCycleDate()', () => {
     expect(d2 - d1).toBeGreaterThan(0);
   });
 });
+
+// ── Novos blocos de regressão ──────────────────────────────────────────────
+
+describe('checksState — mutações', () => {
+  beforeEach(() => {
+    checksState.supino = {};
+    checksState.agacha = {};
+    checksState.terra  = {};
+  });
+
+  test('checksState tem os 3 lifts principais como chaves', () => {
+    expect(checksState).toHaveProperty('supino');
+    expect(checksState).toHaveProperty('agacha');
+    expect(checksState).toHaveProperty('terra');
+  });
+
+  test('pode marcar checksState[lift][weekIdx][cbKey] = true', () => {
+    checksState.supino[0] = {};
+    checksState.supino[0]['cb-0'] = true;
+    expect(checksState.supino[0]['cb-0']).toBe(true);
+  });
+
+  test('pode limpar checksState[lift] = {} para resetar ciclo', () => {
+    checksState.agacha[2] = { 'cb-0': true, 'cb-1': true };
+    checksState.agacha = {};
+    expect(Object.keys(checksState.agacha)).toHaveLength(0);
+  });
+
+  test('checksState independente entre lifts (modificar supino não afeta agacha)', () => {
+    checksState.supino[0] = { 'cb-0': true };
+    expect(checksState.agacha[0]).toBeUndefined();
+  });
+});
+
+describe('cycleHistory — schema', () => {
+  beforeEach(() => {
+    cycleHistory.length = 0;
+  });
+
+  test('cycleHistory começa como array vazio após reset', () => {
+    expect(Array.isArray(cycleHistory)).toBe(true);
+    expect(cycleHistory).toHaveLength(0);
+  });
+
+  test('entrada cycleHistory tem campos esperados: lift, rmStart, rmEnd, dateEnd, gain, id', () => {
+    const entry = {
+      id:        uid(),
+      lift:      'supino',
+      rmStart:   74,
+      rmEnd:     80,
+      dateEnd:   '17/04/2026',
+      gain:      6,
+    };
+    cycleHistory.push(entry);
+    const e = cycleHistory[0];
+    expect(e).toHaveProperty('lift');
+    expect(e).toHaveProperty('rmStart');
+    expect(e).toHaveProperty('rmEnd');
+    expect(e).toHaveProperty('dateEnd');
+    expect(e).toHaveProperty('gain');
+    expect(e).toHaveProperty('id');
+  });
+
+  test('gain é calculável como rmEnd - rmStart', () => {
+    const rmStart = 74;
+    const rmEnd   = 80;
+    const entry = {
+      id:      uid(),
+      lift:    'supino',
+      rmStart,
+      rmEnd,
+      dateEnd: '17/04/2026',
+      gain:    Math.round((rmEnd - rmStart) * 10) / 10,
+    };
+    cycleHistory.push(entry);
+    expect(cycleHistory[0].gain).toBe(rmEnd - rmStart);
+  });
+
+  test('dateEnd está em formato dd/mm/aaaa', () => {
+    const entry = {
+      id:      uid(),
+      lift:    'terra',
+      rmStart: 100,
+      rmEnd:   110,
+      dateEnd: '17/04/2026',
+      gain:    10,
+    };
+    cycleHistory.push(entry);
+    expect(cycleHistory[0].dateEnd).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
+  });
+});
+
+describe('parseCycleDate() — casos adicionais', () => {
+  test('data inválida não lança exceção (retorna Date inválido ou null)', () => {
+    expect(() => parseCycleDate('não-é-data')).not.toThrow();
+  });
+
+  test('datas de anos diferentes são ordenáveis corretamente', () => {
+    const d2020 = parseCycleDate('15/06/2020');
+    const d2023 = parseCycleDate('15/06/2023');
+    const d2025 = parseCycleDate('15/06/2025');
+    expect(d2023 - d2020).toBeGreaterThan(0);
+    expect(d2025 - d2023).toBeGreaterThan(0);
+    expect(d2025 - d2020).toBeGreaterThan(d2025 - d2023);
+  });
+});
+
+describe('customLifts e LIFT_LABELS', () => {
+  beforeEach(() => {
+    customLifts.length = 0;
+  });
+
+  test('LIFT_LABELS.supino, .agacha, .terra existem e são strings', () => {
+    expect(typeof LIFT_LABELS.supino).toBe('string');
+    expect(typeof LIFT_LABELS.agacha).toBe('string');
+    expect(typeof LIFT_LABELS.terra).toBe('string');
+  });
+
+  test('customLifts começa vazio após reset', () => {
+    expect(Array.isArray(customLifts)).toBe(true);
+    expect(customLifts).toHaveLength(0);
+  });
+
+  test('adicionar entrada a customLifts aumenta length em 1', () => {
+    customLifts.push({ id: uid(), name: 'Paralelas', rm: 60 });
+    expect(customLifts).toHaveLength(1);
+  });
+
+  test('custom lift tem campos: id, name, rm', () => {
+    const lift = { id: uid(), name: 'Paralelas', rm: 60 };
+    customLifts.push(lift);
+    const l = customLifts[0];
+    expect(l).toHaveProperty('id');
+    expect(l).toHaveProperty('name');
+    expect(l).toHaveProperty('rm');
+    expect(typeof l.name).toBe('string');
+    expect(typeof l.rm).toBe('number');
+  });
+});

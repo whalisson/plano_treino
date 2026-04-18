@@ -116,3 +116,65 @@ describe('Tabela de percentuais (smoke test)', () => {
     }
   });
 });
+
+// ── Novos testes: rmHistory schema e mutações ──────────────────────────
+
+describe('rmHistory — schema e mutações', () => {
+  beforeEach(() => {
+    rmHistory.length = 0;
+  });
+
+  test('rmHistory é um array', () => {
+    expect(Array.isArray(rmHistory)).toBe(true);
+  });
+
+  test('rmHistory começa vazio após reset', () => {
+    expect(rmHistory).toHaveLength(0);
+  });
+
+  test('entrada rmHistory tem campos: id, lift, kg, date', () => {
+    rmHistory.push({ id: 'test-1', lift: 'supino', kg: 100.0, date: '15/04/2025' });
+    const entry = rmHistory[0];
+    expect(entry).toHaveProperty('id');
+    expect(entry).toHaveProperty('lift');
+    expect(entry).toHaveProperty('kg');
+    expect(entry).toHaveProperty('date');
+  });
+
+  test('adicionar entrada aumenta length em 1', () => {
+    expect(rmHistory).toHaveLength(0);
+    rmHistory.push({ id: 'test-2', lift: 'agacha', kg: 120.5, date: '01/04/2025' });
+    expect(rmHistory).toHaveLength(1);
+  });
+
+  test('remover entrada por id reduz length em 1', () => {
+    rmHistory.push({ id: 'remove-me', lift: 'terra', kg: 150.0, date: '10/03/2025' });
+    rmHistory.push({ id: 'keep-me',   lift: 'supino', kg: 80.0, date: '11/03/2025' });
+    expect(rmHistory).toHaveLength(2);
+    // Simula o comportamento de deleteRMRecord sem chamar renderRMHistory/saveState
+    const idToRemove = 'remove-me';
+    const idx = rmHistory.findIndex(r => r.id === idToRemove);
+    rmHistory.splice(idx, 1);
+    expect(rmHistory).toHaveLength(1);
+    expect(rmHistory[0].id).toBe('keep-me');
+  });
+});
+
+// ── Novos testes: LIFT_LABELS definidos corretamente ──────────────────
+
+describe('LIFT_LABELS — definidos corretamente', () => {
+  test('LIFT_LABELS.supino existe e é string não-vazia', () => {
+    expect(typeof LIFT_LABELS.supino).toBe('string');
+    expect(LIFT_LABELS.supino.length).toBeGreaterThan(0);
+  });
+
+  test('LIFT_LABELS.agacha existe e é string não-vazia', () => {
+    expect(typeof LIFT_LABELS.agacha).toBe('string');
+    expect(LIFT_LABELS.agacha.length).toBeGreaterThan(0);
+  });
+
+  test('LIFT_LABELS.terra existe e é string não-vazia', () => {
+    expect(typeof LIFT_LABELS.terra).toBe('string');
+    expect(LIFT_LABELS.terra.length).toBeGreaterThan(0);
+  });
+});

@@ -155,3 +155,151 @@ describe('parseVolume()', () => {
     expect(parseVolume(items)).toBe(0);
   });
 });
+
+// ── Unit 4: board/bank mutations, kgHistory schema, parseVolume integration ──
+
+describe('board — estrutura e mutações', () => {
+  beforeEach(() => {
+    for (let i = 0; i < 7; i++) board[i] = [];
+  });
+
+  test('board tem exatamente 7 arrays (um por dia da semana)', () => {
+    expect(board).toHaveLength(7);
+    board.forEach(day => expect(Array.isArray(day)).toBe(true));
+  });
+
+  test('board[0] começa vazio', () => {
+    expect(board[0]).toHaveLength(0);
+  });
+
+  test('adicionar exercício ao board[0] aumenta length para 1', () => {
+    const ex = { id: uid(), srcId: 'src1', name: 'Supino Reto', kg: 80, reps: '3x10' };
+    board[0].push(ex);
+    expect(board[0]).toHaveLength(1);
+  });
+
+  test('exercício no board tem propriedades: id, srcId, name, kg, reps', () => {
+    const ex = { id: uid(), srcId: 'src1', name: 'Supino Reto', kg: 80, reps: '3x10' };
+    board[0].push(ex);
+    const placed = board[0][0];
+    expect(placed).toHaveProperty('id');
+    expect(placed).toHaveProperty('srcId');
+    expect(placed).toHaveProperty('name');
+    expect(placed).toHaveProperty('kg');
+    expect(placed).toHaveProperty('reps');
+  });
+
+  test('remover exercício via splice mantém os outros exercícios', () => {
+    const ex1 = { id: uid(), srcId: 's1', name: 'Supino Reto', kg: 80, reps: '3x10' };
+    const ex2 = { id: uid(), srcId: 's2', name: 'Rosca Direta', kg: 30, reps: '3x12' };
+    const ex3 = { id: uid(), srcId: 's3', name: 'Agachamento', kg: 100, reps: '4x8' };
+    board[0].push(ex1, ex2, ex3);
+    board[0].splice(1, 1); // remove ex2
+    expect(board[0]).toHaveLength(2);
+    expect(board[0][0].name).toBe('Supino Reto');
+    expect(board[0][1].name).toBe('Agachamento');
+  });
+
+  test('mover exercício entre dias: splice de board[0] e push em board[1] preserva dados', () => {
+    const ex = { id: uid(), srcId: 's1', name: 'Supino Reto', kg: 80, reps: '3x10' };
+    board[0].push(ex);
+    const [moved] = board[0].splice(0, 1);
+    board[1].push(moved);
+    expect(board[0]).toHaveLength(0);
+    expect(board[1]).toHaveLength(1);
+    expect(board[1][0].name).toBe('Supino Reto');
+    expect(board[1][0].kg).toBe(80);
+  });
+});
+
+describe('bank — operações CRUD', () => {
+  beforeEach(() => {
+    bank.length = 0;
+  });
+
+  test('banco começa vazio após reset', () => {
+    expect(bank).toHaveLength(0);
+  });
+
+  test('exercício no bank tem: id, name, kg, reps, group', () => {
+    const ex = { id: uid(), name: 'Supino Reto', kg: 80, reps: '3x10', group: 'push' };
+    bank.push(ex);
+    const stored = bank[0];
+    expect(stored).toHaveProperty('id');
+    expect(stored).toHaveProperty('name');
+    expect(stored).toHaveProperty('kg');
+    expect(stored).toHaveProperty('reps');
+    expect(stored).toHaveProperty('group');
+  });
+
+  test('detectExerciseGroup("Supino Reto") retorna "push"', () => {
+    expect(detectExerciseGroup('Supino Reto')).toBe('push');
+  });
+
+  test('banco pode ter múltiplos exercícios de grupos diferentes', () => {
+    bank.push({ id: uid(), name: 'Supino Reto',  kg: 80, reps: '3x10', group: detectExerciseGroup('Supino Reto')  });
+    bank.push({ id: uid(), name: 'Rosca Direta', kg: 30, reps: '3x12', group: detectExerciseGroup('Rosca Direta') });
+    bank.push({ id: uid(), name: 'Agachamento',  kg: 100, reps: '4x8', group: detectExerciseGroup('Agachamento')  });
+    expect(bank).toHaveLength(3);
+    expect(bank[0].group).toBe('push');
+    expect(bank[1].group).toBe('pull');
+    expect(bank[2].group).toBe('legs');
+  });
+});
+
+describe('kgHistory — schema e mutações', () => {
+  test('kgHistory é um objeto (não array)', () => {
+    expect(typeof kgHistory).toBe('object');
+    expect(Array.isArray(kgHistory)).toBe(false);
+  });
+
+  test('kgHistory[exId] pode ser inicializado como array com entrada inicial', () => {
+    const exId = uid();
+    kgHistory[exId] = [{ date: '17/04/2026', kg: 80, name: 'Supino Reto', note: 'inicial' }];
+    expect(Array.isArray(kgHistory[exId])).toBe(true);
+    expect(kgHistory[exId]).toHaveLength(1);
+    // cleanup
+    delete kgHistory[exId];
+  });
+
+  test('entrada kgHistory tem campos: date, kg, name', () => {
+    const exId = uid();
+    kgHistory[exId] = [{ date: '17/04/2026', kg: 80, name: 'Supino Reto', note: '' }];
+    const entry = kgHistory[exId][0];
+    expect(entry).toHaveProperty('date');
+    expect(entry).toHaveProperty('kg');
+    expect(entry).toHaveProperty('name');
+    // cleanup
+    delete kgHistory[exId];
+  });
+
+  test('múltiplas entradas para o mesmo id são acumuladas no array', () => {
+    const exId = uid();
+    kgHistory[exId] = [];
+    kgHistory[exId].push({ date: '10/04/2026', kg: 75, name: 'Supino Reto', note: '' });
+    kgHistory[exId].push({ date: '17/04/2026', kg: 80, name: 'Supino Reto', note: 'PR' });
+    expect(kgHistory[exId]).toHaveLength(2);
+    expect(kgHistory[exId][1].kg).toBe(80);
+    // cleanup
+    delete kgHistory[exId];
+  });
+});
+
+describe('parseVolume() — integração com board real', () => {
+  beforeEach(() => {
+    for (let i = 0; i < 7; i++) board[i] = [];
+  });
+
+  test('parseVolume(board[0]) com exercícios retorna número positivo', () => {
+    board[0].push({ id: uid(), srcId: 's1', name: 'Supino Reto', kg: 80, reps: '3x10' });
+    board[0].push({ id: uid(), srcId: 's2', name: 'Agachamento',  kg: 100, reps: '4x8' });
+    const vol = parseVolume(board[0]);
+    expect(vol).toBeGreaterThan(0);
+    // 80*30 + 100*32 = 2400 + 3200 = 5600
+    expect(vol).toBe(5600);
+  });
+
+  test('parseVolume de board vazio retorna 0', () => {
+    expect(parseVolume(board[3])).toBe(0);
+  });
+});

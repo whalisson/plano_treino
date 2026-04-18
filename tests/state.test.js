@@ -96,3 +96,141 @@ describe('getWeekRange()', () => {
     expect(start.getMilliseconds()).toBe(0);
   });
 });
+
+// ── saveState() ──────────────────────────────────────────────────────────────
+
+describe('saveState()', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.idbSet = vi.fn().mockResolvedValue(undefined);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('debounce: múltiplas chamadas rápidas resultam em apenas 1 idbSet', () => {
+    saveState();
+    saveState();
+    saveState();
+    vi.runAllTimers();
+    expect(global.idbSet).toHaveBeenCalledTimes(1);
+  });
+
+  test('chama idbSet com RECORD_KEY e objeto de dados', () => {
+    saveState();
+    vi.runAllTimers();
+    expect(global.idbSet).toHaveBeenCalledWith(RECORD_KEY, expect.any(Object));
+  });
+
+  test('objeto salvo contém campo checks (checksState)', () => {
+    saveState();
+    vi.runAllTimers();
+    const data = global.idbSet.mock.calls[0][1];
+    expect(data).toHaveProperty('checks');
+  });
+
+  test('objeto salvo contém campo board', () => {
+    saveState();
+    vi.runAllTimers();
+    const data = global.idbSet.mock.calls[0][1];
+    expect(data).toHaveProperty('board');
+  });
+
+  test('não chama idbSet se o timeout for cancelado antes dos 400ms', () => {
+    saveState();
+    vi.advanceTimersByTime(399);
+    expect(global.idbSet).not.toHaveBeenCalled();
+  });
+});
+
+// ── loadState() ──────────────────────────────────────────────────────────────
+
+describe('loadState()', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  test('retorna null quando idbGet retorna null (primeira execução)', async () => {
+    global.idbGet = vi.fn().mockResolvedValue(null);
+    const result = await loadState();
+    expect(result).toBeNull();
+  });
+
+  test('retorna o objeto quando idbGet resolve com dados', async () => {
+    const fakeData = { rmSupino: 80, checks: {}, board: [] };
+    global.idbGet = vi.fn().mockResolvedValue(fakeData);
+    const result = await loadState();
+    expect(result).toEqual(fakeData);
+  });
+
+  test('retorna null quando idbGet rejeita e localStorage está vazio', async () => {
+    global.idbGet = vi.fn().mockRejectedValue(new Error('IDB error'));
+    const result = await loadState();
+    expect(result).toBeNull();
+  });
+
+  test('migra de localStorage gorila_fallback quando IDB está vazio', async () => {
+    global.idbGet = vi.fn().mockResolvedValue(null);
+    global.idbSet = vi.fn().mockResolvedValue(undefined);
+    const fallbackData = { rmSupino: 80, checks: {} };
+    localStorage.setItem('gorila_fallback', JSON.stringify(fallbackData));
+    const result = await loadState();
+    expect(result).toEqual(fallbackData);
+  });
+});
+
+// ── showUndo() ───────────────────────────────────────────────────────────────
+
+describe('showUndo()', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Reset toast state
+    const toast = document.getElementById('undoToast');
+    toast.classList.remove('on');
+    toast.querySelector('.undo-msg').textContent = '';
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('adiciona classe "on" ao undoToast', () => {
+    showUndo('Exercício removido', () => {}, null);
+    const toast = document.getElementById('undoToast');
+    expect(toast.classList.contains('on')).toBe(true);
+  });
+
+  test('define texto correto na .undo-msg', () => {
+    showUndo('Treino apagado', () => {}, null);
+    const msg = document.querySelector('#undoToast .undo-msg');
+    expect(msg.textContent).toBe('Treino apagado');
+  });
+
+  test('commitFn chamada após 4000ms', () => {
+    const commitFn = vi.fn();
+    showUndo('Ação feita', () => {}, commitFn);
+    vi.advanceTimersByTime(4000);
+    expect(commitFn).toHaveBeenCalledTimes(1);
+  });
+
+  test('undoFn chamada ao clicar .undo-btn, commitFn NÃO chamada', () => {
+    const undoFn = vi.fn();
+    const commitFn = vi.fn();
+    showUndo('Ação feita', undoFn, commitFn);
+    const btn = document.querySelector('#undoToast .undo-btn');
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(undoFn).toHaveBeenCalledTimes(1);
+    vi.runAllTimers();
+    expect(commitFn).not.toHaveBeenCalled();
+  });
+
+  test('segunda chamada cancela timer da primeira (debounce)', () => {
+    const commitFn1 = vi.fn();
+    const commitFn2 = vi.fn();
+    showUndo('Primeira', () => {}, commitFn1);
+    vi.advanceTimersByTime(2000);
+    showUndo('Segunda', () => {}, commitFn2);
+    vi.advanceTimersByTime(4000);
+    expect(commitFn1).not.toHaveBeenCalled();
+    expect(commitFn2).toHaveBeenCalledTimes(1);
+  });
+});
