@@ -153,6 +153,14 @@ vi.hoisted(() => {
       <button class="undo-btn">Desfazer</button>
     </div>
 
+    <!-- Registro de treino -->
+    <div    id="mWorkoutLog"></div>
+    <div    id="mWorkoutLogTitle"></div>
+    <input  id="mWorkoutLogDate" value="">
+    <div    id="mWorkoutLogBody"></div>
+    <button id="btnCancelWorkoutLog"></button>
+    <button id="btnFinishWorkoutLog"></button>
+
     <!-- App / navegação -->
     <div    id="ntabs"></div>
     <button id="btnExport"></button>

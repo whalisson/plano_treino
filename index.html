@@ -571,6 +571,22 @@
 <div id="execToast"></div>
 <div id="undoToast"><span class="undo-msg"></span><button class="undo-btn">Desfazer</button></div>
 
+<!-- Modal — Registro de execução do treino -->
+<div class="mbg" id="mWorkoutLog">
+  <div class="mbox" style="max-width:480px;max-height:90vh;overflow-y:auto;">
+    <div class="mtitle" id="mWorkoutLogTitle">Registrar Treino</div>
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+      <label style="margin:0;white-space:nowrap;">Data</label>
+      <input type="text" id="mWorkoutLogDate" placeholder="dd/mm/aaaa" style="flex:1;">
+    </div>
+    <div id="mWorkoutLogBody"></div>
+    <div class="mbtns" style="margin-top:16px;">
+      <button id="btnCancelWorkoutLog" style="flex:1;">Cancelar</button>
+      <button id="btnFinishWorkoutLog" style="flex:2;background:var(--purple);">✓ Finalizar Treino</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase SDK (compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>

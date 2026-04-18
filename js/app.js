@@ -11,9 +11,12 @@ import { board, bank, setBoard, setBank,
 import { rmHistory, setRmHistory,
   calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
-  buildCardioChart, renderBuilderSegs, renderSavedWorkouts } from './cardio.js';
-import { rpeBlocks, setRpeBlocks, renderRPEBlocks } from './rpe.js';
-import { workoutLog, setWorkoutLog } from './workoutlog.js';
+  buildCardioChart, renderBuilderSegs, renderSavedWorkouts,
+  addWktSegment, addMWktSegment } from './cardio.js';
+import { rpeBlocks, setRpeBlocks, renderRPEBlocks,
+  toggleRPETable, concludeExecRPE } from './rpe.js';
+import { workoutLog, setWorkoutLog,
+  openWorkoutLogModal, wlAddSet, wlRemoveSet } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
@@ -33,6 +36,15 @@ globalThis.renderSavedWorkouts  = renderSavedWorkouts;
 globalThis.renderCycleHistory   = renderCycleHistory;
 globalThis.renderRPEBlocks      = renderRPEBlocks;
 globalThis.buildCardioChart     = buildCardioChart;
+// Funções chamadas via onclick="" no HTML
+globalThis.toggleRPETable       = toggleRPETable;
+globalThis.concludeExecRPE      = concludeExecRPE;
+globalThis.addWktSegment        = addWktSegment;
+globalThis.addMWktSegment       = addMWktSegment;
+// Registro de treino
+globalThis.openWorkoutLogModal  = function(dayIdx) { openWorkoutLogModal(board, dayIdx); };
+globalThis.wlAddSet             = wlAddSet;
+globalThis.wlRemoveSet          = wlRemoveSet;
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {

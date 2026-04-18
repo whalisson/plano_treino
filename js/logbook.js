@@ -436,7 +436,8 @@ export function renderKanban() {
     var vol  = parseVolume(items);
     var volStr = vol >= 1000 ? (vol / 1000).toFixed(1) + 't' : (vol > 0 ? vol + 'kg' : '');
     kh.innerHTML = '<span class="kday">' + DAYS[di] + '</span><span class="kcnt">' + items.length + '</span>'
-      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '');
+      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '')
+      + (items.length ? '<button class="klog-btn" title="Registrar treino" onclick="openWorkoutLogModal(' + di + ')">▶ Registrar</button>' : '');
     col.appendChild(kh);
     var body = document.createElement('div'); body.className = 'kbody';
     items.forEach(function(ex, ei) { body.appendChild(makeBoardCard(ex, di, ei)); });

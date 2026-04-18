@@ -477,6 +477,23 @@ button.sec:hover{color:var(--text);border-color:var(--text);}
 /* Volume badge no cabeçalho do kanban */
 .kvol{font-size:9px;font-family:var(--mono);color:var(--teal);margin-left:auto;opacity:.8;white-space:nowrap;}
 
+/* Botão registrar treino no kanban */
+.klog-btn{font-size:9px;padding:2px 7px;border-radius:5px;border:1px solid var(--purple);background:rgba(108,99,255,.12);color:var(--purple);cursor:pointer;white-space:nowrap;margin-left:6px;transition:background .15s;}
+.klog-btn:hover{background:rgba(108,99,255,.28);}
+
+/* Modal de registro de treino */
+.wl-ex-block{padding:6px 0;}
+.wl-ex-name{font-size:13px;font-weight:600;color:var(--fg);margin-bottom:2px;}
+.wl-planned{font-size:11px;font-weight:400;color:var(--muted);margin-left:4px;}
+.wl-last{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:4px;}
+.wl-sets{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;min-height:22px;}
+.wl-set-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--mono);background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);color:var(--purple);border-radius:5px;padding:2px 7px;}
+.wl-del-set{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0;line-height:1;}
+.wl-del-set:hover{color:var(--red);}
+.wl-add-row{display:flex;align-items:center;gap:6px;}
+.wl-add-btn{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--purple);background:rgba(108,99,255,.12);color:var(--purple);cursor:pointer;white-space:nowrap;}
+.wl-add-btn:hover{background:rgba(108,99,255,.25);}
+
 /* Tipo de atividade no cardio */
 .act-type{font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;font-family:var(--mono);white-space:nowrap;}
 .act-corrida{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);}

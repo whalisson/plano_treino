@@ -1,7 +1,7 @@
 // ── GORILA GYM — workoutlog.js ────────────────
 // Registro de execucao de treinos: sessoes, sets realizados e historico
 
-import { uid, saveState } from './state.js';
+import { uid, g, saveState } from './state.js';
 
 var DAYS = ['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'];
 
@@ -166,4 +166,96 @@ export function updateSession(session) {
     return s.id === session.id ? session : s;
   });
   saveState();
+}
+
+// ── UI do Modal de Registro ───────────────────────────────────────────────────
+
+var _activeSession = null; // sessao em andamento no modal
+
+function todayStr() {
+  var d = new Date();
+  return String(d.getDate()).padStart(2,'0') + '/' +
+         String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+}
+
+export function openWorkoutLogModal(board, dayIdx) {
+  var last = getLastSessionForDay(workoutLog, dayIdx);
+  _activeSession = createWorkoutSession(board, dayIdx, todayStr());
+  g('mWorkoutLogTitle').textContent = 'Registrar — ' + _activeSession.dayLabel;
+  g('mWorkoutLogDate').value = todayStr();
+  renderWorkoutLogBody(last);
+  g('mWorkoutLog').classList.add('on');
+}
+
+function renderWorkoutLogBody(lastSession) {
+  var body = g('mWorkoutLogBody');
+  if (!_activeSession || !_activeSession.exercises.length) {
+    body.innerHTML = '<p style="color:var(--muted);font-size:13px;">Nenhum exercício planejado para este dia.</p>';
+    return;
+  }
+  body.innerHTML = _activeSession.exercises.map(function(ex, idx) {
+    var lastEx = lastSession && lastSession.exercises.find(function(e) { return e.name === ex.name; });
+    var lastSets = lastEx && lastEx.sets.length
+      ? lastEx.sets.map(function(s) { return s.kg + 'kg×' + s.reps; }).join(' · ')
+      : null;
+    var setsHtml = ex.sets.map(function(s, si) {
+      return '<span class="wl-set-chip" data-ex="' + idx + '" data-set="' + si + '">' +
+        s.kg + 'kg×' + s.reps +
+        '<button class="wl-del-set" onclick="wlRemoveSet(' + idx + ',' + si + ')">×</button></span>';
+    }).join('');
+    return '<div class="wl-ex-block" id="wl-ex-' + idx + '">' +
+      '<div class="wl-ex-name">' + ex.name +
+        '<span class="wl-planned"> (' + ex.plannedReps + ' · ' + ex.plannedKg + 'kg planejado)</span>' +
+      '</div>' +
+      (lastSets ? '<div class="wl-last">Última vez: ' + lastSets + '</div>' : '') +
+      '<div class="wl-sets" id="wl-sets-' + idx + '">' + setsHtml + '</div>' +
+      '<div class="wl-add-row">' +
+        '<input type="number" class="wl-kg" id="wl-kg-' + idx + '" step="0.5" placeholder="kg" style="width:70px;">' +
+        '<span style="color:var(--muted);">×</span>' +
+        '<input type="number" class="wl-reps" id="wl-reps-' + idx + '" placeholder="reps" style="width:60px;">' +
+        '<button class="wl-add-btn" onclick="wlAddSet(' + idx + ')">+ Série</button>' +
+      '</div>' +
+    '</div>';
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">');
+}
+
+export function wlAddSet(exIdx) {
+  var ex   = _activeSession.exercises[exIdx];
+  var kg   = parseFloat(g('wl-kg-' + exIdx).value);
+  var reps = parseInt(g('wl-reps-' + exIdx).value, 10);
+  if (!kg || !reps) return;
+  _activeSession = addSet(_activeSession, ex.name, { kg: kg, reps: reps });
+  var lastSession = getLastSessionForDay(workoutLog, _activeSession.dayIdx);
+  renderWorkoutLogBody(lastSession);
+}
+
+export function wlRemoveSet(exIdx, setIdx) {
+  var ex = _activeSession.exercises[exIdx];
+  _activeSession = removeSet(_activeSession, ex.name, setIdx);
+  var lastSession = getLastSessionForDay(workoutLog, _activeSession.dayIdx);
+  renderWorkoutLogBody(lastSession);
+}
+
+export function finishWorkoutLog() {
+  if (!_activeSession) return;
+  var dateInput = g('mWorkoutLogDate').value.trim();
+  if (dateInput) _activeSession = Object.assign({}, _activeSession, { date: dateInput });
+  _activeSession = finishSession(_activeSession);
+  workoutLog = workoutLog.concat(_activeSession);
+  _activeSession = null;
+  saveState();
+  g('mWorkoutLog').classList.remove('on');
+}
+
+// Evento de fechar modal
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', function() {
+    var btnCancel = g('btnCancelWorkoutLog');
+    var btnFinish = g('btnFinishWorkoutLog');
+    if (btnCancel) btnCancel.addEventListener('click', function() {
+      _activeSession = null;
+      g('mWorkoutLog').classList.remove('on');
+    });
+    if (btnFinish) btnFinish.addEventListener('click', finishWorkoutLog);
+  });
 }

@@ -409,7 +409,7 @@ function renderModalSegs() {
   });
   renderTimeline(modalSegs, 'mWktTimeline');
 }
-function addMWktSegment(zone, mins) { modalSegs.push({ zone:zone, mins:mins }); renderModalSegs(); }
+export function addMWktSegment(zone, mins) { modalSegs.push({ zone:zone, mins:mins }); renderModalSegs(); }
 
 g('btnCancelEditWkt').addEventListener('click', function() { g('mEditWkt').classList.remove('on'); });
 g('btnConfirmEditWkt').addEventListener('click', function() {
