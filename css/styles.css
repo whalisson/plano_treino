@@ -33,8 +33,9 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .met-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;}
 .met-val{font-size:22px;font-weight:600;font-family:var(--font);letter-spacing:-.03em;}
 .mu{font-size:12px;color:var(--muted);margin-left:3px;font-weight:400;}
-.sh{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-.shtitle{font-size:17px;font-weight:600;letter-spacing:-.025em;}
+.sh{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;}
+.shtitle{font-size:30px;font-weight:600;letter-spacing:-.035em;line-height:1.1;}
+.sub{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.02em;margin-bottom:18px;}
 .badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;letter-spacing:.03em;text-transform:uppercase;}
 .bp{background:rgba(201,255,58,.07);color:var(--lime);border:1px solid rgba(201,255,58,.25);}
 .bg{background:rgba(80,227,194,.07);color:var(--cy);border:1px solid rgba(80,227,194,.25);}
@@ -229,10 +230,20 @@ input:focus,select:focus{border-color:var(--lime);}
 label{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em;}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:12px;}
 .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-bottom:12px;}
-button{background:var(--lime);border:none;border-radius:5px;color:#0a0e0a;font-family:var(--font);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;transition:opacity .15s,background .15s;}
-button:hover{opacity:.85;}
-button.sec{background:transparent;border:1px solid var(--border);color:var(--muted);}
-button.sec:hover{color:var(--lime);border-color:var(--lime);}
+button{
+  background:var(--lime);border:none;border-radius:5px;color:#0a0e0a;
+  font-family:var(--font);font-size:12px;font-weight:700;padding:8px 16px;
+  cursor:pointer;
+  transition:opacity .18s,box-shadow .2s,transform .12s cubic-bezier(.34,1.56,.64,1);
+}
+button:hover{opacity:.92;box-shadow:0 0 20px rgba(201,255,58,.35),0 0 40px rgba(201,255,58,.12);}
+button:active{transform:scale(.96);}
+button.sec{background:transparent;border:1px solid var(--border);color:var(--muted);box-shadow:none;}
+button.sec:hover{color:var(--lime);border-color:var(--lime);box-shadow:0 0 12px rgba(201,255,58,.15);}
+button.mag{background:var(--mag);color:#fff;box-shadow:none;}
+button.mag:hover{box-shadow:0 0 20px rgba(255,79,216,.4),0 0 40px rgba(255,79,216,.15);}
+button.cy{background:var(--cy);color:#0d1114;box-shadow:none;}
+button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .rminput{background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;font-size:23px;font-weight:700;font-family:var(--mono);color:var(--text);width:70px;padding:0 0 2px;outline:none;}
 .rminput:focus{border-bottom-color:var(--lime);}
 
@@ -479,8 +490,20 @@ button.sec:hover{color:var(--lime);border-color:var(--lime);}
 }
 .undo-btn:hover{background:rgba(201,255,58,.22);opacity:1;}
 
+/* Nav meter (SYNC · REC · FADIGA) */
+.nav-meter{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;}
+.nav-meter b{color:var(--text);}
+.nav-led{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);flex-shrink:0;animation:ledPulse 2.5s ease-in-out infinite;}
+@keyframes ledPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+.nav-dot{color:var(--border2);}
+
 /* Volume badge no cabeçalho do kanban */
-.kvol{font-size:9px;font-family:var(--mono);color:var(--teal);margin-left:auto;opacity:.8;white-space:nowrap;}
+.kvol{font-size:9px;font-family:var(--mono);color:var(--lime);margin-left:auto;opacity:.9;white-space:nowrap;font-weight:600;}
+
+/* Per-lift progress bar colors */
+.week-prog-fill.lift-supino{background:var(--cy);box-shadow:0 0 6px rgba(80,227,194,.5);}
+.week-prog-fill.lift-agacha{background:var(--lime);box-shadow:0 0 6px rgba(201,255,58,.5);}
+.week-prog-fill.lift-terra{background:var(--mag);box-shadow:0 0 6px rgba(255,79,216,.5);}
 
 /* Botão registrar exercício no card do kanban */
 .kexlog{position:absolute;bottom:5px;right:26px;font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid rgba(201,255,58,.4);background:rgba(201,255,58,.08);color:var(--lime);cursor:pointer;line-height:1.4;transition:background .15s;touch-action:manipulation;font-family:var(--mono);}

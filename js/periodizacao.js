@@ -29,9 +29,9 @@ export var periodBase = [
 
 // ── Dicts de aparência por lift (usados no histórico de ciclos) ──
 export var LIFT_LABELS = { supino:'Supino', agacha:'Agachamento', terra:'Terra' };
-export var LIFT_COLORS = { supino:'rgba(108,99,255,.9)', agacha:'rgba(45,212,191,.9)', terra:'rgba(251,191,36,.9)' };
-export var LIFT_FILL   = { supino:'rgba(108,99,255,.12)', agacha:'rgba(45,212,191,.12)', terra:'rgba(251,191,36,.12)' };
-export var LIFT_SOLID  = { supino:'#6c63ff', agacha:'#2dd4bf', terra:'#fbbf24' };
+export var LIFT_COLORS = { supino:'rgba(80,227,194,.9)', agacha:'rgba(201,255,58,.9)', terra:'rgba(255,79,216,.9)' };
+export var LIFT_FILL   = { supino:'rgba(80,227,194,.12)', agacha:'rgba(201,255,58,.12)', terra:'rgba(255,79,216,.12)' };
+export var LIFT_SOLID  = { supino:'#50e3c2', agacha:'#c9ff3a', terra:'#ff4fd8' };
 
 // ── Referência de cores para lifts customizados ──
 export var CUSTOM_LIFT_PALETTE = ['#f472b6','#fb923c','#a78bfa','#34d399','#60a5fa','#e879f9','#facc15'];
@@ -99,7 +99,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     var progWrap = document.createElement('div');
     progWrap.className = 'week-header-progress';
     progWrap.innerHTML = '<span class="week-prog-text">' + doneCount + '/' + totalChecks + '</span>'
-      + '<div class="week-prog-bar"><div class="week-prog-fill' + (weekDone ? ' done' : '') + '" id="pf-' + liftKey + '-' + wi + '" style="width:' + Math.round(doneCount / totalChecks * 100) + '%"></div></div>';
+      + '<div class="week-prog-bar"><div class="week-prog-fill lift-' + liftKey + (weekDone ? ' done' : '') + '" id="pf-' + liftKey + '-' + wi + '" style="width:' + Math.round(doneCount / totalChecks * 100) + '%"></div></div>';
     hdr.appendChild(progWrap);
     block.appendChild(hdr);
 
