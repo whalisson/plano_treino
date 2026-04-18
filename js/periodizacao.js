@@ -491,55 +491,13 @@ export function renderCustomLifts() {
     LIFT_FILL[lift.id]   = 'rgba(' + rgb + ',.12)';
     LIFT_SOLID[lift.id]  = color;
 
-    var sparkId = 'spark-custom-' + lift.id;
-    var deltaId = 'rm-delta-custom-' + lift.id;
-    var proxId  = 'rm-prox-custom-' + lift.id;
-    var inputId = 'rm-custom-' + lift.id;
-
-    // ── Card no RM Dashboard ──
-    if (rmDash) {
-      var card = document.createElement('div');
-      card.className = 'rm-card rm-card-custom';
-      card.style.cssText = 'border-color:rgba(' + rgb + ',.25);';
-      card.innerHTML =
-        '<div class="rm-top">'
-        + '<div class="rm-label">' + lift.name.toUpperCase() + ' <em>· 1RM</em></div>'
-        + '<canvas id="' + sparkId + '" class="rm-spark" width="80" height="36"></canvas>'
-        + '</div>'
-        + '<div class="rm-val-row">'
-        + '<input class="rminput rm-inp" id="' + inputId + '" type="number" value="' + lift.rm + '" step="0.5" min="0" style="color:' + color + ';">'
-        + '<span class="rm-unit">kg</span>'
-        + '</div>'
-        + '<div class="rm-foot">'
-        + '<span class="rm-delta" id="' + deltaId + '">— (Δ7d)</span>'
-        + '<span class="rm-prox-badge" id="' + proxId + '" style="border-color:rgba(' + rgb + ',.3);color:' + color + ';">PR próx</span>'
-        + '</div>'
-        + '<button class="rm-custom-del" title="Remover levantamento">×</button>';
-      rmDash.appendChild(card);
-
-      card.querySelector('input').addEventListener('input', function() {
-        lift.rm = parseFloat(this.value) || 0;
-        buildWeekTable(periodBase, 'tbl-custom-' + lift.id, lift.id, lift.rm);
-        saveState();
-      });
-      card.querySelector('.rm-custom-del').addEventListener('click', function() {
-        deleteCustomLift(lift.id);
-      });
-
-      // Sparkline
-      var hist   = (kgHistory || []).filter(function(h) { return h.lift === lift.id; });
-      hist.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
-      var points = hist.slice(-14).map(function(h) { return h.val; });
-      if (!points.length) points = [lift.rm];
-      drawSparkline(sparkId, points, color);
-    }
-
-    // ── Seção colapsável (tabela semanal) ──
-    var ps     = document.createElement('div');
     var pshId  = 'psh-custom-' + lift.id;
     var psbId  = 'psb-custom-' + lift.id;
     var chevId = 'chev-custom-' + lift.id;
     var tblId  = 'tbl-custom-' + lift.id;
+
+    // ── 1. Seção colapsável (sempre renderizada primeiro) ──
+    var ps = document.createElement('div');
     ps.className = 'ps';
     ps.innerHTML =
       '<div class="psh" id="' + pshId + '">'
@@ -548,12 +506,52 @@ export function renderCustomLifts() {
       + '</div>'
       + '<div class="psb" id="' + psbId + '"><div id="' + tblId + '"></div></div>';
     if (section) section.appendChild(ps);
-
     ps.querySelector('.psh').addEventListener('click', function() {
       var open = g(psbId).classList.toggle('on');
       g(chevId).textContent = open ? '▲' : '▼';
     });
     buildWeekTable(periodBase, tblId, lift.id, lift.rm);
+
+    // ── 2. Card no RM Dashboard (opcional, dentro de try-catch) ──
+    if (rmDash) {
+      try {
+        var sparkId = 'spark-custom-' + lift.id;
+        var deltaId = 'rm-delta-custom-' + lift.id;
+        var proxId  = 'rm-prox-custom-' + lift.id;
+        var inputId = 'rm-custom-' + lift.id;
+        var card = document.createElement('div');
+        card.className = 'rm-card rm-card-custom';
+        card.style.cssText = 'border-color:rgba(' + rgb + ',.25);';
+        card.innerHTML =
+          '<div class="rm-top">'
+          + '<div class="rm-label">' + lift.name.toUpperCase() + ' <em>· 1RM</em></div>'
+          + '<canvas id="' + sparkId + '" class="rm-spark" width="80" height="36"></canvas>'
+          + '</div>'
+          + '<div class="rm-val-row">'
+          + '<input class="rminput rm-inp" id="' + inputId + '" type="number" value="' + lift.rm + '" step="0.5" min="0" style="color:' + color + ';">'
+          + '<span class="rm-unit">kg</span>'
+          + '</div>'
+          + '<div class="rm-foot">'
+          + '<span class="rm-delta" id="' + deltaId + '">— (Δ7d)</span>'
+          + '<span class="rm-prox-badge" id="' + proxId + '" style="border-color:rgba(' + rgb + ',.3);color:' + color + ';">PR próx</span>'
+          + '</div>'
+          + '<button class="rm-custom-del" title="Remover levantamento">×</button>';
+        rmDash.appendChild(card);
+        card.querySelector('input').addEventListener('input', function() {
+          lift.rm = parseFloat(this.value) || 0;
+          buildWeekTable(periodBase, 'tbl-custom-' + lift.id, lift.id, lift.rm);
+          saveState();
+        });
+        card.querySelector('.rm-custom-del').addEventListener('click', function() {
+          deleteCustomLift(lift.id);
+        });
+        var hist = (kgHistory || []).filter(function(h) { return h.lift === lift.id; });
+        hist.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+        var pts = hist.slice(-14).map(function(h) { return h.val; });
+        if (!pts.length) pts = [lift.rm];
+        drawSparkline(sparkId, pts, color);
+      } catch(e) { console.warn('renderCustomLifts card:', e); }
+    }
   });
 
   if (typeof globalThis.populateRMLiftSelect === 'function') globalThis.populateRMLiftSelect();
