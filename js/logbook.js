@@ -300,6 +300,20 @@ function makeBoardCard(ex, di, ei) {
   el.innerHTML = '<div class="kexname">' + ex.name + '</div>'
     + '<div class="kexmeta">' + (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps + '</div>';
 
+  if (ex.kg > 0) {
+    var logBtn = document.createElement('button');
+    logBtn.className = 'kexlog'; logBtn.textContent = '▶'; logBtn.title = 'Registrar série';
+    logBtn.style.touchAction = 'manipulation';
+    var _openLog = function(e) {
+      e.stopPropagation();
+      if (typeof openExLog === 'function') openExLog(di, ei);
+    };
+    logBtn.addEventListener('click',    _openLog);
+    logBtn.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
+    logBtn.addEventListener('touchend',   function(e) { e.stopPropagation(); e.preventDefault(); _openLog(e); }, { passive:false });
+    el.appendChild(logBtn);
+  }
+
   var rm = document.createElement('button');
   rm.className = 'kexrm'; rm.textContent = '×';
   rm.style.touchAction = 'manipulation';
@@ -436,8 +450,7 @@ export function renderKanban() {
     var vol  = parseVolume(items);
     var volStr = vol >= 1000 ? (vol / 1000).toFixed(1) + 't' : (vol > 0 ? vol + 'kg' : '');
     kh.innerHTML = '<span class="kday">' + DAYS[di] + '</span><span class="kcnt">' + items.length + '</span>'
-      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '')
-      + (items.length ? '<button class="klog-btn" title="Registrar treino" onclick="openWorkoutLogModal(' + di + ')">▶ Registrar</button>' : '');
+      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '');
     col.appendChild(kh);
     var body = document.createElement('div'); body.className = 'kbody';
     items.forEach(function(ex, ei) { body.appendChild(makeBoardCard(ex, di, ei)); });

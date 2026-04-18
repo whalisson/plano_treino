@@ -157,13 +157,25 @@ vi.hoisted(() => {
     <div    id="wlHistorySection" style="display:none;"></div>
     <div    id="wlHistoryCharts"></div>
 
-    <!-- Registro de treino -->
+    <!-- Registro de treino (dia completo) -->
     <div    id="mWorkoutLog"></div>
     <div    id="mWorkoutLogTitle"></div>
     <input  id="mWorkoutLogDate" value="">
     <div    id="mWorkoutLogBody"></div>
     <button id="btnCancelWorkoutLog"></button>
     <button id="btnFinishWorkoutLog"></button>
+
+    <!-- Registro rápido (exercício individual) -->
+    <div    id="mExLog"></div>
+    <div    id="mExLogTitle"></div>
+    <div    id="mExLogPlanned"></div>
+    <div    id="mExLogLast"></div>
+    <div    id="mExLogSets"></div>
+    <input  id="mExLogKg" type="number" value="">
+    <input  id="mExLogReps" type="number" value="">
+    <button id="btnAddSetExLog"></button>
+    <button id="btnCancelExLog"></button>
+    <button id="btnSaveExLog"></button>
 
     <!-- App / navegação -->
     <div    id="ntabs"></div>
@@ -217,7 +229,7 @@ import { board, setBoard, bank, setBank } from '../js/logbook.js';
 import { rmHistory, setRmHistory } from '../js/rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts, cardioBase } from '../js/cardio.js';
 import { rpeBlocks, setRpeBlocks } from '../js/rpe.js';
-import { workoutLog, setWorkoutLog, renderWorkoutHistory } from '../js/workoutlog.js';
+import { workoutLog, setWorkoutLog, renderWorkoutHistory, openExLog, exLogAddSet, exLogSave } from '../js/workoutlog.js';
 import * as periodizacaoModule from '../js/periodizacao.js';
 
 // ── 4. Expose simple globals (uid, g, round05, etc.) ────────────────────────
@@ -281,6 +293,9 @@ globalThis.estimateExecRM = estimateExecRM;
 globalThis.execStates = execStates;
 globalThis.renderRPEBlocks = renderRPEBlocks;
 globalThis.renderWorkoutHistory = renderWorkoutHistory;
+globalThis.openExLog            = openExLog;
+globalThis.exLogAddSet          = exLogAddSet;
+globalThis.exLogSave            = exLogSave;
 globalThis.buildAllPeriod = buildAllPeriod;
 globalThis.renderCustomLifts = renderCustomLifts;
 globalThis.renderCycleHistory = renderCycleHistory;

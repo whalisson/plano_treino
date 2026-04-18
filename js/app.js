@@ -17,7 +17,8 @@ import { rpeBlocks, setRpeBlocks, renderRPEBlocks,
   toggleRPETable, concludeExecRPE } from './rpe.js';
 import { workoutLog, setWorkoutLog,
   openWorkoutLogModal, wlAddSet, wlRemoveSet,
-  renderWorkoutHistory, deleteExerciseHistory } from './workoutlog.js';
+  renderWorkoutHistory, deleteExerciseHistory,
+  openExLog, exLogAddSet, exLogSave } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
@@ -48,6 +49,9 @@ globalThis.wlAddSet             = wlAddSet;
 globalThis.wlRemoveSet          = wlRemoveSet;
 globalThis.renderWorkoutHistory = renderWorkoutHistory;
 globalThis.deleteExerciseHistory = deleteExerciseHistory;
+globalThis.openExLog            = function(di, ei) { openExLog(board, di, ei); };
+globalThis.exLogAddSet          = exLogAddSet;
+globalThis.exLogSave            = exLogSave;
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {

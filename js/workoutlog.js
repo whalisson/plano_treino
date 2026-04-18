@@ -303,6 +303,90 @@ export function renderWorkoutHistory() {
   });
 }
 
+// ── Modal focado: um exercício por vez ───────────────────────────────────────
+
+var _exLog = null; // { dayIdx, exIdx, exName, plannedKg, sets: [] }
+
+export function openExLog(board, dayIdx, exIdx) {
+  var ex = board[dayIdx] && board[dayIdx][exIdx];
+  if (!ex) return;
+  var last = getLastSessionForDay(workoutLog, dayIdx);
+  var lastEx = last && last.exercises.find(function(e) { return e.name === ex.name; });
+  _exLog = { dayIdx: dayIdx, exIdx: exIdx, exName: ex.name, plannedKg: ex.kg, sets: [] };
+
+  g('mExLogTitle').textContent = ex.name;
+  g('mExLogPlanned').textContent = ex.reps + ' · ' + ex.kg + 'kg planejado';
+  g('mExLogLast').textContent = lastEx && lastEx.sets.length
+    ? 'Última: ' + lastEx.sets.map(function(s){ return s.kg+'kg×'+s.reps; }).join(' · ')
+    : '';
+  g('mExLogKg').value  = ex.kg || '';
+  g('mExLogReps').value = '';
+  _renderExLogSets();
+  g('mExLog').classList.add('on');
+  g('mExLogReps').focus();
+}
+
+function _renderExLogSets() {
+  var el = g('mExLogSets');
+  if (!el) return;
+  el.innerHTML = _exLog.sets.map(function(s, i) {
+    return '<span class="wl-set-chip">' + s.kg + 'kg×' + s.reps +
+      '<button class="wl-del-set" data-i="' + i + '">×</button></span>';
+  }).join('');
+  el.querySelectorAll('.wl-del-set').forEach(function(btn) {
+    btn.onclick = function() {
+      var i = parseInt(btn.getAttribute('data-i'), 10);
+      _exLog.sets.splice(i, 1);
+      _renderExLogSets();
+    };
+  });
+}
+
+export function exLogAddSet() {
+  var kg   = parseFloat(g('mExLogKg').value);
+  var reps = parseInt(g('mExLogReps').value, 10);
+  if (!kg || !reps) return;
+  _exLog.sets.push({ kg: kg, reps: reps, completedAt: Date.now() });
+  _renderExLogSets();
+  g('mExLogReps').value = '';
+  g('mExLogReps').focus();
+}
+
+export function exLogSave() {
+  if (!_exLog || !_exLog.sets.length) { g('mExLog').classList.remove('on'); _exLog = null; return; }
+
+  // Busca ou cria sessão do dia
+  var dateStr = todayStr();
+  var existing = getLastSessionForDay(workoutLog, _exLog.dayIdx);
+  var session;
+  if (existing && existing.finishedAt === null) {
+    session = existing;
+  } else {
+    session = { id: uid(), date: dateStr, dayIdx: _exLog.dayIdx, dayLabel: DAYS[_exLog.dayIdx] || '',
+      startedAt: Date.now(), finishedAt: null, exercises: [] };
+    workoutLog = workoutLog.concat(session);
+  }
+
+  // Adiciona ou acumula sets no exercício
+  var hasEx = session.exercises.some(function(e) { return e.name === _exLog.exName; });
+  if (!hasEx) {
+    var newEx = { name: _exLog.exName, plannedKg: _exLog.plannedKg, sets: _exLog.sets.slice() };
+    session = Object.assign({}, session, { exercises: session.exercises.concat(newEx) });
+  } else {
+    session = Object.assign({}, session, {
+      exercises: session.exercises.map(function(e) {
+        return e.name === _exLog.exName ? Object.assign({}, e, { sets: e.sets.concat(_exLog.sets) }) : e;
+      })
+    });
+  }
+
+  workoutLog = workoutLog.map(function(s) { return s.id === session.id ? session : s; });
+  saveState();
+  renderWorkoutHistory();
+  g('mExLog').classList.remove('on');
+  _exLog = null;
+}
+
 // Evento de fechar modal
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', function() {
@@ -313,5 +397,16 @@ if (typeof document !== 'undefined') {
       g('mWorkoutLog').classList.remove('on');
     });
     if (btnFinish) btnFinish.addEventListener('click', finishWorkoutLog);
+
+    var btnCancelEx = g('btnCancelExLog');
+    var btnSaveEx   = g('btnSaveExLog');
+    var btnAddSetEx = g('btnAddSetExLog');
+    if (btnCancelEx) btnCancelEx.addEventListener('click', function() { g('mExLog').classList.remove('on'); _exLog = null; });
+    if (btnSaveEx)   btnSaveEx.addEventListener('click', exLogSave);
+    if (btnAddSetEx) btnAddSetEx.addEventListener('click', exLogAddSet);
+
+    // Enter no campo reps adiciona série
+    var repsInput = g('mExLogReps');
+    if (repsInput) repsInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') exLogAddSet(); });
   });
 }
