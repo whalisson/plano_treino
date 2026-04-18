@@ -205,6 +205,7 @@ import { board, setBoard, bank, setBank } from '../js/logbook.js';
 import { rmHistory, setRmHistory } from '../js/rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts, cardioBase } from '../js/cardio.js';
 import { rpeBlocks, setRpeBlocks } from '../js/rpe.js';
+import { workoutLog, setWorkoutLog } from '../js/workoutlog.js';
 import * as periodizacaoModule from '../js/periodizacao.js';
 
 // ── 4. Expose simple globals (uid, g, round05, etc.) ────────────────────────
@@ -219,6 +220,7 @@ const proxyMap = {
   cardioExtra:    { get: () => cardioExtra,  set: setCardioExtra  },
   savedWorkouts:  { get: () => savedWorkouts, set: setSavedWorkouts },
   rpeBlocks:      { get: () => rpeBlocks,    set: setRpeBlocks    },
+  workoutLog:     { get: () => workoutLog,   set: setWorkoutLog   },
   checksState:    { get: () => stateModule.checksState,    set: stateModule.setChecksState    },
   rmTestValues:   { get: () => stateModule.rmTestValues,   set: stateModule.setRmTestValues   },
   kgHistory:      { get: () => stateModule.kgHistory,      set: stateModule.setKgHistory      },

@@ -10,6 +10,7 @@ import { board, bank, setBoard, setBank } from './logbook.js';
 import { rmHistory, setRmHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts } from './cardio.js';
 import { rpeBlocks, setRpeBlocks } from './rpe.js';
+import { workoutLog, setWorkoutLog } from './workoutlog.js';
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
@@ -31,6 +32,7 @@ document.addEventListener('gorila-save', function() {
     rpeBlocks:     rpeBlocks,
     customLifts:   customLifts,
     cycleStartDates: cycleStartDates,
+    workoutLog:    workoutLog,
   };
   idbSet(RECORD_KEY, data).catch(function() {
     try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
@@ -71,6 +73,7 @@ export function exportData() {
     rpeBlocks:     rpeBlocks,
     customLifts:   customLifts,
     cycleStartDates: cycleStartDates,
+    workoutLog:    workoutLog,
   };
   var json  = JSON.stringify(data, null, 2);
   var blob  = new Blob([json], { type:'application/json' });
@@ -128,6 +131,7 @@ export function applyState(saved) {
     if (saved.rpeBlocks)      setRpeBlocks(saved.rpeBlocks);
     if (saved.customLifts)    setCustomLifts(saved.customLifts);
     if (saved.cycleStartDates) setCycleStartDates(saved.cycleStartDates);
+    if (saved.workoutLog && Array.isArray(saved.workoutLog)) setWorkoutLog(saved.workoutLog);
   }
   // Call render functions — use globalThis lookups so tests can mock them
   if (typeof globalThis.buildAllPeriod === 'function') globalThis.buildAllPeriod();
