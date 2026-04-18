@@ -242,33 +242,41 @@ function makeBankPill(ex) {
   var el = document.createElement('div');
   el.className = 'bpill';
   el.dataset.exid = ex.id;
-  el.style.position    = 'relative';
-  el.style.paddingRight = '52px';
 
+  // Linha 1: badge grupo + nome
   var groupBadge = ex.group && GROUP_CSS[ex.group]
-    ? ' <span class="bpgroup ' + GROUP_CSS[ex.group] + '">' + GROUP_LABEL[ex.group] + '</span>'
+    ? '<span class="bpgroup ' + GROUP_CSS[ex.group] + '">' + GROUP_LABEL[ex.group] + '</span>'
     : '';
-  var info = document.createElement('div');
-  info.innerHTML = '<div class="bpname">' + ex.name + groupBadge + '</div>'
-    + '<div class="bpmeta">' + (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps + '</div>';
-  info.draggable = false;
-  el.appendChild(info);
+  var row1 = document.createElement('div');
+  row1.className = 'bprow1';
+  row1.innerHTML = (groupBadge ? groupBadge + ' ' : '') + '<span class="bpname">' + ex.name + '</span>';
+  row1.draggable = false;
+  el.appendChild(row1);
+
+  // Linha 2: meta + botões
+  var row2 = document.createElement('div');
+  row2.className = 'bprow2';
+
+  var meta = document.createElement('span');
+  meta.className = 'bpmeta';
+  meta.textContent = (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps;
+  row2.appendChild(meta);
 
   var acts = document.createElement('div');
-  acts.style.cssText = 'position:absolute;top:50%;right:6px;transform:translateY(-50%);display:flex;gap:3px;';
+  acts.className = 'bpacts';
 
   var editBtn = document.createElement('button');
+  editBtn.className = 'bpedit';
   editBtn.textContent = '✎';
   editBtn.title = 'Editar';
-  editBtn.style.cssText = 'background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:#a59eff;font-size:13px;padding:6px 9px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
   editBtn.addEventListener('click',      function(e) { e.stopPropagation(); openEditModal(ex.id); });
   editBtn.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
   editBtn.addEventListener('touchend',   function(e) { e.stopPropagation(); e.preventDefault(); openEditModal(ex.id); }, { passive:false });
 
   var delBtn = document.createElement('button');
+  delBtn.className = 'bpdel';
   delBtn.textContent = '×';
   delBtn.title = 'Remover';
-  delBtn.style.cssText = 'background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:15px;padding:6px 9px;border-radius:5px;cursor:pointer;line-height:1;touch-action:manipulation;';
   var _delBank = function(e) {
     e.stopPropagation();
     var saved = JSON.parse(JSON.stringify(ex));
@@ -282,7 +290,8 @@ function makeBankPill(ex) {
   delBtn.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
 
   acts.appendChild(editBtn); acts.appendChild(delBtn);
-  el.appendChild(acts);
+  row2.appendChild(acts);
+  el.appendChild(row2);
 
   if (!isTouch) {
     el.draggable = true;
