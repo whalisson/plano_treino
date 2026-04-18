@@ -4,7 +4,7 @@
 import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
   BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
-  customLifts, cycleHistory, setCycleHistory, cycleStartDates } from './state.js';
+  kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates } from './state.js';
 
 // ── Tabela de periodização (única — antes duplicada 3×) ──
 export var periodBase = [
@@ -55,7 +55,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     if (wEff.skip || wEff.rest) return;
     var totalChecks = 0;
     wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
-    var state    = checksState[liftKey][wi] || {};
+    var state    = (checksState[liftKey] || {})[wi] || {};
     var done     = Object.values(state).filter(Boolean).length;
     var weekDone = done >= totalChecks;
     if (currentWeekIdx === -1 && !weekDone) {
@@ -78,6 +78,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     var totalChecks = 0;
     wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
 
+    if (!checksState[liftKey]) checksState[liftKey] = {};
     if (!checksState[liftKey][wi]) checksState[liftKey][wi] = {};
     var weekState  = checksState[liftKey][wi];
     var doneCount  = Object.values(weekState).filter(Boolean).length;
@@ -306,50 +307,140 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl) {
   return label;
 }
 
+function drawSparkline(canvasId, points, color) {
+  var canvas = g(canvasId); if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  var pts = (points && points.length >= 2) ? points : null;
+  var pad = 4;
+  if (!pts) {
+    ctx.beginPath(); ctx.moveTo(pad, H / 2); ctx.lineTo(W - pad, H / 2);
+    ctx.strokeStyle = color; ctx.globalAlpha = 0.25; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.globalAlpha = 1; return;
+  }
+  var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts), range = max - min || 1;
+  function fx(i) { return pad + (i / (pts.length - 1)) * (W - pad * 2); }
+  function fy(v) { return H - pad - ((v - min) / range) * (H - pad * 2); }
+  var grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, color + '40'); grad.addColorStop(1, color + '00');
+  ctx.beginPath();
+  pts.forEach(function(p, i) { i === 0 ? ctx.moveTo(fx(i), fy(p)) : ctx.lineTo(fx(i), fy(p)); });
+  ctx.lineTo(fx(pts.length - 1), H); ctx.lineTo(fx(0), H); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.beginPath();
+  pts.forEach(function(p, i) { i === 0 ? ctx.moveTo(fx(i), fy(p)) : ctx.lineTo(fx(i), fy(p)); });
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+  var lx = fx(pts.length - 1), ly = fy(pts[pts.length - 1]);
+  ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = color; ctx.fill();
+}
+
+export function buildRmDashboard() {
+  var lifts = [
+    { key:'supino', color:'#50e3c2' },
+    { key:'agacha', color:'#c9ff3a' },
+    { key:'terra',  color:'#ff4fd8' },
+  ];
+  lifts.forEach(function(lf) {
+    var rmEl = g('rm-' + lf.key); if (!rmEl) return;
+    var val = parseFloat(rmEl.value) || 0;
+    // sparkline from kgHistory
+    var hist = (kgHistory || []).filter(function(h) { return h.lift === lf.key; });
+    hist.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+    var points = hist.slice(-14).map(function(h) { return h.val; });
+    if (points.length === 0) points = [val];
+    drawSparkline('spark-' + lf.key, points, lf.color);
+    // delta vs 7 days ago
+    var deltaEl = g('rm-delta-' + lf.key);
+    if (deltaEl) {
+      if (hist.length >= 2) {
+        var latest = hist[hist.length - 1];
+        var cutoff = Date.now() - 7 * 864e5;
+        var ref = hist[0];
+        for (var i = hist.length - 2; i >= 0; i--) {
+          if (new Date(hist[i].date).getTime() <= cutoff) { ref = hist[i]; break; }
+        }
+        var pctDelta = (latest.val - ref.val) / ref.val * 100;
+        var sign = pctDelta >= 0 ? '▲' : '▼';
+        deltaEl.textContent = sign + ' ' + Math.abs(pctDelta).toFixed(1) + '% (Δ7d)';
+        deltaEl.className = 'rm-delta ' + (pctDelta >= 0 ? 'pos' : 'neg');
+      } else {
+        deltaEl.textContent = '— (Δ7d)';
+        deltaEl.className = 'rm-delta';
+      }
+    }
+    // PR próx: next week's peak kg
+    var proxEl = g('rm-prox-' + lf.key);
+    if (proxEl) {
+      var nextWeekIdx = -1;
+      periodBase.forEach(function(w, wi) {
+        if (nextWeekIdx !== -1) return;
+        var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
+        if (wEff.skip || wEff.rest) return;
+        var checks = (checksState[lf.key] || {})[wi] || {};
+        var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
+        if (Object.values(checks).filter(Boolean).length < numChecks) nextWeekIdx = wi;
+      });
+      if (nextWeekIdx !== -1) {
+        var wEff = (periodBase[nextWeekIdx].byLift && periodBase[nextWeekIdx].byLift[lf.key])
+          ? Object.assign({}, periodBase[nextWeekIdx], periodBase[nextWeekIdx].byLift[lf.key])
+          : periodBase[nextWeekIdx];
+        if (wEff.series && wEff.series.length) {
+          var maxPct = Math.max.apply(null, wEff.series.map(function(s) { return s.p; }));
+          proxEl.textContent = 'PR próx ' + round05(val * maxPct) + 'kg';
+        }
+      } else {
+        proxEl.textContent = 'Ciclo completo';
+      }
+    }
+  });
+}
+
 function buildCycleProgress() {
   var el = g('cycleProgressList'); if (!el) return;
   var lifts = [
-    { key:'supino', label:'Supino',       color:'#6c63ff' },
-    { key:'agacha', label:'Agachamento',  color:'#2dd4bf' },
-    { key:'terra',  label:'Terra',        color:'#fbbf24' },
+    { key:'supino', label:'Supino',      barCls:'lift-supino' },
+    { key:'agacha', label:'Agachamento', barCls:'lift-agacha' },
+    { key:'terra',  label:'Terra',       barCls:'lift-terra'  },
   ];
   el.innerHTML = '';
+  var globalDone = 0, globalTotal = 0;
   lifts.forEach(function(lf) {
-    var total = 0, done = 0, currentLabel = '—';
+    var rmEl = g('rm-' + lf.key);
+    var rmVal = rmEl ? (parseFloat(rmEl.value) || 0) : 0;
+    var total = 0, done = 0, nextWeekIdx = -1;
     periodBase.forEach(function(w, wi) {
       var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
       if (wEff.skip || wEff.rest) return;
       total++;
-      var checks    = checksState[lf.key][wi] || {};
+      var checks = checksState[lf.key][wi] || {};
       var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
-      var weekDone  = Object.values(checks).filter(Boolean).length >= numChecks;
-      if (weekDone) done++;
+      var weekDone = Object.values(checks).filter(Boolean).length >= numChecks;
+      if (weekDone) { done++; } else if (nextWeekIdx === -1) { nextWeekIdx = wi; }
     });
-    // semana atual = primeiro não concluído
-    var found = false;
-    periodBase.forEach(function(w, wi) {
-      if (found) return;
-      var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
-      if (wEff.skip || wEff.rest) return;
-      var checks    = checksState[lf.key][wi] || {};
-      var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
-      var weekDone  = Object.values(checks).filter(Boolean).length >= numChecks;
-      if (!weekDone) { currentLabel = w.label; found = true; }
-    });
-    if (!found) currentLabel = 'Ciclo completo';
-
+    if (lf.key === 'supino') { globalDone = done; globalTotal = total; }
     var pct = total > 0 ? Math.round(done / total * 100) : 0;
+    var proxText = 'completo';
+    if (nextWeekIdx !== -1) {
+      var wEff = (periodBase[nextWeekIdx].byLift && periodBase[nextWeekIdx].byLift[lf.key])
+        ? Object.assign({}, periodBase[nextWeekIdx], periodBase[nextWeekIdx].byLift[lf.key])
+        : periodBase[nextWeekIdx];
+      if (wEff.series && wEff.series.length) {
+        var maxPct = Math.max.apply(null, wEff.series.map(function(s) { return s.p; }));
+        proxText = 'próx ' + round05(rmVal * maxPct) + 'kg';
+      }
+    }
     var row = document.createElement('div');
+    row.className = 'cycle-row';
     row.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
-      + '<span style="font-size:12px;font-weight:600;color:' + lf.color + ';">' + lf.label + '</span>'
-      + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);">' + currentLabel + ' · ' + done + '/' + total + ' sem</span>'
-      + '</div>'
-      + '<div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;">'
-      + '<div style="height:100%;border-radius:3px;background:' + lf.color + ';width:' + pct + '%;transition:width .4s ease;opacity:.85;"></div>'
-      + '</div>';
+      '<span class="cycle-row-name">' + lf.label + '</span>'
+      + '<div class="cycle-bar-wrap"><div class="cycle-bar-fill ' + lf.barCls + '" style="width:' + pct + '%"></div></div>'
+      + '<span class="cycle-row-info"><b>S' + (done + 1) + '</b> · ' + pct + '% · <span class="prox">' + proxText + '</span></span>';
     el.appendChild(row);
   });
+  var sub = g('cycleSub');
+  if (sub) sub.textContent = 'S' + (globalDone + 1) + '/' + globalTotal;
 }
 
 export function buildAllPeriod() {
@@ -359,7 +450,8 @@ export function buildAllPeriod() {
   buildWeekTable(periodBase, 'tbl-supino', 'supino', sup);
   buildWeekTable(periodBase, 'tbl-agacha', 'agacha', aga);
   buildWeekTable(periodBase, 'tbl-terra',  'terra',  ter);
-  buildCycleProgress();
+  try { buildCycleProgress(); } catch(e) { console.warn('buildCycleProgress:', e); }
+  try { buildRmDashboard();   } catch(e) { console.warn('buildRmDashboard:', e); }
 }
 
 ['rm-supino','rm-agacha','rm-terra'].forEach(function(id) {

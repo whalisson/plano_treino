@@ -20,7 +20,7 @@
 
 <nav>
   <div class="nav-inner" id="navInner">
-    <div class="logo"><em>◈</em>.treino</div>
+    <div class="logo"><em>◈</em>treino</div>
     <div class="ntabs" id="ntabs">
       <div class="ntab on" data-p="periodizacao">Periodização</div>
       <div class="ntab"    data-p="logbook">Logbook</div>
@@ -80,37 +80,66 @@
   </div>
   <div class="sub">progressão linear · supino / agachamento / terra</div>
 
-  <div class="metrics">
-    <div class="met" style="position:relative;overflow:visible;">
-      <img src="img/supino-met.png" style="position:absolute;bottom:0;right:-4px;height:72px;width:auto;object-fit:contain;opacity:.35;pointer-events:none;">
-      <div class="met-lbl">Supino RM</div>
-      <div style="display:flex;align-items:baseline;gap:4px;">
-        <input class="rminput" id="rm-supino" type="number" value="74" step="0.5" min="0">
-        <span class="mu">kg</span>
+  <!-- RM Dashboard -->
+  <div class="rm-dash">
+    <div class="rm-card rm-c-supino">
+      <img src="img/supino-met.png" class="rm-img" alt="">
+      <div class="rm-top">
+        <div class="rm-label">SUPINO <em>· 1RM</em></div>
+        <canvas id="spark-supino" class="rm-spark" width="80" height="36"></canvas>
+      </div>
+      <div class="rm-val-row">
+        <input class="rminput rm-inp" id="rm-supino" type="number" value="74" step="0.5" min="0">
+        <span class="rm-unit">kg</span>
+      </div>
+      <div class="rm-foot">
+        <span class="rm-delta" id="rm-delta-supino">— (Δ7d)</span>
+        <span class="rm-prox-badge" id="rm-prox-supino">PR próx</span>
       </div>
     </div>
-    <div class="met" style="position:relative;overflow:visible;">
-      <img src="img/agacha-met.png" style="position:absolute;bottom:0;right:-4px;height:72px;width:auto;object-fit:contain;opacity:.35;pointer-events:none;">
-      <div class="met-lbl">Agachamento RM</div>
-      <div style="display:flex;align-items:baseline;gap:4px;">
-        <input class="rminput" id="rm-agacha" type="number" value="93" step="0.5" min="0">
-        <span class="mu">kg</span>
+    <div class="rm-card rm-c-agacha">
+      <img src="img/agacha-met.png" class="rm-img" alt="">
+      <div class="rm-top">
+        <div class="rm-label">AGACHAMENTO <em>· 1RM</em></div>
+        <canvas id="spark-agacha" class="rm-spark" width="80" height="36"></canvas>
+      </div>
+      <div class="rm-val-row">
+        <input class="rminput rm-inp" id="rm-agacha" type="number" value="93" step="0.5" min="0">
+        <span class="rm-unit">kg</span>
+      </div>
+      <div class="rm-foot">
+        <span class="rm-delta" id="rm-delta-agacha">— (Δ7d)</span>
+        <span class="rm-prox-badge" id="rm-prox-agacha">PR próx</span>
       </div>
     </div>
-    <div class="met" style="position:relative;overflow:visible;">
-      <img src="img/terra-met.png" style="position:absolute;bottom:0;right:-4px;height:72px;width:auto;object-fit:contain;opacity:.35;pointer-events:none;">
-      <div class="met-lbl">Terra RM</div>
-      <div style="display:flex;align-items:baseline;gap:4px;">
-        <input class="rminput" id="rm-terra" type="number" value="110" step="0.5" min="0">
-        <span class="mu">kg</span>
+    <div class="rm-card rm-c-terra">
+      <img src="img/terra-met.png" class="rm-img" alt="">
+      <div class="rm-top">
+        <div class="rm-label">TERRA <em>· 1RM</em></div>
+        <canvas id="spark-terra" class="rm-spark" width="80" height="36"></canvas>
+      </div>
+      <div class="rm-val-row">
+        <input class="rminput rm-inp" id="rm-terra" type="number" value="110" step="0.5" min="0">
+        <span class="rm-unit">kg</span>
+      </div>
+      <div class="rm-foot">
+        <span class="rm-delta" id="rm-delta-terra">— (Δ7d)</span>
+        <span class="rm-prox-badge" id="rm-prox-terra">PR próx</span>
       </div>
     </div>
   </div>
 
   <!-- Progresso do Ciclo -->
-  <div class="card" id="cycleProgressCard" style="margin-bottom:14px;">
-    <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Progresso do Ciclo</div>
-    <div id="cycleProgressList" style="display:flex;flex-direction:column;gap:10px;"></div>
+  <div class="cycle-wrap" id="cycleProgressCard">
+    <div class="cycle-hdr">
+      <span class="cycle-title">PROGRESSO DO CICLO</span>
+      <span class="cycle-sep">·</span>
+      <span class="cycle-sub" id="cycleSub">S1/12</span>
+    </div>
+    <div id="cycleProgressList" class="cycle-list"></div>
+    <div class="cycle-axis">
+      <span>s01</span><span>s03</span><span>s06</span><span>s09</span><span>s12 · pico</span>
+    </div>
   </div>
 
   <!-- SUPINO -->
