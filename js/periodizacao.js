@@ -468,70 +468,93 @@ export function buildAllPeriod() {
 
 // ── Lifts Personalizados ──────────────────────
 export function renderCustomLifts() {
-  var section    = g('customLiftsSection');
-  var metricsEl  = g('customMetrics');
-  section.innerHTML   = '';
-  metricsEl.innerHTML = '';
+  var section   = g('customLiftsSection');
+  var metricsEl = g('customMetrics');
+  section.innerHTML = '';
+  if (metricsEl) { metricsEl.innerHTML = ''; metricsEl.style.display = 'none'; }
 
-  if (!customLifts.length) { metricsEl.style.display = 'none'; return; }
-  metricsEl.style.display = 'grid';
+  // Remove custom cards já inseridos no rm-dash
+  var rmDash = document.querySelector('.rm-dash');
+  if (rmDash) {
+    rmDash.querySelectorAll('.rm-card-custom').forEach(function(el) { el.remove(); });
+  }
 
   customLifts.forEach(function(lift, idx) {
     var color = getCustomColor(idx);
+    var rgb   = hexToRgb(color);
 
     if (!checksState[lift.id])  checksState[lift.id]  = {};
     if (!rmTestValues[lift.id]) rmTestValues[lift.id] = {};
-
     LIFT_LABELS[lift.id] = lift.name;
-    LIFT_COLORS[lift.id] = 'rgba(' + hexToRgb(color) + ',.9)';
-    LIFT_FILL[lift.id]   = 'rgba(' + hexToRgb(color) + ',.12)';
+    LIFT_COLORS[lift.id] = 'rgba(' + rgb + ',.9)';
+    LIFT_FILL[lift.id]   = 'rgba(' + rgb + ',.12)';
     LIFT_SOLID[lift.id]  = color;
 
-    // Card de métrica
-    var met = document.createElement('div');
-    met.className = 'met';
-    met.style.cssText = 'position:relative;overflow:visible;';
-    met.innerHTML = '<div class="met-lbl">' + lift.name + ' RM</div>'
-      + '<div style="display:flex;align-items:baseline;gap:4px;">'
-      + '<input class="rminput" id="rm-custom-' + lift.id + '" type="number" value="' + lift.rm + '" step="0.5" min="0">'
-      + '<span class="mu">kg</span></div>';
-    metricsEl.appendChild(met);
-    met.querySelector('input').addEventListener('input', function() {
-      lift.rm = parseFloat(this.value) || 0;
-      buildWeekTable(periodBase, 'tbl-custom-' + lift.id, lift.id, lift.rm);
-      saveState();
-    });
+    var sparkId = 'spark-custom-' + lift.id;
+    var deltaId = 'rm-delta-custom-' + lift.id;
+    var proxId  = 'rm-prox-custom-' + lift.id;
+    var inputId = 'rm-custom-' + lift.id;
 
-    // Seção colapsável
-    var ps    = document.createElement('div');
-    ps.className = 'ps';
-    var pshId = 'psh-custom-' + lift.id;
-    var psbId = 'psb-custom-' + lift.id;
+    // ── Card no RM Dashboard ──
+    if (rmDash) {
+      var card = document.createElement('div');
+      card.className = 'rm-card rm-card-custom';
+      card.style.cssText = 'border-color:rgba(' + rgb + ',.25);';
+      card.innerHTML =
+        '<div class="rm-top">'
+        + '<div class="rm-label">' + lift.name.toUpperCase() + ' <em>· 1RM</em></div>'
+        + '<canvas id="' + sparkId + '" class="rm-spark" width="80" height="36"></canvas>'
+        + '</div>'
+        + '<div class="rm-val-row">'
+        + '<input class="rminput rm-inp" id="' + inputId + '" type="number" value="' + lift.rm + '" step="0.5" min="0" style="color:' + color + ';">'
+        + '<span class="rm-unit">kg</span>'
+        + '</div>'
+        + '<div class="rm-foot">'
+        + '<span class="rm-delta" id="' + deltaId + '">— (Δ7d)</span>'
+        + '<span class="rm-prox-badge" id="' + proxId + '" style="border-color:rgba(' + rgb + ',.3);color:' + color + ';">PR próx</span>'
+        + '</div>'
+        + '<button class="rm-custom-del" title="Remover levantamento">×</button>';
+      rmDash.appendChild(card);
+
+      card.querySelector('input').addEventListener('input', function() {
+        lift.rm = parseFloat(this.value) || 0;
+        buildWeekTable(periodBase, 'tbl-custom-' + lift.id, lift.id, lift.rm);
+        saveState();
+      });
+      card.querySelector('.rm-custom-del').addEventListener('click', function() {
+        deleteCustomLift(lift.id);
+      });
+
+      // Sparkline
+      var hist   = (kgHistory || []).filter(function(h) { return h.lift === lift.id; });
+      hist.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+      var points = hist.slice(-14).map(function(h) { return h.val; });
+      if (!points.length) points = [lift.rm];
+      drawSparkline(sparkId, points, color);
+    }
+
+    // ── Seção colapsável (tabela semanal) ──
+    var ps     = document.createElement('div');
+    var pshId  = 'psh-custom-' + lift.id;
+    var psbId  = 'psb-custom-' + lift.id;
     var chevId = 'chev-custom-' + lift.id;
     var tblId  = 'tbl-custom-' + lift.id;
+    ps.className = 'ps';
     ps.innerHTML =
       '<div class="psh" id="' + pshId + '">'
       + '<span class="pstitle" style="color:' + color + ';">' + lift.name + '</span>'
       + '<span class="pschev" id="' + chevId + '" style="margin-left:8px;">▼</span>'
-      + '<button data-liftid="' + lift.id + '" class="custom-lift-del-btn" style="margin-left:auto;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);font-size:11px;padding:3px 9px;border-radius:5px;cursor:pointer;">× Remover</button>'
       + '</div>'
       + '<div class="psb" id="' + psbId + '"><div id="' + tblId + '"></div></div>';
     section.appendChild(ps);
 
-    ps.querySelector('.custom-lift-del-btn').addEventListener('click', function(e) {
-      e.stopPropagation();
-      deleteCustomLift(lift.id);
-    });
-    ps.querySelector('.psh').addEventListener('click', function(e) {
-      if (e.target.closest('button')) return;
+    ps.querySelector('.psh').addEventListener('click', function() {
       var open = g(psbId).classList.toggle('on');
       g(chevId).textContent = open ? '▲' : '▼';
     });
-
     buildWeekTable(periodBase, tblId, lift.id, lift.rm);
   });
 
-  // Notify rm.js to update lift select (avoid circular import)
   if (typeof globalThis.populateRMLiftSelect === 'function') globalThis.populateRMLiftSelect();
 }
 

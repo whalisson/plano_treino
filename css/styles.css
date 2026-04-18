@@ -61,6 +61,8 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .rm-c-terra{border-color:rgba(255,79,216,.25);}
 .rm-c-terra:hover{box-shadow:0 0 24px rgba(255,79,216,.08);}
 .rm-c-terra .rm-inp{color:var(--mag);}
+.rm-custom-del{position:absolute;top:8px;right:8px;background:rgba(255,85,85,.12);border:1px solid rgba(255,85,85,.28);color:var(--red);font-size:13px;padding:1px 7px;border-radius:4px;cursor:pointer;line-height:1.4;z-index:1;box-shadow:none;transform:none;}
+.rm-custom-del:hover{background:rgba(255,85,85,.28);box-shadow:none;transform:none;}
 .rm-c-terra .rm-prox-badge{border-color:rgba(255,79,216,.3);color:var(--mag);}
 /* ── Cycle Progress ── */
 .cycle-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 16px 12px;margin-bottom:14px;}
