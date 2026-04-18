@@ -61,8 +61,11 @@ export let cycleHistory = [];
 export let customLifts = [];
 // cycleStartDates[liftKey] = 'dd/mm/yyyy' — primeiro check do ciclo
 export let cycleStartDates = {};
+// rmHistory = [{id, lift, kg, date}]
+export let rmHistory = [];
 
 export function setChecksState(v) { checksState = v; }
+export function setRmHistory(v) { rmHistory = v; }
 export function setRmTestValues(v) { rmTestValues = v; }
 export function setKgHistory(v) { kgHistory = v; }
 export function setCycleHistory(v) { cycleHistory = v; }

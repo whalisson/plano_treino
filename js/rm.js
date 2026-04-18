@@ -1,13 +1,12 @@
 // ── GORILA GYM — rm.js ───────────────────────
 // Calculadora de 1RM com 3 fórmulas (Brzycki, Epley, Mayhew) + histórico
 
-import { uid, g, round05, saveState, BASE_SUP, BASE_AGA, BASE_TER, customLifts } from './state.js';
+import { uid, g, round05, saveState, BASE_SUP, BASE_AGA, BASE_TER, customLifts,
+  rmHistory, setRmHistory } from './state.js';
 import { LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID } from './periodizacao.js';
 
-export let rmHistory  = [];
+export { rmHistory, setRmHistory };
 let _rmLastAvg = 0;
-
-export function setRmHistory(v) { rmHistory = v; }
 
 export function calcRM() {
   var w = parseFloat(g('rmW').value) || 0;

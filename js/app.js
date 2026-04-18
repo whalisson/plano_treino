@@ -4,12 +4,12 @@
 import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
-  customLifts, setCustomLifts, cycleStartDates, setCycleStartDates } from './state.js';
+  customLifts, setCustomLifts, cycleStartDates, setCycleStartDates,
+  rmHistory, setRmHistory } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, setBoard, setBank,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts } from './logbook.js';
-import { rmHistory, setRmHistory,
-  calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
+import { calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
   buildCardioChart, renderBuilderSegs, renderSavedWorkouts,
   addWktSegment, addMWktSegment } from './cardio.js';

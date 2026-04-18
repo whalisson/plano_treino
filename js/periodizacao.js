@@ -4,7 +4,13 @@
 import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
   BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
-  kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates } from './state.js';
+  kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates,
+  rmHistory } from './state.js';
+
+function parseRMDate(dStr) {
+  var p = dStr.split('/');
+  return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+}
 
 // ── Tabela de periodização (única — antes duplicada 3×) ──
 export var periodBase = [
@@ -52,7 +58,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   var allPrevDone    = true;
   baseWeeks.forEach(function(w, wi) {
     var wEff = (w.byLift && w.byLift[liftKey]) ? Object.assign({}, w, w.byLift[liftKey]) : w;
-    if (wEff.skip || wEff.rest) return;
+    if (wEff.skip || wEff.rest || !wEff.series) return;
     var totalChecks = 0;
     wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
     var state    = (checksState[liftKey] || {})[wi] || {};
@@ -74,6 +80,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
       c.appendChild(restEl);
       return;
     }
+    if (!wEff.series) return;
 
     var totalChecks = 0;
     wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
@@ -345,13 +352,11 @@ export function buildRmDashboard() {
   lifts.forEach(function(lf) {
     var rmEl = g('rm-' + lf.key); if (!rmEl) return;
     var val = parseFloat(rmEl.value) || 0;
-    // sparkline from kgHistory
-    var hist = (kgHistory || []).filter(function(h) { return h.lift === lf.key; });
-    hist.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
-    var points = hist.slice(-14).map(function(h) { return h.val; });
+    var hist = rmHistory.filter(function(h) { return h.lift === lf.key; });
+    hist.sort(function(a, b) { return parseRMDate(a.date) - parseRMDate(b.date); });
+    var points = hist.slice(-14).map(function(h) { return h.kg; });
     if (points.length === 0) points = [val];
     drawSparkline('spark-' + lf.key, points, lf.color);
-    // delta vs 7 days ago
     var deltaEl = g('rm-delta-' + lf.key);
     if (deltaEl) {
       if (hist.length >= 2) {
@@ -359,9 +364,9 @@ export function buildRmDashboard() {
         var cutoff = Date.now() - 7 * 864e5;
         var ref = hist[0];
         for (var i = hist.length - 2; i >= 0; i--) {
-          if (new Date(hist[i].date).getTime() <= cutoff) { ref = hist[i]; break; }
+          if (parseRMDate(hist[i].date).getTime() <= cutoff) { ref = hist[i]; break; }
         }
-        var pctDelta = (latest.val - ref.val) / ref.val * 100;
+        var pctDelta = (latest.kg - ref.kg) / ref.kg * 100;
         var sign = pctDelta >= 0 ? '▲' : '▼';
         deltaEl.textContent = sign + ' ' + Math.abs(pctDelta).toFixed(1) + '% (Δ7d)';
         deltaEl.className = 'rm-delta ' + (pctDelta >= 0 ? 'pos' : 'neg');
@@ -377,7 +382,7 @@ export function buildRmDashboard() {
       periodBase.forEach(function(w, wi) {
         if (nextWeekIdx !== -1) return;
         var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
-        if (wEff.skip || wEff.rest) return;
+        if (wEff.skip || wEff.rest || !wEff.series) return;
         var checks = (checksState[lf.key] || {})[wi] || {};
         var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
         if (Object.values(checks).filter(Boolean).length < numChecks) nextWeekIdx = wi;
@@ -388,6 +393,58 @@ export function buildRmDashboard() {
           : periodBase[nextWeekIdx];
         if (wEff.series && wEff.series.length) {
           var maxPct = Math.max.apply(null, wEff.series.map(function(s) { return s.p; }));
+          proxEl.textContent = 'PR próx ' + round05(val * maxPct) + 'kg';
+        }
+      } else {
+        proxEl.textContent = 'Ciclo completo';
+      }
+    }
+  });
+
+  // Custom lifts
+  customLifts.forEach(function(lift, idx) {
+    var color = getCustomColor(idx);
+    var rmEl = g('rm-custom-' + lift.id); if (!rmEl) return;
+    var val = parseFloat(rmEl.value) || 0;
+    var hist = rmHistory.filter(function(h) { return h.lift === lift.id; });
+    hist.sort(function(a, b) { return parseRMDate(a.date) - parseRMDate(b.date); });
+    var pts = hist.slice(-14).map(function(h) { return h.kg; });
+    if (!pts.length) pts = [val];
+    drawSparkline('spark-custom-' + lift.id, pts, color);
+    var deltaEl = g('rm-delta-custom-' + lift.id);
+    if (deltaEl) {
+      if (hist.length >= 2) {
+        var latest = hist[hist.length - 1];
+        var cutoff = Date.now() - 7 * 864e5;
+        var ref = hist[0];
+        for (var i = hist.length - 2; i >= 0; i--) {
+          if (parseRMDate(hist[i].date).getTime() <= cutoff) { ref = hist[i]; break; }
+        }
+        var pctDelta = (latest.kg - ref.kg) / ref.kg * 100;
+        var sign = pctDelta >= 0 ? '▲' : '▼';
+        deltaEl.textContent = sign + ' ' + Math.abs(pctDelta).toFixed(1) + '% (Δ7d)';
+        deltaEl.className = 'rm-delta ' + (pctDelta >= 0 ? 'pos' : 'neg');
+      } else {
+        deltaEl.textContent = '— (Δ7d)';
+        deltaEl.className = 'rm-delta';
+      }
+    }
+    var proxEl = g('rm-prox-custom-' + lift.id);
+    if (proxEl) {
+      var nextWeekIdx = -1;
+      periodBase.forEach(function(w, wi) {
+        if (nextWeekIdx !== -1) return;
+        var wEff = (w.byLift && w.byLift[lift.id]) ? Object.assign({}, w, w.byLift[lift.id]) : w;
+        if (wEff.skip || wEff.rest || !wEff.series) return;
+        var checks = (checksState[lift.id] || {})[wi] || {};
+        var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
+        if (Object.values(checks).filter(Boolean).length < numChecks) nextWeekIdx = wi;
+      });
+      if (nextWeekIdx !== -1) {
+        var wEff2 = periodBase[nextWeekIdx];
+        var wEff3 = (wEff2.byLift && wEff2.byLift[lift.id]) ? Object.assign({}, wEff2, wEff2.byLift[lift.id]) : wEff2;
+        if (wEff3.series && wEff3.series.length) {
+          var maxPct = Math.max.apply(null, wEff3.series.map(function(s) { return s.p; }));
           proxEl.textContent = 'PR próx ' + round05(val * maxPct) + 'kg';
         }
       } else {
@@ -545,9 +602,9 @@ export function renderCustomLifts() {
         card.querySelector('.rm-custom-del').addEventListener('click', function() {
           deleteCustomLift(lift.id);
         });
-        var hist = (kgHistory || []).filter(function(h) { return h.lift === lift.id; });
-        hist.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
-        var pts = hist.slice(-14).map(function(h) { return h.val; });
+        var hist = rmHistory.filter(function(h) { return h.lift === lift.id; });
+        hist.sort(function(a, b) { return parseRMDate(a.date) - parseRMDate(b.date); });
+        var pts = hist.slice(-14).map(function(h) { return h.kg; });
         if (!pts.length) pts = [lift.rm];
         drawSparkline(sparkId, pts, color);
       } catch(e) { console.warn('renderCustomLifts card:', e); }
