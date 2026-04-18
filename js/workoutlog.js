@@ -380,7 +380,7 @@ export function exLogSave() {
     });
   }
 
-  workoutLog = workoutLog.map(function(s) { return s.id === session.id ? session : s; });
+  workoutLog = workoutLog.map(function(s) { return s.id === session.id ? finishSession(session) : s; });
   saveState();
   renderWorkoutHistory();
   g('mExLog').classList.remove('on');
