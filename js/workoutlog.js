@@ -210,7 +210,7 @@ function renderWorkoutLogBody(lastSession) {
       (lastSets ? '<div class="wl-last">Última vez: ' + lastSets + '</div>' : '') +
       '<div class="wl-sets" id="wl-sets-' + idx + '">' + setsHtml + '</div>' +
       '<div class="wl-add-row">' +
-        '<input type="number" class="wl-kg" id="wl-kg-' + idx + '" step="0.5" placeholder="kg" style="width:70px;">' +
+        '<input type="number" class="wl-kg" id="wl-kg-' + idx + '" step="0.5" placeholder="kg" value="' + (ex.plannedKg || '') + '" style="width:70px;">' +
         '<span style="color:var(--muted);">×</span>' +
         '<input type="number" class="wl-reps" id="wl-reps-' + idx + '" placeholder="reps" style="width:60px;">' +
         '<button class="wl-add-btn" onclick="wlAddSet(' + idx + ')">+ Série</button>' +
