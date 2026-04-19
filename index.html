@@ -520,10 +520,12 @@
     </div>
     <div style="display:flex;gap:8px;">
       <button id="btnConfirmEx" style="flex:1">Adicionar</button>
-      <button class="sec" id="btnCancelEx" style="flex:1">Cancelar</button>
+      <div id="mExDeleteWrap" style="display:none;flex:1;">
+        <button id="btnDeleteEx" style="width:100%;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);">🗑 Remover exercício</button>
+      </div>
     </div>
-    <div style="margin-top:10px;display:none;" id="mExDeleteWrap">
-      <button id="btnDeleteEx" style="width:100%;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:var(--red);">🗑 Remover exercício</button>
+    <div style="margin-top:10px;">
+      <button class="sec" id="btnCancelEx" style="width:100%;">Cancelar</button>
     </div>
   </div>
 </div>
