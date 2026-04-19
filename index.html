@@ -27,6 +27,7 @@
       <div class="ntab"    data-p="rm">Calc 1RM</div>
       <div class="ntab"    data-p="cardio">Cardio</div>
       <div class="ntab"    data-p="rpe">RPE</div>
+      <div class="ntab"    data-p="anilhas">Anilhas</div>
     </div>
     <div class="nav-actions">
       <div class="nav-meter" id="navMeter">
@@ -655,6 +656,27 @@
     <div class="mbtns">
       <button id="btnCancelExLog" style="flex:1;">Cancelar</button>
       <button id="btnSaveExLog" style="flex:2;background:var(--purple);">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANILHAS ══ -->
+<div class="pg" id="pg-anilhas">
+  <div class="sh">
+    <div class="shtitle">Calculadora de Anilhas</div>
+    <span class="badge bp">Série atual</span>
+  </div>
+  <div class="sub">primeira série não marcada de cada levantamento</div>
+
+  <div id="anilhasLifts" class="anilhas-list"></div>
+
+  <div id="anilhasDetail" style="display:none;">
+    <div class="anilhas-detail-card">
+      <div id="anilhasDetailTitle" class="anilhas-detail-title"></div>
+      <div id="anilhasTotalKg" class="anilhas-total-kg"></div>
+      <div id="anilhasSideKg" class="anilhas-side-kg"></div>
+      <div id="anilhasSVG" class="anilhas-svg-wrap"></div>
+      <div id="anilhasBreakdown" class="anilhas-breakdown"></div>
     </div>
   </div>
 </div>

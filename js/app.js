@@ -20,10 +20,12 @@ import { workoutLog, setWorkoutLog,
   renderWorkoutHistory, deleteExerciseHistory,
   openExLog, exLogAddSet, exLogSave } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
+import { renderAnilhas } from './anilhas.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
 // (testes substituem via global.* no beforeEach; produção usa as funções reais)
 globalThis.buildAllPeriod       = buildAllPeriod;
+globalThis.renderAnilhas        = renderAnilhas;
 globalThis.calcRM               = calcRM;
 globalThis.renderCustomLifts    = renderCustomLifts;
 globalThis.populateRMLiftSelect = populateRMLiftSelect;
@@ -90,6 +92,7 @@ g('ntabs').addEventListener('click', function(e) {
   g('pg-' + p).classList.add('on');
   if (p === 'cardio') buildCardioChart();
   if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
+  if (p === 'anilhas') renderAnilhas();
 });
 
 // ── Export / Import de dados ──────────────────

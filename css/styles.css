@@ -606,3 +606,25 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .act-eliptico{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25);}
 .act-outro{background:rgba(201,255,58,.08);color:var(--lime);border:1px solid rgba(201,255,58,.2);}
 
+
+/* ── Calculadora de Anilhas ── */
+.anilhas-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.anilha-lift-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--lift-color,var(--border));border-radius:10px;padding:13px 14px;cursor:pointer;transition:background .15s,box-shadow .15s;user-select:none;}
+.anilha-lift-card:hover{background:var(--bg3);box-shadow:0 0 0 1px var(--lift-color,var(--border));}
+.anilha-lift-card.selected{background:var(--bg3);box-shadow:0 0 0 1px var(--lift-color,var(--border));}
+.anilha-lift-name{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px;}
+.anilha-lift-weight{font-size:26px;font-weight:700;font-family:var(--mono);letter-spacing:-.03em;line-height:1;color:var(--text);}
+.anilha-lift-weight span{font-size:12px;font-weight:400;color:var(--muted);margin-left:2px;}
+.anilha-lift-info{font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono);}
+.anilha-lift-done{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px;}
+.anilhas-detail-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;margin-bottom:14px;}
+.anilhas-detail-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:6px;}
+.anilhas-total-kg{font-size:34px;font-weight:700;font-family:var(--mono);letter-spacing:-.03em;color:var(--text);margin-bottom:4px;}
+.anilhas-side-kg{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;}
+.anilhas-svg-wrap{margin-bottom:14px;overflow-x:auto;border-radius:8px;background:rgba(0,0,0,.18);padding:12px 0;}
+.anilhas-breakdown{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;}
+.anilha-plate-row{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:12px;}
+.anilha-plate-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.anilha-plate-count{color:var(--muted);}
+.anilha-plate-kg{font-weight:600;color:var(--text);}
+.anilha-remainder{font-size:11px;color:var(--amber);margin-top:8px;font-family:var(--mono);}
