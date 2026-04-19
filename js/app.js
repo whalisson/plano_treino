@@ -21,11 +21,13 @@ import { workoutLog, setWorkoutLog,
   openExLog, exLogAddSet, exLogSave } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
+import { renderFeeder } from './feeder.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
 // (testes substituem via global.* no beforeEach; produção usa as funções reais)
 globalThis.buildAllPeriod       = buildAllPeriod;
 globalThis.renderAnilhas        = renderAnilhas;
+globalThis.renderFeeder         = renderFeeder;
 globalThis.calcRM               = calcRM;
 globalThis.renderCustomLifts    = renderCustomLifts;
 globalThis.populateRMLiftSelect = populateRMLiftSelect;
@@ -80,6 +82,9 @@ document.addEventListener('gorila-save', function() {
   idbSet(RECORD_KEY, data).catch(function() {
     try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
   });
+  if (document.getElementById('pg-feeder') && document.getElementById('pg-feeder').classList.contains('on')) {
+    if (typeof globalThis.renderFeeder === 'function') globalThis.renderFeeder();
+  }
 });
 
 // ── Navegação entre abas ──────────────────────
@@ -93,6 +98,7 @@ g('ntabs').addEventListener('click', function(e) {
   if (p === 'cardio') buildCardioChart();
   if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
   if (p === 'anilhas') renderAnilhas();
+  if (p === 'feeder')  renderFeeder();
 });
 
 // ── Export / Import de dados ──────────────────
