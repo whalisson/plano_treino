@@ -354,6 +354,8 @@ export function exLogAddSet() {
 
 export function exLogSave() {
   if (!_exLog || !_exLog.sets.length) { g('mExLog').classList.remove('on'); _exLog = null; return; }
+  var savedExName = _exLog.exName;
+  var savedSets   = _exLog.sets.slice();
 
   // Busca ou cria sessão do dia
   var dateStr = todayStr();
@@ -385,6 +387,9 @@ export function exLogSave() {
   renderWorkoutHistory();
   g('mExLog').classList.remove('on');
   _exLog = null;
+  if (typeof globalThis.checkExerciseProgression === 'function') {
+    globalThis.checkExerciseProgression(savedExName, savedSets);
+  }
 }
 
 // Evento de fechar modal

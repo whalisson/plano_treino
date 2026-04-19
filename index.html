@@ -504,6 +504,11 @@
       <div><label>Reps / Séries</label><input type="text" id="mExReps" placeholder="3x10"></div>
     </div>
     <div style="margin-bottom:12px;">
+      <label>Meta de reps para progressão</label>
+      <input type="number" id="mExRepGoal" placeholder="ex: 12 — deixe vazio para desativar" min="1" style="width:100%;">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Ao bater essa meta em todas as séries, o app sugere aumentar a carga.</div>
+    </div>
+    <div style="margin-bottom:12px;">
       <label>Grupo muscular</label>
       <select id="mExGroup">
         <option value="">— Sem categoria —</option>
@@ -657,6 +662,23 @@
     <div class="mbtns">
       <button id="btnCancelExLog" style="flex:1;">Cancelar</button>
       <button id="btnSaveExLog" style="flex:2;background:var(--purple);">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Progressão de carga -->
+<div class="mbg" id="mProgression">
+  <div class="mbox" style="max-width:360px;text-align:center;">
+    <div class="mtitle">🏆 Meta atingida!</div>
+    <div id="mProgressionMsg" style="font-size:13px;color:var(--muted);margin:0 0 20px;line-height:1.5;"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;justify-content:center;">
+      <label style="white-space:nowrap;margin:0;font-size:13px;">Aumentar carga em</label>
+      <input type="number" id="mProgressionInc" step="0.5" min="0" placeholder="2.5" style="width:80px;text-align:center;">
+      <span style="color:var(--muted);">kg</span>
+    </div>
+    <div class="mbtns">
+      <button id="btnProgressionSkip" class="sec" style="flex:1;">Agora não</button>
+      <button id="btnProgressionConfirm" style="flex:2;background:var(--purple);">✓ Aumentar carga</button>
     </div>
   </div>
 </div>

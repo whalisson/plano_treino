@@ -501,7 +501,7 @@ var editingExId = null;
 function openAddModal() {
   editingExId = null;
   g('mExTitle').textContent = 'Novo Exercício';
-  g('mExName').value = ''; g('mExKg').value = ''; g('mExReps').value = '';
+  g('mExName').value = ''; g('mExKg').value = ''; g('mExReps').value = ''; g('mExRepGoal').value = '';
   g('mExGroup').value = _bankGroup || '';
   g('btnConfirmEx').textContent = 'Adicionar';
   g('mExDeleteWrap').style.display = 'none';
@@ -513,7 +513,7 @@ function openEditModal(id) {
   if (!ex) return;
   editingExId = id;
   g('mExTitle').textContent = 'Editar Exercício';
-  g('mExName').value = ex.name; g('mExKg').value = ex.kg || ''; g('mExReps').value = ex.reps || '';
+  g('mExName').value = ex.name; g('mExKg').value = ex.kg || ''; g('mExReps').value = ex.reps || ''; g('mExRepGoal').value = ex.repGoal || '';
   g('mExGroup').value = ex.group || '';
   g('btnConfirmEx').textContent = 'Salvar';
   g('mExDeleteWrap').style.display = 'block';
@@ -538,10 +538,11 @@ g('bankGroupFilter').addEventListener('click', function(e) {
 });
 
 g('btnConfirmEx').addEventListener('click', function() {
-  var name  = g('mExName').value.trim(); if (!name) return;
-  var kg    = parseFloat(g('mExKg').value) || 0;
-  var reps  = g('mExReps').value.trim() || '3x10';
-  var group = g('mExGroup').value;
+  var name    = g('mExName').value.trim(); if (!name) return;
+  var kg      = parseFloat(g('mExKg').value) || 0;
+  var reps    = g('mExReps').value.trim() || '3x10';
+  var group   = g('mExGroup').value;
+  var repGoal = parseInt(g('mExRepGoal').value, 10) || 0;
   if (editingExId) {
     var ex      = bank.find(function(b) { return b.id === editingExId; });
     var oldName = ex ? ex.name : null;
@@ -552,7 +553,7 @@ g('btnConfirmEx').addEventListener('click', function() {
       var hist = kgHistory[editingExId];
       if (hist.length === 0 && oldKg > 0) hist.push({ date:now, kg:oldKg, name:ex.name, note:'inicial' });
       if (kg !== oldKg && kg > 0)         hist.push({ date:now, kg:kg, name:name, note:'editado' });
-      ex.name = name; ex.kg = kg; ex.reps = reps; ex.group = group;
+      ex.name = name; ex.kg = kg; ex.reps = reps; ex.group = group; ex.repGoal = repGoal;
     }
     board.forEach(function(day) {
       day.forEach(function(item) {
@@ -564,7 +565,7 @@ g('btnConfirmEx').addEventListener('click', function() {
     });
     renderKanban(); renderPeriodGrid();
   } else {
-    bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group });
+    bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group, repGoal:repGoal });
   }
   g('mAddEx').classList.remove('on');
   renderBank();

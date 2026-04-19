@@ -333,5 +333,69 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ── Progressão automática de carga ───────────────────────────────────────────
+
+var _progressionPending = null; // { exName, bankEx }
+
+globalThis.checkExerciseProgression = function(exName, sets) {
+  var ex = bank.find(function(b) { return b.name === exName; });
+  if (!ex || !ex.repGoal || ex.repGoal <= 0) return;
+  if (!sets || sets.length === 0) return;
+  var allMet = sets.every(function(s) { return s.reps >= ex.repGoal; });
+  if (!allMet) return;
+
+  _progressionPending = { exName: exName, bankEx: ex };
+  var msg = g('mProgressionMsg');
+  if (msg) msg.innerHTML =
+    '<strong>' + ex.name + '</strong><br>Meta de <strong>' + ex.repGoal + ' reps</strong> atingida em todas as séries!<br>' +
+    '<span style="font-size:11px;opacity:.7;">Carga atual: ' + ex.kg + ' kg</span>';
+  var inc = g('mProgressionInc');
+  if (inc) inc.value = '2.5';
+  g('mProgression').classList.add('on');
+  setTimeout(function() { if (inc) inc.focus(); }, 80);
+};
+
+globalThis.applyProgressionIncrease = function() {
+  if (!_progressionPending) { g('mProgression').classList.remove('on'); return; }
+  var inc = parseFloat(g('mProgressionInc').value);
+  if (!inc || inc <= 0) { g('mProgression').classList.remove('on'); _progressionPending = null; return; }
+
+  var ex    = _progressionPending.bankEx;
+  var oldKg = ex.kg;
+  var newKg = round05(oldKg + inc);
+  var now   = new Date().toLocaleDateString('pt-BR');
+
+  ex.kg = newKg;
+
+  board.forEach(function(day) {
+    day.forEach(function(item) {
+      if (item.name === ex.name || item.srcId === ex.id) item.kg = newKg;
+    });
+  });
+
+  if (!kgHistory[ex.id]) kgHistory[ex.id] = [];
+  var hist = kgHistory[ex.id];
+  if (hist.length === 0 && oldKg > 0) hist.push({ date: now, kg: oldKg, name: ex.name, note: 'inicial' });
+  hist.push({ date: now, kg: newKg, name: ex.name, note: 'progressão automática' });
+
+  saveState();
+  renderKanban();
+  renderBank();
+  renderPeriodGrid();
+  renderProgressCharts();
+
+  g('mProgression').classList.remove('on');
+  _progressionPending = null;
+};
+
+g('btnProgressionSkip').addEventListener('click', function() {
+  g('mProgression').classList.remove('on');
+  _progressionPending = null;
+});
+g('btnProgressionConfirm').addEventListener('click', globalThis.applyProgressionIncrease);
+g('mProgressionInc').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') globalThis.applyProgressionIncrease();
+});
+
 // Call fbInit if available (firebase.js is a regular script)
 if (typeof fbInit === 'function') fbInit();
