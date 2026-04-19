@@ -8,21 +8,37 @@ import { periodBase, LIFT_SOLID, getCustomColor } from './periodizacao.js';
 const BAR_KG = 20;
 
 const PLATE_DEFS = [
-  { kg: 25,   color: '#dc2626', label: '25'   },
-  { kg: 20,   color: '#2563eb', label: '20'   },
-  { kg: 15,   color: '#ca8a04', label: '15'   },
-  { kg: 10,   color: '#16a34a', label: '10'   },
-  { kg: 5,    color: '#cbd5e1', label: '5'    },
-  { kg: 2.5,  color: '#a855f7', label: '2.5'  },
-  { kg: 1,    color: '#6b7280', label: '1'    },
-  { kg: 0.5,  color: '#9ca3af', label: '.5'   },
-  { kg: 0.25, color: '#d1d5db', label: '.25'  },
+  { kg: 25,   color: '#dc2626', label: '25',  w: 16, h: 110 },
+  { kg: 20,   color: '#2563eb', label: '20',  w: 15, h: 100 },
+  { kg: 15,   color: '#ca8a04', label: '15',  w: 14, h: 88  },
+  { kg: 10,   color: '#16a34a', label: '10',  w: 12, h: 72  },
+  { kg: 5,    color: '#cbd5e1', label: '5',   w: 10, h: 54  },
+  { kg: 2.5,  color: '#a855f7', label: '2.5', w: 8,  h: 38  },
+  { kg: 1,    color: '#6b7280', label: '1',   w: 6,  h: 28  },
+  { kg: 0.5,  color: '#9ca3af', label: '.5',  w: 5,  h: 20  },
+  { kg: 0.25, color: '#d1d5db', label: '.25', w: 4,  h: 14  },
 ];
 
-const PLATE_W = { 25:16, 20:15, 15:14, 10:12, 5:10, 2.5:8, 1:6, 0.5:5, 0.25:4 };
-const PLATE_H = { 25:110, 20:100, 15:88, 10:72, 5:54, 2.5:38, 1:28, 0.5:20, 0.25:14 };
+// Anilhas em lbs — pesos em kg equivalente para o algoritmo
+const PLATE_DEFS_LBS = [
+  { kg: 45/2.20462,  color: '#ea580c', label: '45',  w: 16, h: 110 },
+  { kg: 35/2.20462,  color: '#2563eb', label: '35',  w: 14, h: 88  },
+  { kg: 25/2.20462,  color: '#ca8a04', label: '25',  w: 12, h: 72  },
+  { kg: 10/2.20462,  color: '#1f2937', label: '10',  w: 10, h: 54  },
+  { kg: 5/2.20462,   color: '#1f2937', label: '5',   w: 8,  h: 38  },
+  { kg: 2.5/2.20462, color: '#1f2937', label: '2.5', w: 6,  h: 28  },
+];
 
 let selectedKey = null;
+let plateMode = 'sembarra'; // 'sembarra' = rm é o peso de cada lado | 'total' = rm é peso total
+let weightUnit = 'kg'; // 'kg' | 'lbs'
+
+const KG_TO_LBS = 2.20462;
+function toUnit(kg) {
+  if (weightUnit === 'lbs') return Math.ceil(kg * KG_TO_LBS * 2) / 2; // ceil em 0.5 lbs
+  return kg;
+}
+function unitLabel() { return weightUnit; }
 
 // ── Primeira série não marcada de cada lift ──────
 function getCurrentSeries(liftKey, rm) {
@@ -71,16 +87,18 @@ function getCurrentSeries(liftKey, rm) {
 }
 
 // ── Anilhas por lado ─────────────────────────────
-function calcPlates(totalKg) {
-  var side      = Math.round(((totalKg - BAR_KG) / 2) * 1000) / 1000;
+// sideKg: peso de cada lado (já calculado conforme o modo)
+function calcPlates(sideKg) {
+  var defs  = weightUnit === 'lbs' ? PLATE_DEFS_LBS : PLATE_DEFS;
+  var side  = Math.max(0, Math.round(sideKg * 1000) / 1000);
   if (side <= 0) return { side: 0, plates: [], remainder: 0 };
   var remaining = side;
   var result    = [];
-  PLATE_DEFS.forEach(function(pd) {
+  defs.forEach(function(pd) {
     if (remaining < pd.kg - 0.001) return;
     var count = Math.floor(Math.round(remaining / pd.kg * 1000) / 1000);
     if (count > 0) {
-      result.push({ kg: pd.kg, count: count, color: pd.color, label: pd.label });
+      result.push({ kg: pd.kg, count: count, color: pd.color, label: pd.label, w: pd.w, h: pd.h });
       remaining = Math.round((remaining - pd.kg * count) * 1000) / 1000;
     }
   });
@@ -104,7 +122,7 @@ function buildBarbellSVG(info) {
   var CY      = SVG_H / 2;
 
   var totalPW = expanded.reduce(function(s, p) {
-    return s + (PLATE_W[p.kg] || 8) + GAP;
+    return s + (p.w || 8) + GAP;
   }, 0);
 
   var halfW = GRIP_W / 2 + COL_W + GAP + totalPW + BAR_EXT;
@@ -133,8 +151,8 @@ function buildBarbellSVG(info) {
   // Anilhas — lado esquerdo (centro → fora)
   var lx = CX - GRIP_W / 2;
   expanded.forEach(function(p) {
-    var pw = PLATE_W[p.kg] || 8;
-    var ph = PLATE_H[p.kg] || 20;
+    var pw = p.w || 8;
+    var ph = p.h || 20;
     lx -= (pw + GAP);
     els.push('<rect x="' + f(lx) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2" fill="' + p.color + '" stroke="rgba(0,0,0,.3)" stroke-width="1"/>');
     if (ph >= 28) {
@@ -149,8 +167,8 @@ function buildBarbellSVG(info) {
   // Anilhas — lado direito (centro → fora)
   var rx = CX + GRIP_W / 2;
   expanded.forEach(function(p) {
-    var pw = PLATE_W[p.kg] || 8;
-    var ph = PLATE_H[p.kg] || 20;
+    var pw = p.w || 8;
+    var ph = p.h || 20;
     rx += GAP;
     els.push('<rect x="' + f(rx) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2" fill="' + p.color + '" stroke="rgba(0,0,0,.3)" stroke-width="1"/>');
     if (ph >= 28) {
@@ -163,6 +181,13 @@ function buildBarbellSVG(info) {
   els.push('<rect x="' + f(rx+GAP) + '" y="' + f(CY-COL_H/2) + '" width="' + COL_W + '" height="' + COL_H + '" rx="3" fill="#1f2937" stroke="#4b5563" stroke-width="1"/>');
 
   return '<svg viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">' + els.join('') + '</svg>';
+}
+
+// ── calcula o peso de cada lado conforme o modo ──
+function ceilHalf(x) { return Math.ceil(x * 2) / 2; } // arredonda para cima em 0,5
+function sideForWeight(seriesWeight) {
+  if (plateMode === 'sembarra') return ceilHalf(seriesWeight);
+  return ceilHalf((seriesWeight - BAR_KG) / 2);
 }
 
 // ── Renderização ──────────────────────────────────
@@ -187,6 +212,20 @@ export function renderAnilhas() {
   // Valida selectedKey
   if (selectedKey && !lifts.find(function(l) { return l.key === selectedKey; })) selectedKey = null;
 
+  // Toggle de modo
+  var toggleEl = g('anilhasModeToggle');
+  if (toggleEl) {
+    toggleEl.innerHTML =
+      '<button class="anilha-mode-btn' + (plateMode === 'sembarra' ? ' active' : '') + '" data-mode="sembarra">Sem barra</button>'
+      + '<button class="anilha-mode-btn' + (plateMode === 'total' ? ' active' : '') + '" data-mode="total">Total</button>';
+    toggleEl.querySelectorAll('.anilha-mode-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        plateMode = btn.dataset.mode;
+        renderAnilhas();
+      });
+    });
+  }
+
   // Monta lista
   liftsEl.innerHTML = '';
   var firstWithData = null;
@@ -204,9 +243,11 @@ export function renderAnilhas() {
       card.style.opacity = '.45';
     } else {
       if (!firstWithData) firstWithData = lf;
+      var side  = sideForWeight(cur.weight);
+      var total = plateMode === 'sembarra' ? ceilHalf(cur.weight * 2) : ceilHalf(cur.weight);
       card.innerHTML =
         '<div class="anilha-lift-name" style="color:' + lf.color + '">' + lf.label + '</div>'
-        + '<div class="anilha-lift-weight">' + cur.weight + '<span>kg</span></div>'
+        + '<div class="anilha-lift-weight">' + (plateMode === 'sembarra' ? side : total) + '<span>kg</span></div>'
         + '<div class="anilha-lift-info">' + cur.weekLabel + ' · ' + cur.series + ' · ' + cur.pct + '%</div>';
       card.addEventListener('click', function() {
         selectedKey = lf.key;
@@ -228,7 +269,28 @@ export function renderAnilhas() {
   if (!sel || !cur) { detailEl.style.display = 'none'; return; }
   detailEl.style.display = 'block';
 
-  var info = calcPlates(cur.weight);
+  var sideKg  = sideForWeight(cur.weight);
+  var totalKg = plateMode === 'sembarra' ? ceilHalf(cur.weight * 2) : ceilHalf(cur.weight);
+  var info = calcPlates(sideKg);
+  var ul = unitLabel();
+
+  // Botão kg/lbs no canto superior direito do container
+  var svgWrap = g('anilhasSVG');
+  var unitToggleId = 'anilhasUnitToggle';
+  var existingToggle = g(unitToggleId);
+  if (!existingToggle) {
+    var utBtn = document.createElement('button');
+    utBtn.id = unitToggleId;
+    utBtn.className = 'anilha-unit-btn';
+    svgWrap.parentElement.style.position = 'relative';
+    svgWrap.parentElement.insertBefore(utBtn, svgWrap);
+    existingToggle = utBtn;
+  }
+  existingToggle.textContent = weightUnit === 'kg' ? 'lbs' : 'kg';
+  existingToggle.onclick = function() {
+    weightUnit = weightUnit === 'kg' ? 'lbs' : 'kg';
+    renderAnilhas();
+  };
 
   // Cabeçalho
   g('anilhasDetailTitle').innerHTML =
@@ -237,8 +299,10 @@ export function renderAnilhas() {
     + ' &nbsp;·&nbsp; ' + cur.series
     + ' &nbsp;·&nbsp; <span style="color:var(--muted)">' + cur.pct + '% RM</span>';
 
-  g('anilhasTotalKg').textContent = cur.weight + ' kg na barra';
-  g('anilhasSideKg').textContent  = 'Cada lado: ' + info.side + ' kg  ·  Barra: ' + BAR_KG + ' kg';
+  g('anilhasTotalKg').textContent = toUnit(totalKg) + ' ' + ul + (plateMode === 'total' ? ' na barra' : ' por lado');
+  g('anilhasSideKg').textContent  = plateMode === 'total'
+    ? ('Cada lado: ' + toUnit(info.side) + ' ' + ul + '  ·  Barra: ' + toUnit(BAR_KG) + ' ' + ul)
+    : ('Cada lado: ' + toUnit(info.side) + ' ' + ul);
 
   // SVG
   g('anilhasSVG').innerHTML = buildBarbellSVG(info);
@@ -246,17 +310,17 @@ export function renderAnilhas() {
   // Lista de anilhas
   var bd = g('anilhasBreakdown');
   if (!info.plates.length) {
-    bd.innerHTML = '<span style="color:var(--muted);font-size:13px;">Só a barra (' + BAR_KG + ' kg)</span>';
+    bd.innerHTML = '<span style="color:var(--muted);font-size:13px;">Só a barra (' + toUnit(BAR_KG) + ' ' + ul + ')</span>';
   } else {
     bd.innerHTML = info.plates.map(function(p) {
       return '<div class="anilha-plate-row">'
         + '<span class="anilha-plate-swatch" style="background:' + p.color + '"></span>'
         + '<span class="anilha-plate-count">' + p.count + '×</span>'
-        + '<span class="anilha-plate-kg">' + p.kg + ' kg</span>'
+        + '<span class="anilha-plate-kg">' + p.label + ' ' + ul + '</span>'
         + '</div>';
     }).join('');
     if (info.remainder > 0.001) {
-      bd.innerHTML += '<div class="anilha-remainder">⚠ +' + info.remainder + ' kg — use microplacas</div>';
+      bd.innerHTML += '<div class="anilha-remainder">⚠ +' + toUnit(info.remainder) + ' ' + ul + ' — use microplacas</div>';
     }
   }
 }

@@ -628,3 +628,8 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .anilha-plate-count{color:var(--muted);}
 .anilha-plate-kg{font-weight:600;color:var(--text);}
 .anilha-remainder{font-size:11px;color:var(--amber);margin-top:8px;font-family:var(--mono);}
+.anilha-mode-toggle{display:flex;gap:6px;margin-bottom:14px;}
+.anilha-mode-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;transition:background .15s,color .15s;}
+.anilha-mode-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.anilha-unit-btn{position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:11px;font-family:var(--mono);cursor:pointer;transition:background .15s,color .15s;z-index:1;}
+.anilha-unit-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
