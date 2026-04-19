@@ -9,15 +9,15 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "img/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "img/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "img/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "img/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ]
