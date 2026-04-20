@@ -388,12 +388,15 @@ globalThis.applyProgressionIncrease = function() {
   _progressionPending = null;
 };
 
-g('btnProgressionSkip').addEventListener('click', function() {
+var _btnSkip = g('btnProgressionSkip');
+var _btnConfirm = g('btnProgressionConfirm');
+var _incInput = g('mProgressionInc');
+if (_btnSkip) _btnSkip.addEventListener('click', function() {
   g('mProgression').classList.remove('on');
   _progressionPending = null;
 });
-g('btnProgressionConfirm').addEventListener('click', globalThis.applyProgressionIncrease);
-g('mProgressionInc').addEventListener('keydown', function(e) {
+if (_btnConfirm) _btnConfirm.addEventListener('click', globalThis.applyProgressionIncrease);
+if (_incInput) _incInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') globalThis.applyProgressionIncrease();
 });
 
