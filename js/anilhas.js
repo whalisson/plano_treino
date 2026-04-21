@@ -15,8 +15,6 @@ const PLATE_DEFS = [
   { kg: 5,    color: '#cbd5e1', label: '5',   w: 10, h: 54  },
   { kg: 2.5,  color: '#a855f7', label: '2.5', w: 8,  h: 38  },
   { kg: 1,    color: '#6b7280', label: '1',   w: 6,  h: 28  },
-  { kg: 0.5,  color: '#9ca3af', label: '.5',  w: 5,  h: 20  },
-  { kg: 0.25, color: '#d1d5db', label: '.25', w: 4,  h: 14  },
 ];
 
 // Anilhas em lbs — pesos em kg equivalente para o algoritmo
