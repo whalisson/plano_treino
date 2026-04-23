@@ -34,17 +34,11 @@
       <div class="nav-meter" id="navMeter">
         <span class="nav-led"></span>
         <span>SYNC <b id="navSyncStatus">—</b></span>
-        <span class="nav-dot">·</span>
-        <span id="fbStatus" style="font-size:10px;color:var(--muted);white-space:nowrap;cursor:default;" title="Sincronização Firebase">☁ Sem nuvem</span>
       </div>
       <div class="save-menu-wrap" id="saveMenuWrap">
         <button class="sec save-menu-trigger" id="btnSaveMenu" title="Exportar / Importar">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 2H9v3h2z"/><path d="M1.5 0h11.586a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5v-13A1.5 1.5 0 0 1 1.5 0M1 1.5v13a.5.5 0 0 0 .5.5H2v-4.5A1.5 1.5 0 0 1 3.5 9h9a1.5 1.5 0 0 1 1.5 1.5V15h.5a.5.5 0 0 0 .5-.5V2.914a.5.5 0 0 0-.146-.353l-1.415-1.415A.5.5 0 0 0 13.086 1H13v3.5A1.5 1.5 0 0 1 11.5 6h-7A1.5 1.5 0 0 1 3 4.5V1H1.5a.5.5 0 0 0-.5.5m3 4a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V1H4zM3 15h10v-4.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5z"/></svg>
         </button>
-        <div class="save-menu" id="saveMenu">
-          <button id="btnExport" class="save-menu-item">↑ Exportar</button>
-          <label class="save-menu-item" id="labelImport">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
-        </div>
       </div>
       <!-- Usuário logado / botão entrar -->
       <div id="fbUserWrap" style="display:none;align-items:center;"></div>
@@ -737,6 +731,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Save menu (fora do nav para escapar de overflow:hidden em mobile) -->
+<div class="save-menu" id="saveMenu">
+  <button id="btnExport" class="save-menu-item">↑ Exportar</button>
+  <label class="save-menu-item" id="labelImport">↓ Importar<input type="file" id="inputImport" accept=".json"></label>
+</div>
 
 <!-- App -->
 <script src="js/firebase-config.js"></script>

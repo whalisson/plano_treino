@@ -15,19 +15,17 @@ var _fbPendingData = null;
 
 // ── Status visual na UI ───────────────────────
 function fbSetStatus(status) {
-  var el = document.getElementById('fbStatus');
-  if (!el) return;
   var map = {
-    init:    { icon: '☁', text: 'Conectando…', color: 'var(--muted)' },
-    syncing: { icon: '⟳', text: 'Salvando…',   color: 'var(--amber)' },
-    synced:  { icon: '☁', text: 'Salvo',        color: 'var(--teal)'  },
-    error:   { icon: '☁', text: 'Erro sync',    color: 'var(--red)'   },
-    offline: { icon: '☁', text: 'Offline',      color: 'var(--muted)' },
-    off:     { icon: '☁', text: 'Sem nuvem',    color: 'var(--muted)' },
+    init:    'connecting',
+    syncing: 'saving',
+    synced:  'saved',
+    error:   'error',
+    offline: 'offline',
+    off:     'idle',
   };
-  var s = map[status] || map.off;
-  el.innerHTML = '<span style="margin-right:3px;">' + s.icon + '</span>' + s.text;
-  el.style.color = s.color;
+  if (typeof globalThis.setSyncStatus === 'function') {
+    globalThis.setSyncStatus(map[status] || 'idle');
+  }
 }
 
 // ── UI: exibe avatar/nome do usuário logado ───

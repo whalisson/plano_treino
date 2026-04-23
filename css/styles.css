@@ -563,6 +563,7 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .nav-led--saving{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:ledPulse 0.8s ease-in-out infinite;}
 .nav-led--saved{background:var(--lime);box-shadow:0 0 10px var(--lime);animation:none;opacity:1;}
 .nav-led--error{background:var(--red);box-shadow:0 0 8px var(--red);animation:none;opacity:1;}
+.nav-led--offline{background:var(--muted);box-shadow:none;animation:none;opacity:.5;}
 @keyframes ledPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 .nav-dot{color:var(--border2);}
 

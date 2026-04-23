@@ -82,8 +82,16 @@ function setSyncStatus(status) {
       led.className = 'nav-led';
       txt.textContent = '—';
     }, 3000);
+  } else if (status === 'connecting') {
+    led.classList.add('nav-led--saving');
+    txt.textContent = 'Conectando…';
+  } else if (status === 'offline') {
+    led.classList.add('nav-led--offline');
+    txt.textContent = 'Offline';
   }
+  // 'idle': LED e texto já resetados acima
 }
+globalThis.setSyncStatus = setSyncStatus;
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
