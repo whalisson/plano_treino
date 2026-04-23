@@ -175,7 +175,13 @@ var _btnSaveMenu = g('btnSaveMenu');
 if (_btnSaveMenu && _saveMenu) {
   _btnSaveMenu.addEventListener('click', function(e) {
     e.stopPropagation();
+    var opening = !_saveMenu.classList.contains('on');
     _saveMenu.classList.toggle('on');
+    if (opening) {
+      var r = _btnSaveMenu.getBoundingClientRect();
+      _saveMenu.style.top   = (r.bottom + 6) + 'px';
+      _saveMenu.style.right = (window.innerWidth - r.right) + 'px';
+    }
   });
   document.addEventListener('click', function() { _saveMenu.classList.remove('on'); });
   var _btnExport   = g('btnExport');
