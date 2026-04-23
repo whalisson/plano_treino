@@ -169,7 +169,18 @@ export function exportData() {
 }
 globalThis.exportData = exportData;
 
-g('btnExport').addEventListener('click', exportData);
+// ── Menu salvar (exportar / importar) ─────────
+var _saveMenu = g('saveMenu');
+g('btnSaveMenu').addEventListener('click', function(e) {
+  e.stopPropagation();
+  _saveMenu.classList.toggle('on');
+});
+document.addEventListener('click', function() { _saveMenu.classList.remove('on'); });
+g('btnExport').addEventListener('click', function() {
+  _saveMenu.classList.remove('on');
+  exportData();
+});
+g('labelImport').addEventListener('click', function() { _saveMenu.classList.remove('on'); });
 
 g('inputImport').addEventListener('change', function(e) {
   var file = e.target.files[0]; if (!file) return;
