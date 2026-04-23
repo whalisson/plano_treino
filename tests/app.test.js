@@ -3,7 +3,7 @@
  * Cobre: applyState(), liftKeyForExerciseName(), exportData()
  */
 
-import { applyState, liftKeyForExerciseName, exportData } from '../js/app.js';
+import { applyState, liftKeyForExerciseName, exportData, detectMainLiftKey } from '../js/app.js';
 
 function mockAllRenders() {
   global.buildAllPeriod      = vi.fn();
@@ -181,6 +181,67 @@ describe('liftKeyForExerciseName()', () => {
   });
   test('string vazia -> null', () => {
     expect(liftKeyForExerciseName('')).toBeNull();
+  });
+});
+
+describe('detectMainLiftKey()', () => {
+  beforeEach(() => { global.customLifts = []; });
+
+  test('lista vazia retorna null', () => {
+    expect(detectMainLiftKey([])).toBeNull();
+  });
+
+  test('unico exercicio com liftKey — retorna essa key', () => {
+    expect(detectMainLiftKey([{ name: 'Supino Reto' }])).toBe('supino');
+  });
+
+  test('sem liftKey em nenhum exercicio — retorna null', () => {
+    expect(detectMainLiftKey([{ name: 'Elevação Lateral' }, { name: 'Tríceps Corda' }])).toBeNull();
+  });
+
+  test('keyword "principal" tem prioridade sobre posicao', () => {
+    const exs = [
+      { name: 'Agachamento' },           // posição 0 → agacha
+      { name: 'Supino Reto Principal' }, // keyword → supino
+    ];
+    expect(detectMainLiftKey(exs)).toBe('supino');
+  });
+
+  test('keyword "periodizacao" detectada', () => {
+    expect(detectMainLiftKey([{ name: 'Agachamento periodizacao' }])).toBe('agacha');
+  });
+
+  test('keyword "perio" detectada', () => {
+    expect(detectMainLiftKey([{ name: 'Terra perio' }])).toBe('terra');
+  });
+
+  test('abreviatura SBD detecta o primeiro lift correspondente', () => {
+    const exs = [
+      { name: 'Elev. Lateral' },       // sem key
+      { name: 'Supino SBD' },          // abbrev
+    ];
+    expect(detectMainLiftKey(exs)).toBe('supino');
+  });
+
+  test('abreviatura BP detecta supino', () => {
+    expect(detectMainLiftKey([{ name: 'Supino BP' }])).toBe('supino');
+  });
+
+  test('sem keyword nem abreviatura — usa primeiro com liftKey', () => {
+    const exs = [
+      { name: 'Elevação Lateral' },    // sem key
+      { name: 'Terra Convencional' },  // key: terra
+      { name: 'Agachamento' },         // key: agacha
+    ];
+    expect(detectMainLiftKey(exs)).toBe('terra');
+  });
+
+  test('keyword tem prioridade sobre abreviatura', () => {
+    const exs = [
+      { name: 'Agachamento BP' },            // abbrev → agacha
+      { name: 'Supino Principal' },          // keyword → supino
+    ];
+    expect(detectMainLiftKey(exs)).toBe('supino');
   });
 });
 

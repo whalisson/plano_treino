@@ -57,8 +57,37 @@ globalThis.openExLog            = function(di, ei) { openExLog(board, di, ei); }
 globalThis.exLogAddSet          = exLogAddSet;
 globalThis.exLogSave            = exLogSave;
 
+// ── Indicador SYNC ────────────────────────────
+var _syncResetTimer = null;
+function setSyncStatus(status) {
+  var led = document.querySelector('.nav-led');
+  var txt = g('navSyncStatus');
+  if (!led || !txt) return;
+  clearTimeout(_syncResetTimer);
+  led.className = 'nav-led';
+  if (status === 'saving') {
+    led.classList.add('nav-led--saving');
+    txt.textContent = 'Salvando…';
+  } else if (status === 'saved') {
+    led.classList.add('nav-led--saved');
+    txt.textContent = 'Salvo';
+    _syncResetTimer = setTimeout(function() {
+      led.className = 'nav-led';
+      txt.textContent = '—';
+    }, 2000);
+  } else if (status === 'error') {
+    led.classList.add('nav-led--error');
+    txt.textContent = 'Erro';
+    _syncResetTimer = setTimeout(function() {
+      led.className = 'nav-led';
+      txt.textContent = '—';
+    }, 3000);
+  }
+}
+
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
+  setSyncStatus('saving');
   var data = {
     rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
     rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
@@ -79,9 +108,12 @@ document.addEventListener('gorila-save', function() {
     cycleStartDates: cycleStartDates,
     workoutLog:    workoutLog,
   };
-  idbSet(RECORD_KEY, data).catch(function() {
-    try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
-  });
+  idbSet(RECORD_KEY, data)
+    .then(function() { setSyncStatus('saved'); })
+    .catch(function() {
+      setSyncStatus('error');
+      try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
+    });
   if (document.getElementById('pg-feeder') && document.getElementById('pg-feeder').classList.contains('on')) {
     if (typeof globalThis.renderFeeder === 'function') globalThis.renderFeeder();
   }
@@ -263,6 +295,34 @@ export function liftKeyForExerciseName(name) {
 }
 globalThis.liftKeyForExerciseName = liftKeyForExerciseName;
 
+// Detecta qual lift é o "principal" do dia para direcionar o scroll da periodização.
+// Critérios em ordem de prioridade:
+//   1. Nome contém "principal", "periodiz" ou "perio" → sinal explícito
+//   2. Nome contém abreviatura de levantamento: SQ/SB/BP/DL/SBD (case-insensitive, palavra inteira)
+//   3. Primeiro exercício do dia que possui uma liftKey (comportamento anterior)
+export function detectMainLiftKey(exercises) {
+  var KEYWORD_RE = /principal|periodiz|perio\b/;
+  var ABBREV_RE  = /\b(sbd|sbs|sbdt?|sq|sqt|bp|bpc|dl|dlt|rd|rdt)\b/;
+  var strip = function(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  };
+
+  var firstKey    = null;
+  var keywordKey  = null;
+  var abbrevKey   = null;
+
+  for (var i = 0; i < exercises.length; i++) {
+    var k = liftKeyForExerciseName(exercises[i].name || '');
+    if (!k) continue;
+    var norm = strip(exercises[i].name || '');
+    if (firstKey === null)                          firstKey   = k;
+    if (keywordKey === null && KEYWORD_RE.test(norm)) keywordKey = k;
+    if (abbrevKey  === null && ABBREV_RE.test(norm))  abbrevKey  = k;
+  }
+  return keywordKey || abbrevKey || firstKey;
+}
+globalThis.detectMainLiftKey = detectMainLiftKey;
+
 export function scrollToCurrentWeek() {
   // board[0]=Segunda … board[6]=Domingo  |  JS getDay(): 0=Dom,1=Seg…6=Sab
   var jsDay   = new Date().getDay();
@@ -278,25 +338,27 @@ export function scrollToCurrentWeek() {
 
   // Se não há match hoje, não abre nada
   if (!todayKeys.length) return;
-  var keysToOpen = todayKeys;
 
-  var firstTarget = null;
-  keysToOpen.forEach(function(k) {
+  // Exercício principal: rola para a seção dele; demais seções também abrem
+  var mainKey = detectMainLiftKey(todayExercises);
+
+  var scrollTarget = null;
+  todayKeys.forEach(function(k) {
     var psb = g('psb-' + k); if (!psb) return;
     if (!psb.classList.contains('on')) {
       psb.classList.add('on');
       var chev = g('chev-' + k);
       if (chev) chev.textContent = '▲';
     }
-    if (!firstTarget) {
+    if (k === mainKey && scrollTarget === null) {
       // Prioriza a semana atual; se não existir, rola até o cabeçalho da seção
-      firstTarget = psb.querySelector('.current-week') || g('psh-' + k);
+      scrollTarget = psb.querySelector('.current-week') || g('psh-' + k);
     }
   });
 
-  if (firstTarget) {
+  if (scrollTarget) {
     setTimeout(function() {
-      firstTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 60);
   }
 }
