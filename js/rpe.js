@@ -453,17 +453,20 @@ export function buildExecRPEBody(blk) {
   body.innerHTML = '';
 
   blk.exercises.forEach(function(ex, exIdx) {
+    // RM efetivo: média ponderada das últimas sessões (mais preciso que o RM base)
+    var effectiveRM = calcRollingRM(blk.execHistory, ex.name) || ex.rm;
+
     // Expandir séries (count × {reps, rpe}) em linhas individuais
     var expandedSets = [];
     ex.sets.forEach(function(s) {
-      var w = ex.rm ? calcRPEWeight(ex.rm, s.rpe, s.reps) : null;
+      var w = effectiveRM ? calcRPEWeight(effectiveRM, s.rpe, s.reps) : null;
       for (var i = 0; i < s.count; i++) {
         expandedSets.push({ reps: s.reps, targetRpe: s.rpe, kg: w ? w.rounded : 0 });
       }
     });
 
     execStates[exIdx] = {
-      rm:            ex.rm,
+      rm:            effectiveRM,
       setRpes:       expandedSets.map(function() { return null; }),
       setTargetRpes: expandedSets.map(function(s) { return s.targetRpe; }),
       setKgs:        expandedSets.map(function(s) { return s.kg; }),
@@ -471,6 +474,16 @@ export function buildExecRPEBody(blk) {
     };
 
     var primaryTarget = ex.sets.length ? ex.sets[0].rpe : 8;
+
+    // Viés de RPE (mostra após ≥6 pares de dados)
+    var bias     = calcRPEBias(blk.execHistory, ex.name);
+    var biasTxt  = '';
+    if (bias !== null) {
+      var biasSign  = bias >= 0 ? '+' : '';
+      var biasColor = Math.abs(bias) < 0.5 ? 'var(--muted)' : bias < 0 ? 'var(--amber)' : '#2dd4bf';
+      biasTxt = ' · <span style="color:' + biasColor + ';font-size:10px;" title="Diferença média entre seu RPE real e o alvo neste exercício">viés RPE ' + biasSign + bias + '</span>';
+    }
+
     var card = document.createElement('div');
     card.className = 'exec-ex-card';
 
@@ -480,9 +493,9 @@ export function buildExecRPEBody(blk) {
     hdr.innerHTML =
       '<div>'
       + '<div class="exec-ex-name">' + ex.name + '</div>'
-      + '<div class="exec-ex-sub">' + expandedSets.length + ' série' + (expandedSets.length !== 1 ? 's' : '') + ' · RPE alvo: ' + primaryTarget + '</div>'
+      + '<div class="exec-ex-sub">' + expandedSets.length + ' série' + (expandedSets.length !== 1 ? 's' : '') + ' · RPE alvo: ' + primaryTarget + biasTxt + '</div>'
       + '</div>'
-      + '<div class="exec-rm-badge" id="exec-rm-badge-' + exIdx + '" onclick="toggleExecRM(' + exIdx + ')">RM: <span id="exec-rm-val-' + exIdx + '">' + ex.rm + ' kg</span></div>';
+      + '<div class="exec-rm-badge" id="exec-rm-badge-' + exIdx + '" onclick="toggleExecRM(' + exIdx + ')">RM: <span id="exec-rm-val-' + exIdx + '">' + effectiveRM + ' kg</span></div>';
 
     // Header colunas
     var setsHdr = document.createElement('div');
@@ -519,11 +532,11 @@ export function buildExecRPEBody(blk) {
     alertBox.innerHTML =
       '<div class="exec-alert-icon">↑</div>'
       + '<div><div class="exec-alert-title">Você ficou mais forte!</div>'
-      + '<div class="exec-alert-text">Abaixo do RPE alvo em 2+ séries. Estimado: <strong id="exec-alert-rm-' + exIdx + '"></strong></div>'
+      + '<div class="exec-alert-text">Maioria das séries abaixo do RPE alvo. Estimado: <strong id="exec-alert-rm-' + exIdx + '"></strong></div>'
       + '<button class="exec-update-btn" onclick="toggleExecRM(' + exIdx + ')">Recalcular RM</button></div>';
 
     // Painel calculadora RM
-    var rmInit = ex.rm || 100;
+    var rmInit = effectiveRM || 100;
     var rmPanel = document.createElement('div');
     rmPanel.className = 'exec-rm-panel';
     rmPanel.id = 'exec-rm-panel-' + exIdx;
@@ -541,7 +554,7 @@ export function buildExecRPEBody(blk) {
       + '<div class="exec-rm-result">'
       + '<div><div class="exec-rm-result-label">RM estimado</div><div class="exec-rm-result-value" id="exec-calc-result-' + exIdx + '">—</div></div>'
       + '<div style="text-align:right"><div class="exec-rm-result-label">RM atual</div>'
-      + '<div style="font-size:12px;color:var(--muted);" id="exec-old-rm-out-' + exIdx + '">' + ex.rm + ' kg</div>'
+      + '<div style="font-size:12px;color:var(--muted);" id="exec-old-rm-out-' + exIdx + '">' + effectiveRM + ' kg</div>'
       + '<div class="exec-rm-result-diff" id="exec-rm-diff-' + exIdx + '"></div></div>'
       + '</div>'
       + '<button class="exec-save-rm-btn" onclick="saveExecRM(' + exIdx + ')">Salvar novo RM</button>';
@@ -576,47 +589,90 @@ export function setExecRPE(exIdx, setIdx, rpe) {
 }
 
 function checkExecRPELow(exIdx) {
-  var state = execStates[exIdx]; if (!state) return;
-  var lowCount = state.setRpes.filter(function(r, i) {
-    return r !== null && r < state.setTargetRpes[i];
-  }).length;
-
+  var state   = execStates[exIdx]; if (!state) return;
   var alertEl = g('exec-alert-' + exIdx);
-  if (lowCount >= 2) {
-    // Melhor estimativa de RM dentre as séries preenchidas
-    var bestRM = state.rm;
-    state.setRpes.forEach(function(r, si) {
-      if (r === null) return;
-      var kg   = state.setKgs[si]    || 0;
-      var reps = state.setRepsArr[si] || 1;
-      if (kg > 0) { var est = estimateExecRM(kg, reps, r); if (est > bestRM) bestRM = est; }
-    });
-    var bestEl = g('exec-alert-rm-' + exIdx);
-    if (bestEl) bestEl.textContent = '~' + bestRM + ' kg';
 
-    // Pré-preencher calculadora com a série de menor RPE (mais folga)
-    var loIdx = -1, loRpe = 99;
-    state.setRpes.forEach(function(r, i) { if (r !== null && r < loRpe) { loRpe = r; loIdx = i; } });
-    if (loIdx >= 0) {
-      var kg   = state.setKgs[loIdx]    || state.rm;
-      var reps = state.setRepsArr[loIdx] || 1;
-      var slKg  = g('exec-calc-kg-' + exIdx);
-      var slRps = g('exec-calc-reps-' + exIdx);
-      var slRpe = g('exec-calc-rpe-' + exIdx);
-      if (slKg)  slKg.value  = kg;
-      if (slRps) slRps.value = reps;
-      if (slRpe) slRpe.value = loRpe;
-      calcExecRM(exIdx);
-    }
-    alertEl.classList.add('show');
-  } else {
-    alertEl.classList.remove('show');
+  var filled = state.setRpes
+    .map(function(r, i) { return { real: r, target: state.setTargetRpes[i] }; })
+    .filter(function(s) { return s.real !== null; });
+
+  // Aguarda ao menos 3 séries avaliadas para evitar falsos positivos
+  if (filled.length < 3) { alertEl.classList.remove('show'); return; }
+
+  var lowCount    = filled.filter(function(s) { return s.real < s.target; }).length;
+  var lowFraction = lowCount / filled.length;
+
+  // Só alerta se maioria (>50%) das séries avaliadas ficou abaixo do alvo
+  if (lowFraction < 0.5) { alertEl.classList.remove('show'); return; }
+
+  // Melhor estimativa de RM dentre as séries preenchidas
+  var bestRM = state.rm;
+  state.setRpes.forEach(function(r, si) {
+    if (r === null) return;
+    var kg   = state.setKgs[si]    || 0;
+    var reps = state.setRepsArr[si] || 1;
+    if (kg > 0) { var est = estimateExecRM(kg, reps, r); if (est > bestRM) bestRM = est; }
+  });
+  var bestEl = g('exec-alert-rm-' + exIdx);
+  if (bestEl) bestEl.textContent = '~' + bestRM + ' kg';
+
+  // Pré-preencher calculadora com a série de menor RPE (mais folga)
+  var loIdx = -1, loRpe = 99;
+  state.setRpes.forEach(function(r, i) { if (r !== null && r < loRpe) { loRpe = r; loIdx = i; } });
+  if (loIdx >= 0) {
+    var kg   = state.setKgs[loIdx]    || state.rm;
+    var reps = state.setRepsArr[loIdx] || 1;
+    var slKg  = g('exec-calc-kg-' + exIdx);
+    var slRps = g('exec-calc-reps-' + exIdx);
+    var slRpe = g('exec-calc-rpe-' + exIdx);
+    if (slKg)  slKg.value  = kg;
+    if (slRps) slRps.value = reps;
+    if (slRpe) slRpe.value = loRpe;
+    calcExecRM(exIdx);
   }
+  alertEl.classList.add('show');
 }
 
 export function estimateExecRM(kg, reps, rpe) {
   var f = getRPEFactor(rpe, reps);
   return f && kg ? Math.round(kg / f) : Math.round(kg);
+}
+
+// RM rolante: média ponderada exponencialmente das últimas 6 sessões (mais recente = mais peso)
+export function calcRollingRM(execHistory, exName) {
+  if (!execHistory || !execHistory.length) return null;
+  var sessions = [];
+  execHistory.forEach(function(e) {
+    e.exercises.forEach(function(ex) {
+      if (ex.name === exName && ex.rmAfter) sessions.push(ex);
+    });
+  });
+  sessions = sessions.slice(-6);
+  if (!sessions.length) return null;
+  var weights = sessions.map(function(_, i) { return Math.pow(1.4, i); });
+  var total   = weights.reduce(function(a, b) { return a + b; }, 0);
+  var rm = sessions.reduce(function(sum, s, i) { return sum + s.rmAfter * weights[i]; }, 0) / total;
+  return Math.round(rm * 2) / 2;
+}
+
+// Viés de RPE: diferença média entre RPE real e alvo (precisa ≥6 pares)
+export function calcRPEBias(execHistory, exName) {
+  if (!execHistory || !execHistory.length) return null;
+  var diffs = [];
+  execHistory.forEach(function(e) {
+    e.exercises.forEach(function(ex) {
+      if (ex.name !== exName) return;
+      (ex.sets || []).forEach(function(s) {
+        if (s.realRpe !== null && s.realRpe !== undefined
+            && s.targetRpe !== null && s.targetRpe !== undefined) {
+          diffs.push(s.realRpe - s.targetRpe);
+        }
+      });
+    });
+  });
+  if (diffs.length < 6) return null;
+  var avg = diffs.reduce(function(a, b) { return a + b; }, 0) / diffs.length;
+  return parseFloat(avg.toFixed(2));
 }
 
 function toggleExecRM(exIdx) {
@@ -705,7 +761,13 @@ export function concludeExecRPE() {
           realRpe:   rpe,
         };
       });
-      return { name: ex.name, rmBefore: ex.rm, rmAfter: state.rm || ex.rm, sets: sets };
+      var e1RMSamples = (state.setRpes || []).map(function(rpe, si) {
+        if (rpe === null || !state.setKgs || !state.setKgs[si]) return null;
+        var kg   = state.setKgs[si];
+        var reps = state.setRepsArr ? state.setRepsArr[si] : 1;
+        return { kg: kg, reps: reps, rpe: rpe, est: estimateExecRM(kg, reps, rpe) };
+      }).filter(Boolean);
+      return { name: ex.name, rmBefore: ex.rm, rmAfter: state.rm || ex.rm, sets: sets, e1RMSamples: e1RMSamples };
     }),
   };
 
