@@ -501,21 +501,26 @@ if (_incInput) _incInput.addEventListener('keydown', function(e) {
 });
 
 // ── Fadiga acumulada ──────────────────────────
-var MAX_FATIGUE_KG = 20000;
+var MIN_BASELINE_KG = 8000;
+var WEEK_MS = 7 * 24 * 3600 * 1000;
 
-function calcFadiga() {
-  var cutoff = Date.now() - 7 * 24 * 3600 * 1000;
-  var vol = 0;
-
-  // Volume registrado no logbook (últimos 7 dias)
+function logVolInWindow(from, to) {
+  var v = 0;
   workoutLog.forEach(function(s) {
-    if (!s.startedAt || s.startedAt < cutoff) return;
+    if (!s.startedAt || s.startedAt < from || s.startedAt >= to) return;
     s.exercises.forEach(function(ex) {
-      ex.sets.forEach(function(set) { vol += (set.reps || 0) * (set.kg || 0); });
+      ex.sets.forEach(function(set) { v += (set.reps || 0) * (set.kg || 0); });
     });
   });
+  return v;
+}
 
-  // Volume da semana atual de cada lift da periodização
+function calcFadiga() {
+  var now = Date.now();
+
+  // Volume da semana atual: logbook (últimos 7 dias) + periodização
+  var currentVol = logVolInWindow(now - WEEK_MS, now);
+
   var lifts = [
     { key: 'supino', rm: parseFloat(g('rm-supino').value) || BASE_SUP },
     { key: 'agacha', rm: parseFloat(g('rm-agacha').value) || BASE_AGA },
@@ -532,7 +537,8 @@ function calcFadiga() {
       if (done < total) allPrevDone = false;
     });
     if (currentWi < 0) return;
-    var wEff = (function() { var w = periodBase[currentWi]; return (w.byLift && w.byLift[lift.key]) ? Object.assign({}, w, w.byLift[lift.key]) : w; })();
+    var w = periodBase[currentWi];
+    var wEff = (w.byLift && w.byLift[lift.key]) ? Object.assign({}, w, w.byLift[lift.key]) : w;
     if (!wEff.series) return;
     var weekState = (checksState[lift.key] || {})[currentWi] || {};
     var ci = 0;
@@ -544,11 +550,21 @@ function calcFadiga() {
         return 0;
       })();
       var kg = Math.round(lift.rm * s.p / 2.5) * 2.5;
-      for (var i = 0; i < nSets; i++) { if (weekState[ci]) vol += reps * kg; ci++; }
+      for (var i = 0; i < nSets; i++) { if (weekState[ci]) currentVol += reps * kg; ci++; }
     });
   });
 
-  return Math.min(100, Math.round(vol / MAX_FATIGUE_KG * 100));
+  // Baseline dinâmica: média das últimas 4 semanas completas (só logbook)
+  var past4 = [
+    logVolInWindow(now - 2 * WEEK_MS, now - WEEK_MS),
+    logVolInWindow(now - 3 * WEEK_MS, now - 2 * WEEK_MS),
+    logVolInWindow(now - 4 * WEEK_MS, now - 3 * WEEK_MS),
+    logVolInWindow(now - 5 * WEEK_MS, now - 4 * WEEK_MS),
+  ];
+  var avg = past4.reduce(function(s, v) { return s + v; }, 0) / 4;
+  var baseline = Math.max(avg, MIN_BASELINE_KG);
+
+  return Math.min(100, Math.round(currentVol / baseline * 100));
 }
 
 function updateFadigaBar() {
