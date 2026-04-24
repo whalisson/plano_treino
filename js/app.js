@@ -5,7 +5,7 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
   customLifts, setCustomLifts, cycleStartDates, setCycleStartDates,
-  rmHistory, setRmHistory } from './state.js';
+  rmHistory, setRmHistory, parseSetCount } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, setBoard, setBank,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
@@ -20,7 +20,7 @@ import { workoutLog, setWorkoutLog,
   openWorkoutLogModal, wlAddSet, wlRemoveSet,
   renderWorkoutHistory, deleteExerciseHistory,
   openExLog, exLogAddSet, exLogSave } from './workoutlog.js';
-import { buildAllPeriod, renderCustomLifts, renderCycleHistory } from './periodizacao.js';
+import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
 
@@ -102,6 +102,7 @@ if (!navigator.onLine) setSyncStatus('offline');
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
   setSyncStatus('saving');
+  updateFadigaBar();
   var data = {
     rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
     rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
@@ -267,6 +268,7 @@ export function applyState(saved) {
   if (typeof globalThis.renderCycleHistory === 'function') globalThis.renderCycleHistory();
   if (typeof globalThis.renderRPEBlocks === 'function') globalThis.renderRPEBlocks();
   if (typeof globalThis.renderWorkoutHistory === 'function') globalThis.renderWorkoutHistory();
+  if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
   // Persiste após cada renderização do kanban
   var _boardLoaded = !!(saved && saved.board);
   var _origRenderKanban = globalThis.renderKanban;
@@ -497,6 +499,68 @@ if (_btnConfirm) _btnConfirm.addEventListener('click', globalThis.applyProgressi
 if (_incInput) _incInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') globalThis.applyProgressionIncrease();
 });
+
+// ── Fadiga acumulada ──────────────────────────
+var MAX_FATIGUE_KG = 20000;
+
+function calcFadiga() {
+  var cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+  var vol = 0;
+
+  // Volume registrado no logbook (últimos 7 dias)
+  workoutLog.forEach(function(s) {
+    if (!s.startedAt || s.startedAt < cutoff) return;
+    s.exercises.forEach(function(ex) {
+      ex.sets.forEach(function(set) { vol += (set.reps || 0) * (set.kg || 0); });
+    });
+  });
+
+  // Volume da semana atual de cada lift da periodização
+  var lifts = [
+    { key: 'supino', rm: parseFloat(g('rm-supino').value) || BASE_SUP },
+    { key: 'agacha', rm: parseFloat(g('rm-agacha').value) || BASE_AGA },
+    { key: 'terra',  rm: parseFloat(g('rm-terra').value)  || BASE_TER },
+  ];
+  lifts.forEach(function(lift) {
+    var currentWi = -1, allPrevDone = true;
+    periodBase.forEach(function(w, wi) {
+      var wEff = (w.byLift && w.byLift[lift.key]) ? Object.assign({}, w, w.byLift[lift.key]) : w;
+      if (wEff.skip || wEff.rest || !wEff.series) return;
+      var total = 0; wEff.series.forEach(function(s) { total += parseSetCount(s.r); });
+      var done = Object.values((checksState[lift.key] || {})[wi] || {}).filter(Boolean).length;
+      if (currentWi === -1 && done < total) { if (allPrevDone || done > 0) currentWi = wi; }
+      if (done < total) allPrevDone = false;
+    });
+    if (currentWi < 0) return;
+    var wEff = (function() { var w = periodBase[currentWi]; return (w.byLift && w.byLift[lift.key]) ? Object.assign({}, w, w.byLift[lift.key]) : w; })();
+    if (!wEff.series) return;
+    var weekState = (checksState[lift.key] || {})[currentWi] || {};
+    var ci = 0;
+    wEff.series.forEach(function(s) {
+      var nSets = parseSetCount(s.r);
+      var reps = (function() {
+        var m = s.r.match(/^(\d+)x(\d+)$/); if (m) return parseInt(m[2]);
+        var n = s.r.match(/^(\d+)\s*rep/);   if (n) return parseInt(n[1]);
+        return 0;
+      })();
+      var kg = Math.round(lift.rm * s.p / 2.5) * 2.5;
+      for (var i = 0; i < nSets; i++) { if (weekState[ci]) vol += reps * kg; ci++; }
+    });
+  });
+
+  return Math.min(100, Math.round(vol / MAX_FATIGUE_KG * 100));
+}
+
+function updateFadigaBar() {
+  var fill  = g('fatigaFill');
+  var label = g('fatigaLabel');
+  if (!fill || !label) return;
+  var pct = calcFadiga();
+  fill.style.width      = pct + '%';
+  fill.style.background = pct < 40 ? 'var(--lime)' : pct < 70 ? 'var(--amber)' : 'var(--red)';
+  label.style.color     = pct < 40 ? 'var(--muted)' : pct < 70 ? 'var(--amber)' : 'var(--red)';
+}
+globalThis.updateFadigaBar = updateFadigaBar;
 
 // ── Modo Deload ───────────────────────────────
 function syncDeloadBtn() {
