@@ -586,14 +586,56 @@ function calcFadiga() {
   return Math.round(r.fatigue / r.steadyState * 100);
 }
 
-// Projeta fadiga dia a dia até cair abaixo de 80% do SS (compatível com τ múltiplos)
+// Projeta fadiga futura sem re-iterar os logs:
+// fatigue(now + d×dias) = Σ_τ [ fatigue_τ(now) × e^(-d×dia/τ) ]
+// Custo: 1× O(n) para pré-computar + 60 × O(|τ_grupos|) para projetar
 function calcRestDays() {
   var base   = getFatigaRaw();
   var target = 0.8 * base.steadyState;
   if (base.fatigue <= target) return 0;
+
   var now = Date.now();
+  var oneRMs = {
+    supino: parseFloat((g('rm-supino') || {}).value) || BASE_SUP,
+    agacha: parseFloat((g('rm-agacha') || {}).value) || BASE_AGA,
+    terra:  parseFloat((g('rm-terra')  || {}).value) || BASE_TER,
+  };
+  customLifts.forEach(function(cl) { oneRMs[cl.id] = cl.rm || 1; });
+  function rmFor(lk) { return oneRMs[lk] || 100; }
+
+  // Pré-computa fadiga agrupada por τ (1× O(n))
+  var fatByTau = {};
+  workoutLog.forEach(function(s) {
+    if (!s.startedAt) return;
+    s.exercises.forEach(function(ex) {
+      var lk  = _lkOf(ex.name);
+      var tau = _tauMs(lk);
+      var d0  = Math.exp(-(now - s.startedAt) / tau);
+      if (d0 < 0.001) return;
+      var rm  = rmFor(lk);
+      ex.sets.forEach(function(set) {
+        var kg = set.kg || 0;
+        fatByTau[tau] = (fatByTau[tau] || 0) + (set.reps || 0) * kg * (kg / rm) * d0;
+      });
+    });
+  });
+  periodLog.forEach(function(e) {
+    if (!e.ts) return;
+    var tau = _tauMs(e.liftKey || '_other');
+    var d0  = Math.exp(-(now - e.ts) / tau);
+    if (d0 < 0.001) return;
+    fatByTau[tau] = (fatByTau[tau] || 0) + (e.vol || 0) * (e.pct || 0.75) * d0;
+  });
+
+  // Projeção: 60 × O(|τ_grupos|) — tipicamente ≤ 4 grupos
+  var DAY_MS  = 86400000;
+  var tauKeys = Object.keys(fatByTau);
   for (var d = 1; d <= 60; d++) {
-    if (getFatigaRaw(now + d * 86400000).fatigue <= target) return d;
+    var proj = 0;
+    for (var i = 0; i < tauKeys.length; i++) {
+      proj += fatByTau[tauKeys[i]] * Math.exp(-d * DAY_MS / tauKeys[i]);
+    }
+    if (proj <= target) return d;
   }
   return 60;
 }
