@@ -555,6 +555,22 @@ function getFatigaRaw(refTime) {
     if (decay < 0.001) return;
     fatigue += (e.vol || 0) * (e.pct || 0.75) * decay;
   });
+  rpeBlocks.forEach(function(blk) {
+    if (!blk.execHistory) return;
+    blk.execHistory.forEach(function(exec) {
+      if (!exec.date) return;
+      exec.exercises.forEach(function(ex) {
+        var lk    = _lkOf(ex.name);
+        var decay = Math.exp(-(t - exec.date) / _tauMs(lk));
+        if (decay < 0.001) return;
+        var rm = ex.rmAfter || ex.rmBefore || rmFor(lk);
+        ex.sets.forEach(function(set) {
+          var kg = set.kg || 0;
+          fatigue += (set.reps || 0) * kg * (kg / rm) * decay;
+        });
+      });
+    });
+  });
 
   // Steady-state ancorado no momento real (não se desloca com refTime)
   var cutoff   = now - SS_WIN_MS;
@@ -574,6 +590,20 @@ function getFatigaRaw(refTime) {
     if (!e.ts || e.ts < cutoff) return;
     var lk = e.liftKey || '_other';
     tlByLift[lk] = (tlByLift[lk] || 0) + (e.vol || 0) * (e.pct || 0.75);
+  });
+  rpeBlocks.forEach(function(blk) {
+    if (!blk.execHistory) return;
+    blk.execHistory.forEach(function(exec) {
+      if (!exec.date || exec.date < cutoff) return;
+      exec.exercises.forEach(function(ex) {
+        var lk = _lkOf(ex.name);
+        var rm = ex.rmAfter || ex.rmBefore || rmFor(lk);
+        ex.sets.forEach(function(set) {
+          var kg = set.kg || 0;
+          tlByLift[lk] = (tlByLift[lk] || 0) + (set.reps || 0) * kg * (kg / rm);
+        });
+      });
+    });
   });
   var ss = 0;
   Object.keys(tlByLift).forEach(function(lk) { ss += (tlByLift[lk] / 42) * _tauDay(lk); });
@@ -625,6 +655,23 @@ function calcRestDays() {
     var d0  = Math.exp(-(now - e.ts) / tau);
     if (d0 < 0.001) return;
     fatByTau[tau] = (fatByTau[tau] || 0) + (e.vol || 0) * (e.pct || 0.75) * d0;
+  });
+  rpeBlocks.forEach(function(blk) {
+    if (!blk.execHistory) return;
+    blk.execHistory.forEach(function(exec) {
+      if (!exec.date) return;
+      exec.exercises.forEach(function(ex) {
+        var lk  = _lkOf(ex.name);
+        var tau = _tauMs(lk);
+        var d0  = Math.exp(-(now - exec.date) / tau);
+        if (d0 < 0.001) return;
+        var rm = ex.rmAfter || ex.rmBefore || rmFor(lk);
+        ex.sets.forEach(function(set) {
+          var kg = set.kg || 0;
+          fatByTau[tau] = (fatByTau[tau] || 0) + (set.reps || 0) * kg * (kg / rm) * d0;
+        });
+      });
+    });
   });
 
   // Projeção: 60 × O(|τ_grupos|) — tipicamente ≤ 4 grupos
