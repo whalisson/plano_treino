@@ -510,10 +510,8 @@ var TAU_MS    = 15 * 24 * 3600 * 1000;  // 15 dias em ms
 var SS_WIN_MS = 42 * 24 * 3600 * 1000;  // janela de 42 dias para estimar baseline
 var SS_FLOOR  = 7500;                    // piso de estado estacionário (usuários novos)
 
-function calcFadiga() {
+function getFatigaRaw() {
   var now = Date.now();
-
-  // Soma de TL com decaimento exponencial (toda a história)
   var fatigue = 0;
   workoutLog.forEach(function(s) {
     if (!s.startedAt) return;
@@ -529,8 +527,6 @@ function calcFadiga() {
     if (decay < 0.001) return;
     fatigue += (e.vol || 0) * decay;
   });
-
-  // Estado estacionário: média diária de TL nos últimos 42 dias × τ
   var cutoff = now - SS_WIN_MS;
   var tlWin = 0;
   workoutLog.forEach(function(s) {
@@ -543,10 +539,23 @@ function calcFadiga() {
     if (!e.ts || e.ts < cutoff) return;
     tlWin += (e.vol || 0);
   });
-  var steadyState = Math.max((tlWin / 42) * 15, SS_FLOOR);
-
-  return Math.round(fatigue / steadyState * 100);
+  return { fatigue: fatigue, steadyState: Math.max((tlWin / 42) * 15, SS_FLOOR) };
 }
+
+function calcFadiga() {
+  var r = getFatigaRaw();
+  return Math.round(r.fatigue / r.steadyState * 100);
+}
+
+// Dias até a fadiga cair abaixo do limiar verde (80% do estado estacionário)
+// t = τ × ln(F / (0.8 × SS))
+function calcRestDays() {
+  var r = getFatigaRaw();
+  var target = 0.8 * r.steadyState;
+  if (r.fatigue <= target) return 0;
+  return Math.ceil(15 * Math.log(r.fatigue / target));
+}
+globalThis.calcRestDays = calcRestDays;
 
 function updateFadigaBar() {
   var fill  = g('fatigaFill');

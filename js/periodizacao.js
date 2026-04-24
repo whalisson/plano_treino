@@ -234,6 +234,20 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
           }
           saveState();
 
+          // Sugestão de descanso baseada no modelo de Banister
+          if (typeof globalThis.calcRestDays === 'function') {
+            var restDays = globalThis.calcRestDays();
+            if (restDays > 0) {
+              var _liftColorsRest = { supino:'#a59eff', agacha:'#2dd4bf', terra:'#fbbf24' };
+              var _liftLabelsRest = { supino:'Supino',  agacha:'Agachamento', terra:'Terra' };
+              showRestBanner(
+                restDays,
+                _liftLabelsRest[liftKey] || (LIFT_LABELS[liftKey] || liftKey),
+                _liftColorsRest[liftKey] || (LIFT_SOLID[liftKey]  || '#14b8a6')
+              );
+            }
+          }
+
           var rmEl = g(rmId);
           rmEl.style.transition = 'color .3s';
           rmEl.style.color = 'var(--green)';
@@ -758,6 +772,29 @@ export function renderCycleHistory() {
     });
     list.appendChild(card);
   });
+}
+
+// ── Rest Banner ───────────────────────────────
+var _restDismissTimer = null;
+
+function showRestBanner(days, liftLabel, liftColor) {
+  var banner = document.getElementById('rest-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'rest-banner';
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML =
+    '<span class="rest-icon">🛌</span>'
+    + '<div class="rest-title">Descanso Recomendado</div>'
+    + '<div class="rest-lift" style="color:' + liftColor + ';">' + liftLabel + '</div>'
+    + '<div class="rest-body"><span class="rest-days">' + days + '</span>'
+    + '<span class="rest-sub"> dia' + (days !== 1 ? 's' : '') + ' até retornar ao treino pesado</span></div>'
+    + '<span class="rest-dismiss">toque para fechar</span>';
+  if (_restDismissTimer) clearTimeout(_restDismissTimer);
+  banner.classList.add('show');
+  _restDismissTimer = setTimeout(function() { banner.classList.remove('show'); }, 6000);
+  banner.onclick = function() { clearTimeout(_restDismissTimer); banner.classList.remove('show'); };
 }
 
 // ── PR Banner ─────────────────────────────────
