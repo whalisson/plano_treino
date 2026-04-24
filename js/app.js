@@ -509,8 +509,9 @@ if (_incInput) _incInput.addEventListener('keydown', function(e) {
 var SS_WIN_MS = 42 * 24 * 3600 * 1000;  // janela de 42 dias para estimar baseline
 var SS_FLOOR  = 7500;                    // piso de estado estacionário (usuários novos)
 
-var _TAU_MS = { agacha: 5 * 86400000, terra: 5 * 86400000, supino: 7 * 86400000 };
-var _TAU_DEF_MS = 10 * 86400000;
+// τ = persistência da fadiga: terra/agacha ~14d, supino ~9d, acessórios ~6d
+var _TAU_MS = { agacha: 14 * 86400000, terra: 14 * 86400000, supino: 9 * 86400000 };
+var _TAU_DEF_MS = 6 * 86400000;
 
 function _tauMs(lk)  { return _TAU_MS[lk] || _TAU_DEF_MS; }
 function _tauDay(lk) { return (_TAU_MS[lk] || _TAU_DEF_MS) / 86400000; }
