@@ -93,6 +93,11 @@ function setSyncStatus(status) {
 }
 globalThis.setSyncStatus = setSyncStatus;
 
+// ── Detecção offline/online ───────────────────
+window.addEventListener('offline', function() { setSyncStatus('offline'); });
+window.addEventListener('online',  function() { setSyncStatus('idle'); });
+if (!navigator.onLine) setSyncStatus('offline');
+
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
   setSyncStatus('saving');

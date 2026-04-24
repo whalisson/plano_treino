@@ -12,6 +12,22 @@ var _fbDb          = null;
 var _fbUser        = null;
 var _fbSyncTimer   = null;
 var _fbPendingData = null;
+var _fbOffline     = !navigator.onLine;
+
+window.addEventListener('offline', function() {
+  _fbOffline = true;
+  fbSetStatus('offline');
+});
+window.addEventListener('online', function() {
+  _fbOffline = false;
+  if (_fbReady && _fbPendingData) {
+    var data = _fbPendingData;
+    _fbPendingData = null;
+    fbSave(data);
+  } else if (_fbReady) {
+    fbSetStatus('synced');
+  }
+});
 
 // ── Status visual na UI ───────────────────────
 function fbSetStatus(status) {
@@ -147,7 +163,7 @@ function fbHideSignInModal() {
 
 // ── Salvar no Firestore (debounced 4 s) ───────
 function fbSave(data) {
-  if (!_fbReady || !_fbDb || !_fbUser) {
+  if (!_fbReady || !_fbDb || !_fbUser || _fbOffline) {
     _fbPendingData = data;
     return;
   }
