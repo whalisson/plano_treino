@@ -503,43 +503,81 @@ if (_incInput) _incInput.addEventListener('keydown', function(e) {
 });
 
 // ── Fadiga acumulada — Modelo Banister (decaimento exponencial) ──
-// Fadiga(t) = Σ TL_i × e^(-(t - i) / τ)
-// TL = reps × kg (volume); τ = 15 dias (constante biológica de Banister)
-// Baseline = estado estacionário estimado: avgDailyTL × τ  (últimos 42 dias)
-var TAU_MS    = 15 * 24 * 3600 * 1000;  // 15 dias em ms
+// TL = reps × kg × (kg/1RM)  — pondera intensidade relativa, não só volume
+// τ por categoria: terra/agacha têm recuperação de SNC ~5 dias; supino ~7; demais ~10
+// Baseline SS = Σ(avgDailyTL_lift × τ_lift)  (últimos 42 dias, por lift)
 var SS_WIN_MS = 42 * 24 * 3600 * 1000;  // janela de 42 dias para estimar baseline
 var SS_FLOOR  = 7500;                    // piso de estado estacionário (usuários novos)
 
-function getFatigaRaw() {
+var _TAU_MS = { agacha: 5 * 86400000, terra: 5 * 86400000, supino: 7 * 86400000 };
+var _TAU_DEF_MS = 10 * 86400000;
+
+function _tauMs(lk)  { return _TAU_MS[lk] || _TAU_DEF_MS; }
+function _tauDay(lk) { return (_TAU_MS[lk] || _TAU_DEF_MS) / 86400000; }
+function _lkOf(name) {
+  if (typeof globalThis.liftKeyForExerciseName === 'function')
+    return globalThis.liftKeyForExerciseName(name || '') || '_other';
+  return '_other';
+}
+
+// Aceita refTime opcional para projetar fadiga futura (sem alterar SS)
+function getFatigaRaw(refTime) {
+  var t   = (refTime !== undefined) ? refTime : Date.now();
   var now = Date.now();
+
+  var oneRMs = {
+    supino: parseFloat((g('rm-supino') || {}).value) || BASE_SUP,
+    agacha: parseFloat((g('rm-agacha') || {}).value) || BASE_AGA,
+    terra:  parseFloat((g('rm-terra')  || {}).value) || BASE_TER,
+  };
+  customLifts.forEach(function(cl) { oneRMs[cl.id] = cl.rm || 1; });
+  function rmFor(lk) { return oneRMs[lk] || 100; }
+
   var fatigue = 0;
   workoutLog.forEach(function(s) {
     if (!s.startedAt) return;
-    var decay = Math.exp(-(now - s.startedAt) / TAU_MS);
-    if (decay < 0.001) return;
     s.exercises.forEach(function(ex) {
-      ex.sets.forEach(function(set) { fatigue += (set.reps || 0) * (set.kg || 0) * decay; });
+      var lk    = _lkOf(ex.name);
+      var decay = Math.exp(-(t - s.startedAt) / _tauMs(lk));
+      if (decay < 0.001) return;
+      var rm = rmFor(lk);
+      ex.sets.forEach(function(set) {
+        var kg = set.kg || 0;
+        fatigue += (set.reps || 0) * kg * (kg / rm) * decay;
+      });
     });
   });
   periodLog.forEach(function(e) {
     if (!e.ts) return;
-    var decay = Math.exp(-(now - e.ts) / TAU_MS);
+    var lk    = e.liftKey || '_other';
+    var decay = Math.exp(-(t - e.ts) / _tauMs(lk));
     if (decay < 0.001) return;
-    fatigue += (e.vol || 0) * decay;
+    fatigue += (e.vol || 0) * (e.pct || 0.75) * decay;
   });
-  var cutoff = now - SS_WIN_MS;
-  var tlWin = 0;
+
+  // Steady-state ancorado no momento real (não se desloca com refTime)
+  var cutoff   = now - SS_WIN_MS;
+  var tlByLift = {};
   workoutLog.forEach(function(s) {
     if (!s.startedAt || s.startedAt < cutoff) return;
     s.exercises.forEach(function(ex) {
-      ex.sets.forEach(function(set) { tlWin += (set.reps || 0) * (set.kg || 0); });
+      var lk = _lkOf(ex.name);
+      var rm = rmFor(lk);
+      ex.sets.forEach(function(set) {
+        var kg = set.kg || 0;
+        tlByLift[lk] = (tlByLift[lk] || 0) + (set.reps || 0) * kg * (kg / rm);
+      });
     });
   });
   periodLog.forEach(function(e) {
     if (!e.ts || e.ts < cutoff) return;
-    tlWin += (e.vol || 0);
+    var lk = e.liftKey || '_other';
+    tlByLift[lk] = (tlByLift[lk] || 0) + (e.vol || 0) * (e.pct || 0.75);
   });
-  return { fatigue: fatigue, steadyState: Math.max((tlWin / 42) * 15, SS_FLOOR) };
+  var ss = 0;
+  Object.keys(tlByLift).forEach(function(lk) { ss += (tlByLift[lk] / 42) * _tauDay(lk); });
+
+  return { fatigue: fatigue, steadyState: Math.max(ss, SS_FLOOR) };
 }
 
 function calcFadiga() {
@@ -547,13 +585,16 @@ function calcFadiga() {
   return Math.round(r.fatigue / r.steadyState * 100);
 }
 
-// Dias até a fadiga cair abaixo do limiar verde (80% do estado estacionário)
-// t = τ × ln(F / (0.8 × SS))
+// Projeta fadiga dia a dia até cair abaixo de 80% do SS (compatível com τ múltiplos)
 function calcRestDays() {
-  var r = getFatigaRaw();
-  var target = 0.8 * r.steadyState;
-  if (r.fatigue <= target) return 0;
-  return Math.ceil(15 * Math.log(r.fatigue / target));
+  var base   = getFatigaRaw();
+  var target = 0.8 * base.steadyState;
+  if (base.fatigue <= target) return 0;
+  var now = Date.now();
+  for (var d = 1; d <= 60; d++) {
+    if (getFatigaRaw(now + d * 86400000).fatigue <= target) return d;
+  }
+  return 60;
 }
 globalThis.calcRestDays = calcRestDays;
 

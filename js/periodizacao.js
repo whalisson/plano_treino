@@ -125,6 +125,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
       var kg        = round05(rm * s.p);
       var serReps   = (function() { var m = s.r.match(/^(\d+)x(\d+)$/); if (m) return parseInt(m[2]); var n = s.r.match(/^(\d+)\s*rep/); return n ? parseInt(n[1]) : 0; })();
       var serVol    = isQreps ? 0 : serReps * kg;
+      var serPct    = isQreps ? 0 : s.p;
 
       var row = document.createElement('div');
       row.className = 'series-row' + (isMainSet ? ' main-set' : '') + (isQreps ? ' rm-test-set' : '');
@@ -254,14 +255,14 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
           setTimeout(function() { rmEl.style.color = ''; }, 1200);
         });
 
-        var cbWrap = makeCbEl(liftKey, wi, 0, weekState, totalChecks, block, 0);
+        var cbWrap = makeCbEl(liftKey, wi, 0, weekState, totalChecks, block, 0, 0);
         testWrap.appendChild(inp);
         testWrap.appendChild(updBtn);
         checksWrap.appendChild(cbWrap);
         checksWrap.appendChild(testWrap);
       } else {
         for (var ci = 0; ci < numChecks; ci++) {
-          checksWrap.appendChild(makeCbEl(liftKey, wi, checkIdx + ci, weekState, totalChecks, block, serVol));
+          checksWrap.appendChild(makeCbEl(liftKey, wi, checkIdx + ci, weekState, totalChecks, block, serVol, serPct));
         }
       }
       checkIdx += numChecks;
@@ -273,7 +274,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   });
 }
 
-function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol) {
+function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol, serPct) {
   var label = document.createElement('label');
   label.className = 'set-cb';
   label.title = 'Marcar série concluída';
@@ -293,7 +294,7 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol) {
     // Registra/remove timestamp no periodLog para cálculo de fadiga
     var eIdx = periodLog.findIndex(function(e) { return e.liftKey === liftKey && e.weekIdx === wi && e.cbKey === cbKey; });
     if (inp.checked) {
-      if (eIdx === -1) periodLog.push({ liftKey: liftKey, weekIdx: wi, cbKey: cbKey, vol: serVol || 0, ts: Date.now() });
+      if (eIdx === -1) periodLog.push({ liftKey: liftKey, weekIdx: wi, cbKey: cbKey, vol: serVol || 0, pct: serPct || 0, ts: Date.now() });
     } else {
       if (eIdx !== -1) periodLog.splice(eIdx, 1);
     }
