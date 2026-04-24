@@ -543,7 +543,7 @@ function calcFadiga() {
   var avg = past4.reduce(function(s, v) { return s + v; }, 0) / 4;
   var baseline = Math.max(avg, MIN_BASELINE_KG);
 
-  return Math.min(100, Math.round(currentVol / baseline * 100));
+  return Math.round(currentVol / baseline * 100);
 }
 
 function updateFadigaBar() {
@@ -551,9 +551,9 @@ function updateFadigaBar() {
   var label = g('fatigaLabel');
   if (!fill || !label) return;
   var pct = calcFadiga();
-  fill.style.width      = pct + '%';
-  fill.style.background = pct < 40 ? 'var(--lime)' : pct < 70 ? 'var(--amber)' : 'var(--red)';
-  label.style.color     = pct < 40 ? 'var(--muted)' : pct < 70 ? 'var(--amber)' : 'var(--red)';
+  fill.style.width      = Math.min(100, pct) + '%';
+  fill.style.background = pct < 80 ? 'var(--lime)' : pct < 120 ? 'var(--amber)' : 'var(--red)';
+  label.style.color     = pct < 80 ? 'var(--muted)' : pct < 120 ? 'var(--amber)' : 'var(--red)';
 }
 globalThis.updateFadigaBar = updateFadigaBar;
 
