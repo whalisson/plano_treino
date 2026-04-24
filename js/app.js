@@ -502,48 +502,50 @@ if (_incInput) _incInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') globalThis.applyProgressionIncrease();
 });
 
-// ── Fadiga acumulada ──────────────────────────
-var MIN_BASELINE_KG = 8000;
-var WEEK_MS = 7 * 24 * 3600 * 1000;
-
-function logVolInWindow(from, to) {
-  var v = 0;
-  workoutLog.forEach(function(s) {
-    if (!s.startedAt || s.startedAt < from || s.startedAt >= to) return;
-    s.exercises.forEach(function(ex) {
-      ex.sets.forEach(function(set) { v += (set.reps || 0) * (set.kg || 0); });
-    });
-  });
-  return v;
-}
-
-function periodVolInWindow(from, to) {
-  return periodLog.reduce(function(sum, e) {
-    if (!e.ts || e.ts < from || e.ts >= to) return sum;
-    return sum + (e.vol || 0);
-  }, 0);
-}
+// ── Fadiga acumulada — Modelo Banister (decaimento exponencial) ──
+// Fadiga(t) = Σ TL_i × e^(-(t - i) / τ)
+// TL = reps × kg (volume); τ = 15 dias (constante biológica de Banister)
+// Baseline = estado estacionário estimado: avgDailyTL × τ  (últimos 42 dias)
+var TAU_MS    = 15 * 24 * 3600 * 1000;  // 15 dias em ms
+var SS_WIN_MS = 42 * 24 * 3600 * 1000;  // janela de 42 dias para estimar baseline
+var SS_FLOOR  = 7500;                    // piso de estado estacionário (usuários novos)
 
 function calcFadiga() {
   var now = Date.now();
 
-  function weekTotal(from, to) {
-    return logVolInWindow(from, to) + periodVolInWindow(from, to);
-  }
+  // Soma de TL com decaimento exponencial (toda a história)
+  var fatigue = 0;
+  workoutLog.forEach(function(s) {
+    if (!s.startedAt) return;
+    var decay = Math.exp(-(now - s.startedAt) / TAU_MS);
+    if (decay < 0.001) return;
+    s.exercises.forEach(function(ex) {
+      ex.sets.forEach(function(set) { fatigue += (set.reps || 0) * (set.kg || 0) * decay; });
+    });
+  });
+  periodLog.forEach(function(e) {
+    if (!e.ts) return;
+    var decay = Math.exp(-(now - e.ts) / TAU_MS);
+    if (decay < 0.001) return;
+    fatigue += (e.vol || 0) * decay;
+  });
 
-  var currentVol = weekTotal(now - WEEK_MS, now);
+  // Estado estacionário: média diária de TL nos últimos 42 dias × τ
+  var cutoff = now - SS_WIN_MS;
+  var tlWin = 0;
+  workoutLog.forEach(function(s) {
+    if (!s.startedAt || s.startedAt < cutoff) return;
+    s.exercises.forEach(function(ex) {
+      ex.sets.forEach(function(set) { tlWin += (set.reps || 0) * (set.kg || 0); });
+    });
+  });
+  periodLog.forEach(function(e) {
+    if (!e.ts || e.ts < cutoff) return;
+    tlWin += (e.vol || 0);
+  });
+  var steadyState = Math.max((tlWin / 42) * 15, SS_FLOOR);
 
-  // Baseline dinâmica: média das últimas 4 semanas (logbook + periodLog)
-  var past4 = [
-    weekTotal(now - 2 * WEEK_MS, now - WEEK_MS),
-    weekTotal(now - 3 * WEEK_MS, now - 2 * WEEK_MS),
-    weekTotal(now - 4 * WEEK_MS, now - 3 * WEEK_MS),
-    weekTotal(now - 5 * WEEK_MS, now - 4 * WEEK_MS),
-  ];
-  var avg = past4.reduce(function(s, v) { return s + v; }, 0) / 4;
-  var baseline = Math.max(avg, MIN_BASELINE_KG);
-
-  return Math.round(currentVol / baseline * 100);
+  return Math.round(fatigue / steadyState * 100);
 }
 
 function updateFadigaBar() {
