@@ -63,8 +63,11 @@ export let customLifts = [];
 export let cycleStartDates = {};
 // rmHistory = [{id, lift, kg, date}]
 export let rmHistory = [];
+// periodLog = [{liftKey, weekIdx, cbKey, vol, ts}] — timestamp por set marcado
+export let periodLog = [];
 
 export function setChecksState(v) { checksState = v; }
+export function setPeriodLog(v) { periodLog = v; }
 export function setRmHistory(v) { rmHistory = v; }
 export function setRmTestValues(v) { rmTestValues = v; }
 export function setKgHistory(v) { kgHistory = v; }

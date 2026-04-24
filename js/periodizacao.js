@@ -5,7 +5,7 @@ import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
   BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates,
-  rmHistory } from './state.js';
+  rmHistory, periodLog, setPeriodLog } from './state.js';
 
 function parseRMDate(dStr) {
   var p = dStr.split('/');
@@ -123,6 +123,8 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
       var isMainSet = wEff.series.length > 2 && isLast && !isQreps;
       var numChecks = parseSetCount(s.r);
       var kg        = round05(rm * s.p);
+      var serReps   = (function() { var m = s.r.match(/^(\d+)x(\d+)$/); if (m) return parseInt(m[2]); var n = s.r.match(/^(\d+)\s*rep/); return n ? parseInt(n[1]) : 0; })();
+      var serVol    = isQreps ? 0 : serReps * kg;
 
       var row = document.createElement('div');
       row.className = 'series-row' + (isMainSet ? ' main-set' : '') + (isQreps ? ' rm-test-set' : '');
@@ -238,14 +240,14 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
           setTimeout(function() { rmEl.style.color = ''; }, 1200);
         });
 
-        var cbWrap = makeCbEl(liftKey, wi, 0, weekState, totalChecks, block, liftKey);
+        var cbWrap = makeCbEl(liftKey, wi, 0, weekState, totalChecks, block, 0);
         testWrap.appendChild(inp);
         testWrap.appendChild(updBtn);
         checksWrap.appendChild(cbWrap);
         checksWrap.appendChild(testWrap);
       } else {
         for (var ci = 0; ci < numChecks; ci++) {
-          checksWrap.appendChild(makeCbEl(liftKey, wi, checkIdx + ci, weekState, totalChecks, block, liftKey));
+          checksWrap.appendChild(makeCbEl(liftKey, wi, checkIdx + ci, weekState, totalChecks, block, serVol));
         }
       }
       checkIdx += numChecks;
@@ -257,7 +259,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   });
 }
 
-function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl) {
+function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol) {
   var label = document.createElement('label');
   label.className = 'set-cb';
   label.title = 'Marcar série concluída';
@@ -273,6 +275,14 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl) {
   inp.addEventListener('change', function() {
     weekState[cbKey]         = inp.checked;
     checksState[liftKey][wi] = weekState;
+
+    // Registra/remove timestamp no periodLog para cálculo de fadiga
+    var eIdx = periodLog.findIndex(function(e) { return e.liftKey === liftKey && e.weekIdx === wi && e.cbKey === cbKey; });
+    if (inp.checked) {
+      if (eIdx === -1) periodLog.push({ liftKey: liftKey, weekIdx: wi, cbKey: cbKey, vol: serVol || 0, ts: Date.now() });
+    } else {
+      if (eIdx !== -1) periodLog.splice(eIdx, 1);
+    }
 
     // Registra data de início do ciclo na primeira marcação
     if (inp.checked && !cycleStartDates[liftKey]) {

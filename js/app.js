@@ -5,7 +5,7 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
   customLifts, setCustomLifts, cycleStartDates, setCycleStartDates,
-  rmHistory, setRmHistory, parseSetCount } from './state.js';
+  rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, setBoard, setBank,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
@@ -123,6 +123,7 @@ document.addEventListener('gorila-save', function() {
     cycleStartDates: cycleStartDates,
     workoutLog:    workoutLog,
     deloadMode:    deloadMode,
+    periodLog:     periodLog,
   };
   idbSet(RECORD_KEY, data)
     .then(function() { setSyncStatus('saved'); })
@@ -250,6 +251,7 @@ export function applyState(saved) {
     if (saved.cycleStartDates) setCycleStartDates(saved.cycleStartDates);
     if (saved.workoutLog && Array.isArray(saved.workoutLog)) setWorkoutLog(saved.workoutLog);
     if (saved.deloadMode !== undefined) setDeloadMode(saved.deloadMode);
+    if (saved.periodLog && Array.isArray(saved.periodLog)) setPeriodLog(saved.periodLog);
   }
   syncDeloadBtn();
   // Call render functions — use globalThis lookups so tests can mock them
@@ -515,51 +517,28 @@ function logVolInWindow(from, to) {
   return v;
 }
 
+function periodVolInWindow(from, to) {
+  return periodLog.reduce(function(sum, e) {
+    if (!e.ts || e.ts < from || e.ts >= to) return sum;
+    return sum + (e.vol || 0);
+  }, 0);
+}
+
 function calcFadiga() {
   var now = Date.now();
 
-  // Volume da semana atual: logbook (últimos 7 dias) + periodização
-  var currentVol = logVolInWindow(now - WEEK_MS, now);
+  function weekTotal(from, to) {
+    return logVolInWindow(from, to) + periodVolInWindow(from, to);
+  }
 
-  var lifts = [
-    { key: 'supino', rm: parseFloat(g('rm-supino').value) || BASE_SUP },
-    { key: 'agacha', rm: parseFloat(g('rm-agacha').value) || BASE_AGA },
-    { key: 'terra',  rm: parseFloat(g('rm-terra').value)  || BASE_TER },
-  ];
-  lifts.forEach(function(lift) {
-    var currentWi = -1, allPrevDone = true;
-    periodBase.forEach(function(w, wi) {
-      var wEff = (w.byLift && w.byLift[lift.key]) ? Object.assign({}, w, w.byLift[lift.key]) : w;
-      if (wEff.skip || wEff.rest || !wEff.series) return;
-      var total = 0; wEff.series.forEach(function(s) { total += parseSetCount(s.r); });
-      var done = Object.values((checksState[lift.key] || {})[wi] || {}).filter(Boolean).length;
-      if (currentWi === -1 && done < total) { if (allPrevDone || done > 0) currentWi = wi; }
-      if (done < total) allPrevDone = false;
-    });
-    if (currentWi < 0) return;
-    var w = periodBase[currentWi];
-    var wEff = (w.byLift && w.byLift[lift.key]) ? Object.assign({}, w, w.byLift[lift.key]) : w;
-    if (!wEff.series) return;
-    var weekState = (checksState[lift.key] || {})[currentWi] || {};
-    var ci = 0;
-    wEff.series.forEach(function(s) {
-      var nSets = parseSetCount(s.r);
-      var reps = (function() {
-        var m = s.r.match(/^(\d+)x(\d+)$/); if (m) return parseInt(m[2]);
-        var n = s.r.match(/^(\d+)\s*rep/);   if (n) return parseInt(n[1]);
-        return 0;
-      })();
-      var kg = Math.round(lift.rm * s.p / 2.5) * 2.5;
-      for (var i = 0; i < nSets; i++) { if (weekState[ci]) currentVol += reps * kg; ci++; }
-    });
-  });
+  var currentVol = weekTotal(now - WEEK_MS, now);
 
-  // Baseline dinâmica: média das últimas 4 semanas completas (só logbook)
+  // Baseline dinâmica: média das últimas 4 semanas (logbook + periodLog)
   var past4 = [
-    logVolInWindow(now - 2 * WEEK_MS, now - WEEK_MS),
-    logVolInWindow(now - 3 * WEEK_MS, now - 2 * WEEK_MS),
-    logVolInWindow(now - 4 * WEEK_MS, now - 3 * WEEK_MS),
-    logVolInWindow(now - 5 * WEEK_MS, now - 4 * WEEK_MS),
+    weekTotal(now - 2 * WEEK_MS, now - WEEK_MS),
+    weekTotal(now - 3 * WEEK_MS, now - 2 * WEEK_MS),
+    weekTotal(now - 4 * WEEK_MS, now - 3 * WEEK_MS),
+    weekTotal(now - 5 * WEEK_MS, now - 4 * WEEK_MS),
   ];
   var avg = past4.reduce(function(s, v) { return s + v; }, 0) / 4;
   var baseline = Math.max(avg, MIN_BASELINE_KG);
