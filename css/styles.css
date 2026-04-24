@@ -567,6 +567,12 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 @keyframes ledPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 .nav-dot{color:var(--border2);}
 
+/* Modo Deload */
+.kex--deload{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.04);}
+.kexmeta--deload{color:var(--amber);}
+.sw--deload{color:var(--amber);}
+#btnDeload.deload-on{color:var(--amber);border-color:var(--amber);box-shadow:0 0 8px rgba(251,191,36,.25);}
+
 /* Volume badge no cabeçalho do kanban */
 .kvol{font-size:9px;font-family:var(--mono);color:var(--lime);margin-left:auto;opacity:.9;white-space:nowrap;font-weight:600;}
 

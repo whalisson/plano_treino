@@ -7,6 +7,10 @@ var DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 var _bankQuery = '';
 var _bankGroup = '';
 
+var DELOAD_FACTOR = 0.6;
+export var deloadMode = false;
+export function setDeloadMode(v) { deloadMode = v; }
+
 var GROUP_CSS   = { push:'bpg-push', pull:'bpg-pull', legs:'bpg-legs', core:'bpg-core' };
 var GROUP_LABEL = { push:'Push', pull:'Pull', legs:'Legs', core:'Core' };
 
@@ -306,8 +310,11 @@ function makeBoardCard(ex, di, ei) {
   var el = document.createElement('div');
   el.className   = 'kex';
   el.dataset.exid = ex.id;
+  var dispKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg;
+  if (deloadMode && ex.kg > 0) el.classList.add('kex--deload');
   el.innerHTML = '<div class="kexname">' + ex.name + '</div>'
-    + '<div class="kexmeta">' + (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps + '</div>';
+    + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
+    + (dispKg > 0 ? dispKg + 'kg · ' : '') + ex.reps + '</div>';
 
   if (ex.kg > 0) {
     var logBtn = document.createElement('button');
@@ -439,7 +446,7 @@ function updateWeeklyVolume() {
   var valEl  = g('weeklyVolumeVal');
   var daysEl = g('weeklyVolumeDays');
   if (!banner || !valEl) return;
-  var total    = board.reduce(function(sum, day) { return sum + parseVolume(day); }, 0);
+  var total    = board.reduce(function(sum, day) { return sum + parseVolume(day); }, 0) * (deloadMode ? DELOAD_FACTOR : 1);
   var daysWithWork = board.filter(function(day) { return day.length > 0; }).length;
   if (total > 0) {
     banner.style.display = 'flex';
@@ -456,7 +463,7 @@ export function renderKanban() {
   board.forEach(function(items, di) {
     var col  = document.createElement('div'); col.className = 'kcol';
     var kh   = document.createElement('div'); kh.className  = 'kch';
-    var vol  = parseVolume(items);
+    var vol  = parseVolume(items) * (deloadMode ? DELOAD_FACTOR : 1);
     var volStr = vol >= 1000 ? (vol / 1000).toFixed(1) + 't' : (vol > 0 ? vol + 'kg' : '');
     kh.innerHTML = '<span class="kday">' + DAYS[di] + '</span><span class="kcnt">' + items.length + '</span>'
       + (volStr ? '<span class="kvol">' + volStr + '</span>' : '');
@@ -490,7 +497,7 @@ export function renderPeriodGrid() {
     var card = document.createElement('div'); card.className = 'wcol';
     var h = '<div class="wch"><span class="wcname">' + DAYS[di] + '</span></div><div class="wcbody">';
     if (!items.length) { h += '<span style="font-size:11px;color:var(--muted);">—</span>'; }
-    else { items.forEach(function(ex) { h += '<div class="srow"><span class="slbl">' + ex.name + '</span><span class="sw">' + (ex.kg > 0 ? ex.kg + 'kg' : '—') + '</span><span class="sr">' + ex.reps + '</span></div>'; }); }
+    else { items.forEach(function(ex) { var pgKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg; h += '<div class="srow"><span class="slbl">' + ex.name + '</span><span class="sw' + (deloadMode && ex.kg > 0 ? ' sw--deload' : '') + '">' + (pgKg > 0 ? pgKg + 'kg' : '—') + '</span><span class="sr">' + ex.reps + '</span></div>'; }); }
     h += '</div>'; card.innerHTML = h; pg.appendChild(card);
   });
 }

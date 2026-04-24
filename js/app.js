@@ -8,7 +8,8 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   rmHistory, setRmHistory } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, setBoard, setBank,
-  renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts } from './logbook.js';
+  renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
+  deloadMode, setDeloadMode } from './logbook.js';
 import { calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
   buildCardioChart, renderBuilderSegs, renderSavedWorkouts,
@@ -120,6 +121,7 @@ document.addEventListener('gorila-save', function() {
     customLifts:   customLifts,
     cycleStartDates: cycleStartDates,
     workoutLog:    workoutLog,
+    deloadMode:    deloadMode,
   };
   idbSet(RECORD_KEY, data)
     .then(function() { setSyncStatus('saved'); })
@@ -246,7 +248,9 @@ export function applyState(saved) {
     if (saved.customLifts)    setCustomLifts(saved.customLifts);
     if (saved.cycleStartDates) setCycleStartDates(saved.cycleStartDates);
     if (saved.workoutLog && Array.isArray(saved.workoutLog)) setWorkoutLog(saved.workoutLog);
+    if (saved.deloadMode !== undefined) setDeloadMode(saved.deloadMode);
   }
+  syncDeloadBtn();
   // Call render functions — use globalThis lookups so tests can mock them
   if (typeof globalThis.buildAllPeriod === 'function') globalThis.buildAllPeriod();
   if (typeof globalThis.calcRM === 'function') globalThis.calcRM();
@@ -493,6 +497,23 @@ if (_btnConfirm) _btnConfirm.addEventListener('click', globalThis.applyProgressi
 if (_incInput) _incInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') globalThis.applyProgressionIncrease();
 });
+
+// ── Modo Deload ───────────────────────────────
+function syncDeloadBtn() {
+  var btn = g('btnDeload');
+  if (!btn) return;
+  btn.classList.toggle('deload-on', deloadMode);
+}
+var _btnDeload = g('btnDeload');
+if (_btnDeload) {
+  _btnDeload.addEventListener('click', function() {
+    setDeloadMode(!deloadMode);
+    syncDeloadBtn();
+    renderKanban();
+    renderPeriodGrid();
+    saveState();
+  });
+}
 
 // Call fbInit if available (firebase.js is a regular script)
 if (typeof fbInit === 'function') fbInit();
