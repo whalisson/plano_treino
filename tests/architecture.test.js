@@ -45,7 +45,7 @@ const SAVE_KEYS = [
   'checks', 'customLifts', 'cycleHistory', 'cycleStartDates',
   'deloadMode',
   'kgHistory',
-  'periodLog',
+  'periodLog', 'picoCompDate',
   'rmAgacha', 'rmHistory', 'rmSupino', 'rmTerra', 'rmTests',
   'rpeBlocks',
   'savedWorkouts',
