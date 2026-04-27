@@ -128,9 +128,12 @@ export function renderPico() {
 
     + '<div class="card" style="margin-bottom:14px;">'
     +   '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Data da Competição</label>'
-    +   '<input type="date" id="picoDateInput" value="' + (picoCompDate || '') + '" '
-    +     'style="width:100%;background:#000;color:#fff;border:1px solid var(--border2);border-radius:7px;padding:9px 12px;font-size:13px;font-family:var(--mono);box-sizing:border-box;color-scheme:dark;" '
-    +     'oninput="picoSetDate(this.value)">'
+    +   '<div style="display:flex;align-items:center;gap:8px;">'
+    +     '<input type="date" id="picoDateInput" value="' + (picoCompDate || '') + '" '
+    +       'style="flex:1;min-width:0;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;font-size:14px;font-family:var(--mono);color-scheme:dark;" '
+    +       'oninput="picoSetDate(this.value)">'
+    +     (picoCompDate ? '<button class="sec" style="flex-shrink:0;font-size:11px;padding:6px 11px;white-space:nowrap;" onclick="picoSetDate(\'\')">✕ Limpar</button>' : '')
+    +   '</div>'
     +   '<div style="font-size:12px;margin-top:8px">' + weekInfo + '</div>'
     + '</div>'
 
