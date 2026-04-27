@@ -673,29 +673,30 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 
 /* ── Calculadora de Anilhas ── */
 .anilhas-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
-.anilha-lift-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--lift-color,var(--border));border-radius:10px;padding:13px 14px;cursor:pointer;transition:background .15s,box-shadow .15s;user-select:none;}
-.anilha-lift-card:hover{background:var(--bg3);box-shadow:0 0 0 1px var(--lift-color,var(--border));}
-.anilha-lift-card.selected{background:var(--bg3);box-shadow:0 0 0 1px var(--lift-color,var(--border));}
+.anilha-lift-card{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--lift-color,var(--border));border-radius:10px;padding:13px 14px;cursor:pointer;transition:background .18s,box-shadow .18s,transform .12s;user-select:none;}
+.anilha-lift-card:hover{background:var(--bg3);box-shadow:0 0 0 1px var(--lift-color,var(--border)),0 4px 16px rgba(0,0,0,.35);transform:translateY(-1px);}
+.anilha-lift-card.selected{background:var(--bg3);box-shadow:0 0 0 1.5px var(--lift-color,var(--border)),0 0 22px rgba(0,0,0,.4);transform:translateY(-1px);}
 .anilha-lift-name{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px;}
 .anilha-lift-weight{font-size:26px;font-weight:700;font-family:var(--mono);letter-spacing:-.03em;line-height:1;color:var(--text);}
 .anilha-lift-weight span{font-size:12px;font-weight:400;color:var(--muted);margin-left:2px;}
 .anilha-lift-info{font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono);}
 .anilha-lift-done{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px;}
-.anilhas-detail-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;margin-bottom:14px;}
+.anilhas-detail-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 16px;margin-bottom:14px;}
 .anilhas-detail-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:6px;}
-.anilhas-total-kg{font-size:34px;font-weight:700;font-family:var(--mono);letter-spacing:-.03em;color:var(--text);margin-bottom:4px;}
+.anilhas-total-kg{font-size:36px;font-weight:700;font-family:var(--mono);letter-spacing:-.04em;color:var(--text);margin-bottom:4px;line-height:1;}
 .anilhas-side-kg{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;}
-.anilhas-svg-wrap{margin-bottom:14px;overflow-x:auto;border-radius:8px;background:rgba(0,0,0,.18);padding:12px 0;}
-.anilhas-breakdown{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;}
-.anilha-plate-row{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:12px;}
-.anilha-plate-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-.anilha-plate-count{color:var(--muted);}
-.anilha-plate-kg{font-weight:600;color:var(--text);}
+.anilhas-svg-wrap{margin-bottom:14px;overflow-x:auto;border-radius:10px;background:transparent;padding:0;}
+.anilhas-breakdown{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+.anilha-plate-row{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid transparent;border-radius:22px;padding:6px 14px 6px 10px;font-family:var(--mono);font-size:12px;transition:box-shadow .15s;}
+.anilha-plate-row:hover{box-shadow:0 2px 10px rgba(0,0,0,.3);}
+.anilha-plate-swatch{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.anilha-plate-count{color:var(--muted);font-size:11px;}
+.anilha-plate-kg{font-weight:700;color:var(--text);}
 .anilha-remainder{font-size:11px;color:var(--amber);margin-top:8px;font-family:var(--mono);}
 .anilha-mode-toggle{display:flex;gap:6px;margin-bottom:14px;}
 .anilha-mode-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;transition:background .15s,color .15s;}
 .anilha-mode-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-.anilha-unit-btn{position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:11px;font-family:var(--mono);cursor:pointer;transition:background .15s,color .15s;z-index:1;}
+.anilha-unit-btn{position:absolute;top:10px;right:10px;padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:rgba(0,0,0,.45);color:var(--muted);font-size:11px;font-family:var(--mono);cursor:pointer;transition:background .15s,color .15s;z-index:1;}
 .anilha-unit-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
 
 /* ── Feeder Sets ── */

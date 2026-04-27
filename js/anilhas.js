@@ -110,75 +110,113 @@ function buildBarbellSVG(info) {
     for (var i = 0; i < p.count; i++) expanded.push(p);
   });
 
-  var GAP     = 2;
-  var COL_W   = 10;
-  var COL_H   = 38;
-  var BAR_EXT = 30;
-  var GRIP_W  = 50;
-  var BAR_H   = 8;
-  var SVG_H   = 140;
+  var GAP     = 3;
+  var COL_W   = 13;
+  var COL_H   = 46;
+  var BAR_EXT = 34;
+  var GRIP_W  = 56;
+  var BAR_H   = 10;
+  var SVG_H   = 160;
   var CY      = SVG_H / 2;
+  var f       = function(n) { return (+n).toFixed(1); };
 
-  var totalPW = expanded.reduce(function(s, p) {
-    return s + (p.w || 8) + GAP;
-  }, 0);
+  var totalPW = expanded.reduce(function(s, p) { return s + (p.w || 8) + GAP; }, 0);
+  var halfW   = GRIP_W / 2 + COL_W + GAP + totalPW + BAR_EXT;
+  var SVG_W   = Math.max(halfW * 2, 260);
+  var CX      = SVG_W / 2;
+  var els     = [];
 
-  var halfW = GRIP_W / 2 + COL_W + GAP + totalPW + BAR_EXT;
-  var SVG_W = Math.max(halfW * 2, 240);
-  var CX    = SVG_W / 2;
+  // ── defs: gradientes ────────────────────────────
+  var uniqueColors = [];
+  expanded.forEach(function(p) { if (uniqueColors.indexOf(p.color) === -1) uniqueColors.push(p.color); });
 
-  var els = [];
-  var f   = function(n) { return (+n).toFixed(1); };
+  var defs = '<defs>'
+    + '<linearGradient id="agBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#111827"/><stop offset="100%" stop-color="#030712"/></linearGradient>'
+    + '<linearGradient id="agBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b0b8c8"/><stop offset="45%" stop-color="#6b7280"/><stop offset="100%" stop-color="#374151"/></linearGradient>'
+    + '<linearGradient id="agSleeve" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e5e7eb" stop-opacity=".55"/><stop offset="50%" stop-color="#9ca3af" stop-opacity=".18"/><stop offset="100%" stop-color="#4b5563" stop-opacity=".4"/></linearGradient>'
+    + '<linearGradient id="agGrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3f4a5c"/><stop offset="100%" stop-color="#1a2230"/></linearGradient>'
+    + '<linearGradient id="agCollar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4b5563"/><stop offset="100%" stop-color="#111827"/></linearGradient>';
 
-  // Barra de fundo
-  els.push('<rect x="0" y="' + f(CY-BAR_H/2) + '" width="' + SVG_W + '" height="' + BAR_H + '" rx="3" fill="#6b7280"/>');
+  uniqueColors.forEach(function(c) {
+    var id = 'ag' + c.replace(/[^a-zA-Z0-9]/g, '');
+    defs += '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0%" stop-color="#fff" stop-opacity=".28"/>'
+      + '<stop offset="40%" stop-color="#fff" stop-opacity=".06"/>'
+      + '<stop offset="100%" stop-color="#000" stop-opacity=".22"/>'
+      + '</linearGradient>';
+  });
+  defs += '</defs>';
+  els.push(defs);
 
-  // Destaque das sleeves
+  // ── Fundo escuro da área SVG ────────────────────
+  els.push('<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="url(#agBg)" rx="10"/>');
+
+  // ── Barra principal ─────────────────────────────
+  els.push('<rect x="0" y="' + f(CY-BAR_H/2) + '" width="' + SVG_W + '" height="' + BAR_H + '" rx="4" fill="url(#agBar)"/>');
+
+  // ── Sleeves cromadas ────────────────────────────
   var slW = COL_W + GAP + totalPW + BAR_EXT;
-  els.push('<rect x="' + f(CX-GRIP_W/2-slW) + '" y="' + f(CY-BAR_H/2+1) + '" width="' + slW + '" height="' + (BAR_H-2) + '" rx="2" fill="#9ca3af" opacity="0.35"/>');
-  els.push('<rect x="' + f(CX+GRIP_W/2) + '" y="' + f(CY-BAR_H/2+1) + '" width="' + slW + '" height="' + (BAR_H-2) + '" rx="2" fill="#9ca3af" opacity="0.35"/>');
+  els.push('<rect x="' + f(CX-GRIP_W/2-slW) + '" y="' + f(CY-BAR_H/2) + '" width="' + f(slW) + '" height="' + BAR_H + '" rx="3" fill="url(#agSleeve)"/>');
+  els.push('<rect x="' + f(CX+GRIP_W/2) + '" y="' + f(CY-BAR_H/2) + '" width="' + f(slW) + '" height="' + BAR_H + '" rx="3" fill="url(#agSleeve)"/>');
 
-  // Grip / knurling
+  // ── Grip / knurling ─────────────────────────────
   var gx = CX - GRIP_W / 2;
-  els.push('<rect x="' + f(gx) + '" y="' + f(CY-BAR_H/2) + '" width="' + GRIP_W + '" height="' + BAR_H + '" rx="2" fill="#374151"/>');
-  for (var k = 0; k < 7; k++) {
-    var kx = gx + 3 + k * (GRIP_W - 6) / 6;
-    els.push('<line x1="' + f(kx) + '" y1="' + f(CY-BAR_H/2) + '" x2="' + f(kx) + '" y2="' + f(CY+BAR_H/2) + '" stroke="#6b7280" stroke-width="1.5" opacity="0.7"/>');
+  els.push('<rect x="' + f(gx) + '" y="' + f(CY-BAR_H/2) + '" width="' + GRIP_W + '" height="' + BAR_H + '" rx="3" fill="url(#agGrip)"/>');
+  for (var k = 0; k < 13; k++) {
+    var kx = gx + 5 + k * (GRIP_W - 10) / 12;
+    els.push('<line x1="' + f(kx) + '" y1="' + f(CY-BAR_H/2+1.5) + '" x2="' + f(kx) + '" y2="' + f(CY+BAR_H/2-1.5) + '" stroke="#9ca3af" stroke-width="0.8" opacity="0.45"/>');
   }
 
-  // Anilhas — lado esquerdo (centro → fora)
+  // ── Helper: desenha uma anilha com gradiente + furo + rim ──
+  function drawPlate(px, p, rotDeg) {
+    var pw  = p.w || 8;
+    var ph  = p.h || 20;
+    var pcx = f(px + pw / 2);
+    var pcy = f(CY);
+    var sid = 'ag' + p.color.replace(/[^a-zA-Z0-9]/g, '');
+    // Base
+    els.push('<rect x="' + f(px) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2.5" fill="' + p.color + '" stroke="rgba(0,0,0,.45)" stroke-width="1"/>');
+    // Brilho (gradiente)
+    els.push('<rect x="' + f(px) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2.5" fill="url(#' + sid + ')" pointer-events="none"/>');
+    // Rim superior (highlight)
+    els.push('<rect x="' + f(px+1.5) + '" y="' + f(CY-ph/2+1.5) + '" width="' + f(pw-3) + '" height="2" rx="1" fill="rgba(255,255,255,.3)" pointer-events="none"/>');
+    // Furo central
+    var hr = Math.max(pw * 0.22, 2.2);
+    els.push('<ellipse cx="' + pcx + '" cy="' + pcy + '" rx="' + f(hr) + '" ry="' + f(hr * 1.1) + '" fill="#060d1a" stroke="rgba(0,0,0,.7)" stroke-width="0.5"/>');
+    // Label
+    if (ph >= 28) {
+      els.push('<text transform="rotate(' + rotDeg + ',' + pcx + ',' + pcy + ')" x="' + pcx + '" y="' + pcy + '" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,.95)" font-size="7.5" font-family="monospace" font-weight="800">' + p.label + '</text>');
+    }
+  }
+
+  // ── Anilhas esquerdo (centro → fora) ───────────
   var lx = CX - GRIP_W / 2;
   expanded.forEach(function(p) {
-    var pw = p.w || 8;
-    var ph = p.h || 20;
-    lx -= (pw + GAP);
-    els.push('<rect x="' + f(lx) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2" fill="' + p.color + '" stroke="rgba(0,0,0,.3)" stroke-width="1"/>');
-    if (ph >= 28) {
-      var lbx = f(lx + pw / 2), lby = f(CY);
-      els.push('<text transform="rotate(-90,' + lbx + ',' + lby + ')" x="' + lbx + '" y="' + lby + '" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,.92)" font-size="8" font-family="monospace" font-weight="700">' + p.label + '</text>');
-    }
+    lx -= ((p.w || 8) + GAP);
+    drawPlate(lx, p, -90);
   });
-  // Colar esquerdo
-  var lcx = lx - GAP - COL_W;
-  els.push('<rect x="' + f(lcx) + '" y="' + f(CY-COL_H/2) + '" width="' + COL_W + '" height="' + COL_H + '" rx="3" fill="#1f2937" stroke="#4b5563" stroke-width="1"/>');
 
-  // Anilhas — lado direito (centro → fora)
+  // ── Colar esquerdo (trapézio) ───────────────────
+  var colHalf  = COL_H / 2;
+  var colExtra = 6;
+  var iTop = f(CY - colHalf), iBot = f(CY + colHalf);
+  var oTop = f(CY - colHalf - colExtra/2), oBot = f(CY + colHalf + colExtra/2);
+  var lcX0 = f(lx - GAP - COL_W), lcX1 = f(lx - GAP);
+  els.push('<polygon points="' + lcX0 + ',' + oTop + ' ' + lcX1 + ',' + iTop + ' ' + lcX1 + ',' + iBot + ' ' + lcX0 + ',' + oBot + '" fill="url(#agCollar)" stroke="#4b5563" stroke-width="1"/>');
+
+  // ── Anilhas direito (centro → fora) ────────────
   var rx = CX + GRIP_W / 2;
   expanded.forEach(function(p) {
-    var pw = p.w || 8;
-    var ph = p.h || 20;
     rx += GAP;
-    els.push('<rect x="' + f(rx) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2" fill="' + p.color + '" stroke="rgba(0,0,0,.3)" stroke-width="1"/>');
-    if (ph >= 28) {
-      var lbx = f(rx + pw / 2), lby = f(CY);
-      els.push('<text transform="rotate(90,' + lbx + ',' + lby + ')" x="' + lbx + '" y="' + lby + '" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,.92)" font-size="8" font-family="monospace" font-weight="700">' + p.label + '</text>');
-    }
-    rx += pw;
+    drawPlate(rx, p, 90);
+    rx += (p.w || 8);
   });
-  // Colar direito
-  els.push('<rect x="' + f(rx+GAP) + '" y="' + f(CY-COL_H/2) + '" width="' + COL_W + '" height="' + COL_H + '" rx="3" fill="#1f2937" stroke="#4b5563" stroke-width="1"/>');
 
-  return '<svg viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">' + els.join('') + '</svg>';
+  // ── Colar direito (trapézio) ────────────────────
+  var rcX0 = f(rx + GAP), rcX1 = f(rx + GAP + COL_W);
+  els.push('<polygon points="' + rcX0 + ',' + iTop + ' ' + rcX1 + ',' + oTop + ' ' + rcX1 + ',' + oBot + ' ' + rcX0 + ',' + iBot + '" fill="url(#agCollar)" stroke="#4b5563" stroke-width="1"/>');
+
+  return '<svg viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;border-radius:10px;">' + els.join('') + '</svg>';
 }
 
 // ── calcula o peso de cada lado conforme o modo ──
@@ -311,8 +349,8 @@ export function renderAnilhas() {
     bd.innerHTML = '<span style="color:var(--muted);font-size:13px;">Só a barra (' + toUnit(BAR_KG) + ' ' + ul + ')</span>';
   } else {
     bd.innerHTML = info.plates.map(function(p) {
-      return '<div class="anilha-plate-row">'
-        + '<span class="anilha-plate-swatch" style="background:' + p.color + '"></span>'
+      return '<div class="anilha-plate-row" style="border-color:' + p.color + '20;border-left:3px solid ' + p.color + ';">'
+        + '<span class="anilha-plate-swatch" style="background:' + p.color + ';box-shadow:0 0 6px ' + p.color + '55;"></span>'
         + '<span class="anilha-plate-count">' + p.count + '×</span>'
         + '<span class="anilha-plate-kg">' + p.label + ' ' + ul + '</span>'
         + '</div>';
