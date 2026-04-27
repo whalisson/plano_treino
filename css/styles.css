@@ -588,6 +588,16 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 @keyframes ledPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 .nav-dot{color:var(--border2);}
 
+/* Deload banner */
+.deload-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;background:rgba(255,181,52,.08);border:1px solid rgba(255,181,52,.35);border-radius:10px;animation:deloadPulse 3s ease-in-out infinite;}
+.deload-banner-icon{font-size:20px;flex-shrink:0;}
+.deload-banner-body{flex:1;min-width:0;}
+.deload-banner-title{font-weight:700;font-size:13px;color:#ffb534;}
+.deload-banner-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.deload-banner-dismiss{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;flex-shrink:0;line-height:1;}
+.deload-banner-dismiss:hover{color:var(--text);}
+@keyframes deloadPulse{0%,100%{border-color:rgba(255,181,52,.35);}50%{border-color:rgba(255,181,52,.7);}}
+
 /* Fadiga ATL/CTL/TSB */
 .ftg-wrap{display:flex;align-items:center;gap:5px;}
 .ftg-widget{display:flex;flex-direction:column;gap:2px;}

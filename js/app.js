@@ -23,7 +23,7 @@ import { workoutLog, setWorkoutLog,
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
-import { updateFadigaBar } from './fadiga.js';
+import { updateFadigaBar, checkDeload } from './fadiga.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
 // (testes substituem via global.* no beforeEach; produção usa as funções reais)
@@ -99,6 +99,30 @@ globalThis.setSyncStatus = setSyncStatus;
 window.addEventListener('offline', function() { setSyncStatus('offline'); });
 window.addEventListener('online',  function() { setSyncStatus('idle'); });
 if (!navigator.onLine) setSyncStatus('offline');
+
+// ── Deload banner ─────────────────────────────
+var _deloadDismissedDay = null;
+function updateDeloadBanner() {
+  var banner  = document.getElementById('deloadBanner');
+  var subEl   = document.getElementById('deloadBannerSub');
+  var dismiss = document.getElementById('deloadBannerDismiss');
+  if (!banner) return;
+  var today = new Date().toDateString();
+  if (_deloadDismissedDay === today) { banner.style.display = 'none'; return; }
+  var info = checkDeload();
+  if (!info.needed) { banner.style.display = 'none'; return; }
+  if (subEl) subEl.textContent =
+    'ATL ' + info.atlPct + '% há ' + info.days + ' dias · reduza volume para ~' + info.suggestedPct + '% do normal';
+  banner.style.display = 'flex';
+  if (dismiss && !dismiss._bound) {
+    dismiss._bound = true;
+    dismiss.addEventListener('click', function() {
+      _deloadDismissedDay = today;
+      banner.style.display = 'none';
+    });
+  }
+}
+globalThis.updateDeloadBanner = updateDeloadBanner;
 
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
@@ -263,7 +287,7 @@ export function applyState(saved) {
     'renderRMHistory', 'renderRatioCard', 'renderKanban', 'renderBank', 'setupBankDropzone',
     'renderPeriodGrid', 'renderProgressCharts', 'renderBuilderSegs',
     'renderSavedWorkouts', 'renderCycleHistory', 'renderRPEBlocks',
-    'renderWorkoutHistory', 'updateFadigaBar', 'updateRestCounters',
+    'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateRestCounters',
   ];
   RENDER_QUEUE.forEach(function(fn) {
     if (typeof globalThis[fn] === 'function') globalThis[fn]();

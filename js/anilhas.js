@@ -28,7 +28,7 @@ const PLATE_DEFS_LBS = [
 ];
 
 let selectedKey = null;
-let plateMode = 'sembarra'; // 'sembarra' = rm é o peso de cada lado | 'total' = rm é peso total
+let plateMode = 'total'; // 'total' = rm é peso total | 'sembarra' = rm é o peso de cada lado
 let weightUnit = 'kg'; // 'kg' | 'lbs'
 
 const KG_TO_LBS = 2.20462;
@@ -214,8 +214,8 @@ export function renderAnilhas() {
   var toggleEl = g('anilhasModeToggle');
   if (toggleEl) {
     toggleEl.innerHTML =
-      '<button class="anilha-mode-btn' + (plateMode === 'sembarra' ? ' active' : '') + '" data-mode="sembarra">Sem barra</button>'
-      + '<button class="anilha-mode-btn' + (plateMode === 'total' ? ' active' : '') + '" data-mode="total">Total</button>';
+      '<button class="anilha-mode-btn' + (plateMode === 'total' ? ' active' : '') + '" data-mode="total">Total</button>'
+      + '<button class="anilha-mode-btn' + (plateMode === 'sembarra' ? ' active' : '') + '" data-mode="sembarra">Sem barra</button>';
     toggleEl.querySelectorAll('.anilha-mode-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         plateMode = btn.dataset.mode;

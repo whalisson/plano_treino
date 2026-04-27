@@ -460,6 +460,25 @@ export function calcFadiga() {
   return Math.round(r.fatigue / r.steadyState * 100);
 }
 
+// Verifica se ATL esteve acima de 110% do steady-state por >= 3 dias consecutivos.
+export function checkDeload() {
+  var DAY = 86400000, now = Date.now();
+  var THRESHOLD = 1.10, MIN_DAYS = 3;
+  var days = 0;
+  for (var d = 0; d < 7; d++) {
+    var r = getFatigaRaw(now - d * DAY);
+    if (r.fatigue >= THRESHOLD * r.steadyState) days++;
+    else break;
+  }
+  var cur = getFatigaRaw();
+  return {
+    needed:       days >= MIN_DAYS,
+    days:         days,
+    atlPct:       Math.round(cur.fatigue / cur.steadyState * 100),
+    suggestedPct: 45,
+  };
+}
+
 export function calcRestDays() {
   var base   = getFatigaRaw();
   var target = 0.8 * base.steadyState;
