@@ -23,6 +23,7 @@ import { workoutLog, setWorkoutLog,
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
+import { picoCompDate, setPicoCompDate, renderPico, picoOpenLogModal, picoSetDate, picoConfirmLog } from './pico.js';
 import { updateFadigaBar, checkDeload } from './fadiga.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
@@ -30,6 +31,10 @@ import { updateFadigaBar, checkDeload } from './fadiga.js';
 globalThis.buildAllPeriod       = buildAllPeriod;
 globalThis.renderAnilhas        = renderAnilhas;
 globalThis.renderFeeder         = renderFeeder;
+globalThis.renderPico           = renderPico;
+globalThis.picoOpenLogModal     = picoOpenLogModal;
+globalThis.picoSetDate          = picoSetDate;
+globalThis.picoConfirmLog       = picoConfirmLog;
 globalThis.calcRM               = calcRM;
 globalThis.renderCustomLifts    = renderCustomLifts;
 globalThis.populateRMLiftSelect = populateRMLiftSelect;
@@ -149,6 +154,7 @@ document.addEventListener('gorila-save', function() {
     workoutLog:    workoutLog,
     deloadMode:    deloadMode,
     periodLog:     periodLog,
+    picoCompDate:  picoCompDate,
   };
   idbSet(RECORD_KEY, data)
     .then(function() { setSyncStatus('saved'); })
@@ -173,6 +179,7 @@ g('ntabs').addEventListener('click', function(e) {
   if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
   if (p === 'anilhas') renderAnilhas();
   if (p === 'feeder')  renderFeeder();
+  if (p === 'pico')    renderPico();
 });
 
 // ── Export / Import de dados ──────────────────
@@ -277,6 +284,7 @@ export function applyState(saved) {
     if (saved.workoutLog && Array.isArray(saved.workoutLog)) setWorkoutLog(saved.workoutLog);
     if (saved.deloadMode !== undefined) setDeloadMode(saved.deloadMode);
     if (saved.periodLog && Array.isArray(saved.periodLog)) setPeriodLog(saved.periodLog);
+    if (saved.picoCompDate) setPicoCompDate(saved.picoCompDate);
   }
   syncDeloadBtn();
   // Fila de renders — iterar aqui garante que nenhuma função seja esquecida.
@@ -287,7 +295,7 @@ export function applyState(saved) {
     'renderRMHistory', 'renderRatioCard', 'renderKanban', 'renderBank', 'setupBankDropzone',
     'renderPeriodGrid', 'renderProgressCharts', 'renderBuilderSegs',
     'renderSavedWorkouts', 'renderCycleHistory', 'renderRPEBlocks',
-    'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateRestCounters',
+    'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateRestCounters', 'renderPico',
   ];
   RENDER_QUEUE.forEach(function(fn) {
     if (typeof globalThis[fn] === 'function') globalThis[fn]();

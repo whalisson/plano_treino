@@ -29,6 +29,7 @@
       <div class="ntab"    data-p="rpe">RPE</div>
       <div class="ntab"    data-p="anilhas">Anilhas</div>
       <div class="ntab"    data-p="feeder">Feeder</div>
+      <div class="ntab"    data-p="pico">Pico</div>
     </div>
     <div class="nav-actions">
       <div class="nav-meter" id="navMeter">
@@ -124,7 +125,7 @@
   <!-- RM Dashboard -->
   <div class="rm-dash">
     <div class="rm-card rm-c-supino">
-      <img src="img/supino-met.png" class="rm-img" alt="">
+      <img src="img/supino_cyber.png" class="rm-img" alt="">
       <div class="rm-top">
         <div class="rm-label">SUPINO <em>· 1RM</em></div>
         <canvas id="spark-supino" class="rm-spark" width="80" height="36"></canvas>
@@ -139,7 +140,7 @@
       </div>
     </div>
     <div class="rm-card rm-c-agacha">
-      <img src="img/agacha-met.png" class="rm-img" alt="">
+      <img src="img/agacha_cyber.png" class="rm-img" alt="">
       <div class="rm-top">
         <div class="rm-label">AGACHAMENTO <em>· 1RM</em></div>
         <canvas id="spark-agacha" class="rm-spark" width="80" height="36"></canvas>
@@ -154,7 +155,7 @@
       </div>
     </div>
     <div class="rm-card rm-c-terra">
-      <img src="img/terra-met.png" class="rm-img" alt="">
+      <img src="img/terra_cyber.png" class="rm-img" alt="">
       <div class="rm-top">
         <div class="rm-label">TERRA <em>· 1RM</em></div>
         <canvas id="spark-terra" class="rm-spark" width="80" height="36"></canvas>
@@ -201,7 +202,7 @@
   <!-- SUPINO -->
   <div class="ps">
     <div class="psh" id="psh-supino">
-      <img src="img/supino-ps.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;filter:drop-shadow(0 2px 6px rgba(108,99,255,.3));">
+      <img src="img/supino_cyber.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;mix-blend-mode:screen;">
       <span class="pstitle">Supino</span>
       <span class="pschev" id="chev-supino">▼</span>
     </div>
@@ -211,7 +212,7 @@
   <!-- AGACHAMENTO -->
   <div class="ps">
     <div class="psh" id="psh-agacha">
-      <img src="img/agacha-ps.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;filter:drop-shadow(0 2px 6px rgba(108,99,255,.3));">
+      <img src="img/agacha_cyber.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;mix-blend-mode:screen;">
       <span class="pstitle">Agachamento</span>
       <span class="pschev" id="chev-agacha">▼</span>
     </div>
@@ -221,7 +222,7 @@
   <!-- TERRA -->
   <div class="ps">
     <div class="psh" id="psh-terra">
-      <img src="img/terra-ps.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;filter:drop-shadow(0 2px 6px rgba(108,99,255,.3));">
+      <img src="img/terra_cyber.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;mix-blend-mode:screen;">
       <span class="pstitle">Terra</span>
       <span class="pschev" id="chev-terra">▼</span>
     </div>
@@ -626,6 +627,30 @@
   <div id="rpeBlocksList" style="display:flex;flex-direction:column;gap:9px;"></div>
 </div>
 
+<!-- Modal: planejar semana de pico no Logbook -->
+<div class="mbg" id="mPicoLog">
+  <div class="mbox" style="max-width:300px;">
+    <div class="mtitle">Planejar no Logbook</div>
+    <div id="picoLogWeekLabel" style="font-size:13px;font-weight:600;color:var(--accent);padding:8px 11px;background:var(--bg3);border-radius:7px;margin-bottom:14px;"></div>
+    <div style="margin-bottom:14px;">
+      <label>Dia da semana</label>
+      <select id="picoLogDay">
+        <option value="0">Segunda</option>
+        <option value="1">Terça</option>
+        <option value="2">Quarta</option>
+        <option value="3">Quinta</option>
+        <option value="4">Sexta</option>
+        <option value="5">Sábado</option>
+        <option value="6">Domingo</option>
+      </select>
+    </div>
+    <div class="mbtns">
+      <button onclick="picoConfirmLog()" style="flex:2">+ Adicionar ao dia</button>
+      <button class="sec" onclick="document.getElementById('mPicoLog').classList.remove('on')" style="flex:1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: planejar bloco RPE no Logbook -->
 <div class="mbg" id="mPlanRPE">
   <div class="mbox" style="width:320px;">
@@ -759,6 +784,9 @@
     </div>
   </div>
 </div>
+
+<!-- ══ PICO ══ -->
+<div class="pg" id="pg-pico"></div>
 
 <!-- ══ FEEDER SETS ══ -->
 <div class="pg" id="pg-feeder">

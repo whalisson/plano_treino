@@ -624,6 +624,7 @@ export function renderCustomLifts() {
     ps.className = 'ps';
     ps.innerHTML =
       '<div class="psh" id="' + pshId + '">'
+      + '<img src="img/any_cyber.png" style="height:72px;width:auto;object-fit:contain;margin-right:4px;vertical-align:middle;mix-blend-mode:screen;">'
       + '<span class="pstitle" style="color:' + color + ';">' + lift.name + '</span>'
       + '<span class="pschev" id="' + chevId + '" style="margin-left:8px;">▼</span>'
       + '</div>'
@@ -646,7 +647,8 @@ export function renderCustomLifts() {
         card.className = 'rm-card rm-card-custom';
         card.style.cssText = 'border-color:rgba(' + rgb + ',.25);';
         card.innerHTML =
-          '<div class="rm-top">'
+          '<img src="img/any_cyber.png" class="rm-img" alt="" style="mix-blend-mode:screen;">'
+          + '<div class="rm-top">'
           + '<div class="rm-label">' + lift.name.toUpperCase() + ' <em>· 1RM</em></div>'
           + '<canvas id="' + sparkId + '" class="rm-spark" width="80" height="36"></canvas>'
           + '</div>'
