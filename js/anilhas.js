@@ -8,23 +8,23 @@ import { periodBase, LIFT_SOLID, getCustomColor } from './periodizacao.js';
 const BAR_KG = 20;
 
 const PLATE_DEFS = [
-  { kg: 25,   color: '#dc2626', label: '25',  w: 16, h: 110 },
-  { kg: 20,   color: '#2563eb', label: '20',  w: 15, h: 100 },
-  { kg: 15,   color: '#ca8a04', label: '15',  w: 14, h: 88  },
-  { kg: 10,   color: '#16a34a', label: '10',  w: 12, h: 72  },
-  { kg: 5,    color: '#cbd5e1', label: '5',   w: 10, h: 54  },
-  { kg: 2.5,  color: '#a855f7', label: '2.5', w: 8,  h: 38  },
-  { kg: 1,    color: '#6b7280', label: '1',   w: 6,  h: 28  },
+  { kg: 25,   color: '#b91c1c', label: '25',  w: 28, h: 168, rx: 10 },
+  { kg: 20,   color: '#2563eb', label: '20',  w: 26, h: 144, rx: 9  },
+  { kg: 15,   color: '#ca8a04', label: '15',  w: 23, h: 116, rx: 8  },
+  { kg: 10,   color: '#16a34a', label: '10',  w: 19, h: 90,  rx: 7  },
+  { kg: 5,    color: '#cbd5e1', label: '5',   w: 15, h: 64,  rx: 6  },
+  { kg: 2.5,  color: '#a855f7', label: '2.5', w: 11, h: 44,  rx: 5  },
+  { kg: 1,    color: '#6b7280', label: '1',   w: 8,  h: 30,  rx: 4  },
 ];
 
 // Anilhas em lbs — pesos em kg equivalente para o algoritmo
 const PLATE_DEFS_LBS = [
-  { kg: 45/2.20462,  color: '#ea580c', label: '45',  w: 16, h: 110 },
-  { kg: 35/2.20462,  color: '#2563eb', label: '35',  w: 14, h: 88  },
-  { kg: 25/2.20462,  color: '#ca8a04', label: '25',  w: 12, h: 72  },
-  { kg: 10/2.20462,  color: '#1f2937', label: '10',  w: 10, h: 54  },
-  { kg: 5/2.20462,   color: '#1f2937', label: '5',   w: 8,  h: 38  },
-  { kg: 2.5/2.20462, color: '#1f2937', label: '2.5', w: 6,  h: 28  },
+  { kg: 45/2.20462,  color: '#ea580c', label: '45',  w: 27, h: 160, rx: 10 },
+  { kg: 35/2.20462,  color: '#2563eb', label: '35',  w: 24, h: 136, rx: 9  },
+  { kg: 25/2.20462,  color: '#ca8a04', label: '25',  w: 21, h: 110, rx: 8  },
+  { kg: 10/2.20462,  color: '#1f2937', label: '10',  w: 17, h: 84,  rx: 6  },
+  { kg: 5/2.20462,   color: '#1f2937', label: '5',   w: 13, h: 60,  rx: 5  },
+  { kg: 2.5/2.20462, color: '#1f2937', label: '2.5', w: 10, h: 42,  rx: 4  },
 ];
 
 let selectedKey = null;
@@ -111,112 +111,91 @@ function buildBarbellSVG(info) {
   });
 
   var GAP     = 3;
-  var COL_W   = 13;
-  var COL_H   = 46;
-  var BAR_EXT = 34;
-  var GRIP_W  = 56;
-  var BAR_H   = 10;
-  var SVG_H   = 160;
-  var CY      = SVG_H / 2;
+  var SVG_H   = 220;
+  var CY      = 104;   // centro da barra (assimétrico, igual ao mockup)
+  var BAR_H   = 14;    // altura das sleeves
+  var SHAFT_H = 16;    // altura do shaft
+  var KNURL_H = 20;    // altura do knurling
+  var GRIP_W  = 284;   // largura total do knurling
+  var SHAFT_W = 90;    // largura de cada shaft
+  var COL_W   = 24;    // largura do colar
+  var COL_H_I = 56;    // altura interna do colar (lado shaft)
+  var COL_H_O = 72;    // altura externa do colar (lado anilha)
+  var BAR_EXT = 34;    // extensão da sleeve após a última anilha
   var f       = function(n) { return (+n).toFixed(1); };
 
-  var totalPW = expanded.reduce(function(s, p) { return s + (p.w || 8) + GAP; }, 0);
-  var halfW   = GRIP_W / 2 + COL_W + GAP + totalPW + BAR_EXT;
-  var SVG_W   = Math.max(halfW * 2, 260);
+  var totalPW = expanded.reduce(function(s, p) { return s + (p.w || 18) + GAP; }, 0);
+  var halfW   = GRIP_W / 2 + SHAFT_W + COL_W + totalPW + BAR_EXT;
+  var SVG_W   = Math.max(halfW * 2, 380);
   var CX      = SVG_W / 2;
   var els     = [];
 
-  // ── defs: gradientes ────────────────────────────
-  var uniqueColors = [];
-  expanded.forEach(function(p) { if (uniqueColors.indexOf(p.color) === -1) uniqueColors.push(p.color); });
+  var shaftL  = CX - GRIP_W / 2 - SHAFT_W;  // borda esquerda do shaft
+  var shaftR  = CX + GRIP_W / 2 + SHAFT_W;  // borda direita do shaft
+  var colOutL = shaftL - COL_W;              // borda externa do colar esquerdo
+  var colOutR = shaftR + COL_W;              // borda externa do colar direito
 
-  var defs = '<defs>'
-    + '<linearGradient id="agBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#111827"/><stop offset="100%" stop-color="#030712"/></linearGradient>'
-    + '<linearGradient id="agBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b0b8c8"/><stop offset="45%" stop-color="#6b7280"/><stop offset="100%" stop-color="#374151"/></linearGradient>'
-    + '<linearGradient id="agSleeve" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e5e7eb" stop-opacity=".55"/><stop offset="50%" stop-color="#9ca3af" stop-opacity=".18"/><stop offset="100%" stop-color="#4b5563" stop-opacity=".4"/></linearGradient>'
-    + '<linearGradient id="agGrip" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3f4a5c"/><stop offset="100%" stop-color="#1a2230"/></linearGradient>'
-    + '<linearGradient id="agCollar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4b5563"/><stop offset="100%" stop-color="#111827"/></linearGradient>';
+  // ── Sleeves (cinza claro) ──────────────────────
+  els.push('<rect x="0" y="' + f(CY - BAR_H / 2) + '" width="' + f(shaftL) + '" height="' + BAR_H + '" rx="4" fill="#9ca3af"/>');
+  els.push('<rect x="' + f(shaftR) + '" y="' + f(CY - BAR_H / 2) + '" width="' + f(SVG_W - shaftR) + '" height="' + BAR_H + '" rx="4" fill="#9ca3af"/>');
 
-  uniqueColors.forEach(function(c) {
-    var id = 'ag' + c.replace(/[^a-zA-Z0-9]/g, '');
-    defs += '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0%" stop-color="#fff" stop-opacity=".28"/>'
-      + '<stop offset="40%" stop-color="#fff" stop-opacity=".06"/>'
-      + '<stop offset="100%" stop-color="#000" stop-opacity=".22"/>'
-      + '</linearGradient>';
-  });
-  defs += '</defs>';
-  els.push(defs);
+  // ── Shafts (cinza médio) ───────────────────────
+  els.push('<rect x="' + f(shaftL) + '" y="' + f(CY - SHAFT_H / 2) + '" width="' + SHAFT_W + '" height="' + SHAFT_H + '" rx="3" fill="#6b7280"/>');
+  els.push('<rect x="' + f(CX + GRIP_W / 2) + '" y="' + f(CY - SHAFT_H / 2) + '" width="' + SHAFT_W + '" height="' + SHAFT_H + '" rx="3" fill="#6b7280"/>');
 
-  // ── Fundo escuro da área SVG ────────────────────
-  els.push('<rect x="0" y="0" width="' + SVG_W + '" height="' + SVG_H + '" fill="url(#agBg)" rx="10"/>');
-
-  // ── Barra principal ─────────────────────────────
-  els.push('<rect x="0" y="' + f(CY-BAR_H/2) + '" width="' + SVG_W + '" height="' + BAR_H + '" rx="4" fill="url(#agBar)"/>');
-
-  // ── Sleeves cromadas ────────────────────────────
-  var slW = COL_W + GAP + totalPW + BAR_EXT;
-  els.push('<rect x="' + f(CX-GRIP_W/2-slW) + '" y="' + f(CY-BAR_H/2) + '" width="' + f(slW) + '" height="' + BAR_H + '" rx="3" fill="url(#agSleeve)"/>');
-  els.push('<rect x="' + f(CX+GRIP_W/2) + '" y="' + f(CY-BAR_H/2) + '" width="' + f(slW) + '" height="' + BAR_H + '" rx="3" fill="url(#agSleeve)"/>');
-
-  // ── Grip / knurling ─────────────────────────────
-  var gx = CX - GRIP_W / 2;
-  els.push('<rect x="' + f(gx) + '" y="' + f(CY-BAR_H/2) + '" width="' + GRIP_W + '" height="' + BAR_H + '" rx="3" fill="url(#agGrip)"/>');
-  for (var k = 0; k < 13; k++) {
-    var kx = gx + 5 + k * (GRIP_W - 10) / 12;
-    els.push('<line x1="' + f(kx) + '" y1="' + f(CY-BAR_H/2+1.5) + '" x2="' + f(kx) + '" y2="' + f(CY+BAR_H/2-1.5) + '" stroke="#9ca3af" stroke-width="0.8" opacity="0.45"/>');
+  // ── Knurling central (cinza escuro + linhas diagonais) ──
+  var kx = CX - GRIP_W / 2;
+  els.push('<rect x="' + f(kx) + '" y="' + f(CY - KNURL_H / 2) + '" width="' + GRIP_W + '" height="' + KNURL_H + '" rx="3" fill="#374151"/>');
+  for (var k = 0; k < 19; k++) {
+    var lk = kx + 20 + k * 14;
+    els.push('<line x1="' + f(lk + 2) + '" y1="' + f(CY - KNURL_H / 2 + 2) + '" x2="' + f(lk - 10) + '" y2="' + f(CY + KNURL_H / 2 - 2) + '" stroke="#6b7280" stroke-width="1.2" opacity="0.6"/>');
   }
 
-  // ── Helper: desenha uma anilha com gradiente + furo + rim ──
+  // ── Helper: desenha anilha (igual ao mockup) ───
   function drawPlate(px, p, rotDeg) {
-    var pw  = p.w || 8;
-    var ph  = p.h || 20;
-    var pcx = f(px + pw / 2);
-    var pcy = f(CY);
-    var sid = 'ag' + p.color.replace(/[^a-zA-Z0-9]/g, '');
-    // Base
-    els.push('<rect x="' + f(px) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2.5" fill="' + p.color + '" stroke="rgba(0,0,0,.45)" stroke-width="1"/>');
-    // Brilho (gradiente)
-    els.push('<rect x="' + f(px) + '" y="' + f(CY-ph/2) + '" width="' + pw + '" height="' + ph + '" rx="2.5" fill="url(#' + sid + ')" pointer-events="none"/>');
-    // Rim superior (highlight)
-    els.push('<rect x="' + f(px+1.5) + '" y="' + f(CY-ph/2+1.5) + '" width="' + f(pw-3) + '" height="2" rx="1" fill="rgba(255,255,255,.3)" pointer-events="none"/>');
+    var pw   = p.w  || 18;
+    var ph   = p.h  || 80;
+    var prx  = p.rx || Math.round(pw * 0.36);
+    var pcx  = f(px + pw / 2);
+    var pcy  = f(CY);
+    var rimH = Math.max(Math.round(pw * 0.36), 5);
+    var hr   = pw * 0.21;
+    var fs   = Math.max(Math.min(Math.round(pw * 0.4), 11), 7);
+    // Base com borda preta grossa
+    els.push('<rect x="' + f(px) + '" y="' + f(CY - ph / 2) + '" width="' + pw + '" height="' + ph + '" rx="' + prx + '" fill="' + p.color + '" stroke="#111" stroke-width="3"/>');
+    // Destaque de topo
+    els.push('<rect x="' + f(px + 3) + '" y="' + f(CY - ph / 2 + 3) + '" width="' + (pw - 6) + '" height="' + rimH + '" rx="' + Math.max(prx - 2, 2) + '" fill="rgba(255,255,255,0.25)"/>');
     // Furo central
-    var hr = Math.max(pw * 0.22, 2.2);
-    els.push('<ellipse cx="' + pcx + '" cy="' + pcy + '" rx="' + f(hr) + '" ry="' + f(hr * 1.1) + '" fill="#060d1a" stroke="rgba(0,0,0,.7)" stroke-width="0.5"/>');
-    // Label
-    if (ph >= 28) {
-      els.push('<text transform="rotate(' + rotDeg + ',' + pcx + ',' + pcy + ')" x="' + pcx + '" y="' + pcy + '" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,.95)" font-size="7.5" font-family="monospace" font-weight="800">' + p.label + '</text>');
+    els.push('<ellipse cx="' + pcx + '" cy="' + pcy + '" rx="' + f(hr) + '" ry="' + f(hr * 1.17) + '" fill="#060a14" stroke="#000" stroke-width="1"/>');
+    // Label rotacionado
+    if (ph >= 44) {
+      els.push('<text transform="rotate(' + rotDeg + ',' + pcx + ',' + pcy + ')" x="' + pcx + '" y="' + pcy + '" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,.9)" font-size="' + fs + '" font-family="monospace" font-weight="800">' + p.label + '</text>');
     }
   }
 
-  // ── Anilhas esquerdo (centro → fora) ───────────
-  var lx = CX - GRIP_W / 2;
+  // ── Anilhas esquerdo (centro → fora) ──────────
+  var lx = colOutL;
   expanded.forEach(function(p) {
-    lx -= ((p.w || 8) + GAP);
+    lx -= ((p.w || 18) + GAP);
     drawPlate(lx, p, -90);
   });
 
-  // ── Colar esquerdo (trapézio) ───────────────────
-  var colHalf  = COL_H / 2;
-  var colExtra = 6;
-  var iTop = f(CY - colHalf), iBot = f(CY + colHalf);
-  var oTop = f(CY - colHalf - colExtra/2), oBot = f(CY + colHalf + colExtra/2);
-  var lcX0 = f(lx - GAP - COL_W), lcX1 = f(lx - GAP);
-  els.push('<polygon points="' + lcX0 + ',' + oTop + ' ' + lcX1 + ',' + iTop + ' ' + lcX1 + ',' + iBot + ' ' + lcX0 + ',' + oBot + '" fill="url(#agCollar)" stroke="#4b5563" stroke-width="1"/>');
-
-  // ── Anilhas direito (centro → fora) ────────────
-  var rx = CX + GRIP_W / 2;
+  // ── Anilhas direito (centro → fora) ───────────
+  var rx = colOutR;
   expanded.forEach(function(p) {
     rx += GAP;
     drawPlate(rx, p, 90);
-    rx += (p.w || 8);
+    rx += (p.w || 18);
   });
 
-  // ── Colar direito (trapézio) ────────────────────
-  var rcX0 = f(rx + GAP), rcX1 = f(rx + GAP + COL_W);
-  els.push('<polygon points="' + rcX0 + ',' + iTop + ' ' + rcX1 + ',' + oTop + ' ' + rcX1 + ',' + oBot + ' ' + rcX0 + ',' + iBot + '" fill="url(#agCollar)" stroke="#4b5563" stroke-width="1"/>');
+  // ── Colar esquerdo (trapézio) ──────────────────
+  var iH = COL_H_I / 2, oH = COL_H_O / 2;
+  els.push('<polygon points="' + f(colOutL) + ',' + f(CY - oH) + ' ' + f(shaftL) + ',' + f(CY - iH) + ' ' + f(shaftL) + ',' + f(CY + iH) + ' ' + f(colOutL) + ',' + f(CY + oH) + '" fill="#374151" stroke="#1f2937" stroke-width="1.5"/>');
 
-  return '<svg viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;border-radius:10px;">' + els.join('') + '</svg>';
+  // ── Colar direito (trapézio espelhado) ─────────
+  els.push('<polygon points="' + f(shaftR) + ',' + f(CY - iH) + ' ' + f(colOutR) + ',' + f(CY - oH) + ' ' + f(colOutR) + ',' + f(CY + oH) + ' ' + f(shaftR) + ',' + f(CY + iH) + '" fill="#374151" stroke="#1f2937" stroke-width="1.5"/>');
+
+  return '<svg viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">' + els.join('') + '</svg>';
 }
 
 // ── calcula o peso de cada lado conforme o modo ──
