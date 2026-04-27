@@ -555,3 +555,11 @@ globalThis.updateFadigaBar = updateFadigaBar;
   document.addEventListener('click', function () { pop.classList.remove('on'); });
   pop.addEventListener('click', function (e) { e.stopPropagation(); });
 }());
+
+// Popover MEV/MAV/MRV — fecha ao clicar fora
+(function () {
+  var pop = document.getElementById('vmrvHelpPop');
+  if (!pop) return;
+  document.addEventListener('click', function () { pop.classList.remove('on'); });
+  pop.addEventListener('click', function (e) { e.stopPropagation(); });
+}());

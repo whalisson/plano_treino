@@ -312,7 +312,7 @@ export function openExLog(board, dayIdx, exIdx) {
   if (!ex) return;
   var last = getLastSessionForDay(workoutLog, dayIdx);
   var lastEx = last && last.exercises.find(function(e) { return e.name === ex.name; });
-  _exLog = { dayIdx: dayIdx, exIdx: exIdx, exName: ex.name, plannedKg: ex.kg, sets: [] };
+  _exLog = { dayIdx: dayIdx, exIdx: exIdx, exName: ex.name, plannedKg: ex.kg, group: ex.group || '', sets: [] };
 
   g('mExLogTitle').textContent = ex.name;
   g('mExLogPlanned').textContent = ex.reps + ' · ' + ex.kg + 'kg planejado';
@@ -372,7 +372,7 @@ export function exLogSave() {
   // Adiciona ou acumula sets no exercício
   var hasEx = session.exercises.some(function(e) { return e.name === _exLog.exName; });
   if (!hasEx) {
-    var newEx = { name: _exLog.exName, plannedKg: _exLog.plannedKg, sets: _exLog.sets.slice() };
+    var newEx = { name: _exLog.exName, plannedKg: _exLog.plannedKg, group: _exLog.group, sets: _exLog.sets.slice() };
     session = Object.assign({}, session, { exercises: session.exercises.concat(newEx) });
   } else {
     session = Object.assign({}, session, {

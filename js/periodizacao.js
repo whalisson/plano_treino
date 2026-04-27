@@ -355,7 +355,8 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol, s
     if (progTxt) progTxt.textContent = done + '/' + totalChecks;
 
     buildCycleProgress();
-    if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
+    if (typeof globalThis.updateFadigaBar   === 'function') globalThis.updateFadigaBar();
+    if (typeof globalThis.renderVolumeBars  === 'function') globalThis.renderVolumeBars();
     updateRestCounters();
     if (allDone && !blockEl.classList.contains('completed')) {
       blockEl.classList.add('completed');

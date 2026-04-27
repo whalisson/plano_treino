@@ -25,6 +25,7 @@ import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
 import { picoCompDate, setPicoCompDate, renderPico, picoOpenLogModal, picoSetDate, picoConfirmLog } from './pico.js';
 import { updateFadigaBar, checkDeload } from './fadiga.js';
+import { renderVolumeBars } from './volume.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
 // (testes substituem via global.* no beforeEach; produção usa as funções reais)
@@ -60,6 +61,7 @@ globalThis.wlAddSet             = wlAddSet;
 globalThis.wlRemoveSet          = wlRemoveSet;
 globalThis.renderWorkoutHistory = renderWorkoutHistory;
 globalThis.deleteExerciseHistory = deleteExerciseHistory;
+globalThis.renderVolumeBars = renderVolumeBars;
 globalThis.openExLog            = function(di, ei) { openExLog(board, di, ei); };
 globalThis.exLogAddSet          = exLogAddSet;
 globalThis.exLogSave            = exLogSave;
@@ -133,6 +135,7 @@ globalThis.updateDeloadBanner = updateDeloadBanner;
 document.addEventListener('gorila-save', function() {
   setSyncStatus('saving');
   updateFadigaBar();
+  renderVolumeBars();
   var data = {
     rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
     rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
@@ -175,11 +178,12 @@ g('ntabs').addEventListener('click', function(e) {
   document.querySelectorAll('.pg').forEach(function(pg)   { pg.classList.remove('on'); });
   tab.classList.add('on');
   g('pg-' + p).classList.add('on');
-  if (p === 'cardio') buildCardioChart();
+  if (p === 'cardio')       buildCardioChart();
   if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
-  if (p === 'anilhas') renderAnilhas();
-  if (p === 'feeder')  renderFeeder();
-  if (p === 'pico')    renderPico();
+  if (p === 'anilhas')      renderAnilhas();
+  if (p === 'feeder')       renderFeeder();
+  if (p === 'pico')         renderPico();
+  if (p === 'logbook')      renderVolumeBars();
 });
 
 // ── Export / Import de dados ──────────────────
@@ -296,6 +300,7 @@ export function applyState(saved) {
     'renderPeriodGrid', 'renderProgressCharts', 'renderBuilderSegs',
     'renderSavedWorkouts', 'renderCycleHistory', 'renderRPEBlocks',
     'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateRestCounters', 'renderPico',
+    'renderVolumeBars',
   ];
   RENDER_QUEUE.forEach(function(fn) {
     if (typeof globalThis[fn] === 'function') globalThis[fn]();

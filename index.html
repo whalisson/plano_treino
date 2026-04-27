@@ -56,6 +56,46 @@
   </div>
 </nav>
 
+<!-- Popover explicação MEV/MAV/MRV -->
+<div id="vmrvHelpPop" class="nfw-help-pop">
+  <div class="nfw-hp-row">
+    <span class="nfw-hp-tag vmrv-hp-mev">MEV</span>
+    <div><b>Mínimo Efetivo</b> — volume mínimo semanal (em séries) para gerar adaptação. Abaixo disso o músculo não progride.</div>
+  </div>
+  <div class="nfw-hp-row">
+    <span class="nfw-hp-tag vmrv-hp-mav">MAV</span>
+    <div><b>Máximo Adaptativo</b> — janela ótima de volume. É onde ocorre o maior ganho de força e hipertrofia com boa recuperação.</div>
+  </div>
+  <div class="nfw-hp-row">
+    <span class="nfw-hp-tag vmrv-hp-mrv">MRV</span>
+    <div><b>Máximo Recuperável</b> — limite além do qual a recuperação não acompanha o volume. Risco de overtraining.</div>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px;display:flex;flex-direction:column;gap:5px;">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Zonas da barra</div>
+    <div class="nfw-hp-row" style="gap:8px;">
+      <span class="nfw-hp-tag" style="background:rgba(255,255,255,.06);color:var(--muted);">&lt; MEV</span>
+      <div style="font-size:11px;">Volume insuficiente — sem estímulo de crescimento.</div>
+    </div>
+    <div class="nfw-hp-row" style="gap:8px;">
+      <span class="nfw-hp-tag" style="background:rgba(201,255,58,.07);color:rgba(201,255,58,.7);">MEV–MAV</span>
+      <div style="font-size:11px;">Volume mínimo atingido, ainda há espaço para crescer.</div>
+    </div>
+    <div class="nfw-hp-row" style="gap:8px;">
+      <span class="nfw-hp-tag" style="background:rgba(201,255,58,.18);color:var(--lime);">MAV</span>
+      <div style="font-size:11px;">Janela ótima — volume ideal para hipertrofia e força.</div>
+    </div>
+    <div class="nfw-hp-row" style="gap:8px;">
+      <span class="nfw-hp-tag" style="background:rgba(255,181,52,.12);color:var(--amber);">&gt; MAV</span>
+      <div style="font-size:11px;">Acima do ótimo — ganhos menores, recuperação mais lenta.</div>
+    </div>
+    <div class="nfw-hp-row" style="gap:8px;">
+      <span class="nfw-hp-tag" style="background:rgba(255,85,85,.12);color:var(--red);">&gt; MRV</span>
+      <div style="font-size:11px;">Volume excessivo — risco de sobretreinamento.</div>
+    </div>
+  </div>
+  <div style="font-size:10px;color:var(--muted);margin-top:4px;">Valores baseados na metodologia RP (Mike Israetel). Séries contadas nos últimos 7 dias.</div>
+</div>
+
 <!-- Popover explicação ATL/CTL/TSB -->
 <div id="fadigaHelpPop" class="nfw-help-pop" hidden>
   <div class="nfw-hp-row">
@@ -270,6 +310,7 @@
     <span style="color:var(--muted);">kg</span>
     <span style="margin-left:auto;font-size:11px;color:var(--muted);" id="weeklyVolumeDays"></span>
   </div>
+  <div id="volumeZonesCard" class="vmrv-wrap"></div>
   <div class="kboard" id="kboard"></div>
   <div class="div"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
