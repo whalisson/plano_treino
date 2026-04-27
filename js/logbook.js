@@ -2,8 +2,7 @@
 // Kanban, banco de exercícios, drag-and-drop e progresso de carga
 
 import { uid, g, round05, parseSetCount, getWeekRange, showUndo, saveState, kgHistory } from './state.js';
-
-var DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+import { DAYS } from './constants.js';
 var _bankQuery = '';
 var _bankGroup = '';
 

@@ -2,8 +2,7 @@
 // Registro de execucao de treinos: sessoes, sets realizados e historico
 
 import { uid, g, saveState } from './state.js';
-
-var DAYS = ['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'];
+import { DAYS } from './constants.js';
 
 // ── Estado ────────────────────────────────────
 export let workoutLog = [];
@@ -244,6 +243,7 @@ export function finishWorkoutLog() {
   workoutLog = workoutLog.concat(_activeSession);
   _activeSession = null;
   saveState();
+  if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
   g('mWorkoutLog').classList.remove('on');
   renderWorkoutHistory();
 }
@@ -384,6 +384,7 @@ export function exLogSave() {
 
   workoutLog = workoutLog.map(function(s) { return s.id === session.id ? finishSession(session) : s; });
   saveState();
+  if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
   renderWorkoutHistory();
   g('mExLog').classList.remove('on');
   _exLog = null;

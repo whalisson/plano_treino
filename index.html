@@ -35,9 +35,13 @@
         <span class="nav-led"></span>
         <span>SYNC <b id="navSyncStatus">—</b></span>
         <span class="nav-dot">·</span>
-        <div class="nav-fatigue" title="Fadiga acumulada (últimos 7 dias)">
-          <div class="nav-fatigue-track"><div class="nav-fatigue-fill" id="fatigaFill"></div></div>
-          <span id="fatigaLabel">FADIGA</span>
+        <div class="ftg-wrap">
+          <div class="ftg-widget">
+            <div class="ftg-row"><span class="ftg-lbl">ATL</span><div class="ftg-track"><div id="ftgAtlBar" class="ftg-fill"></div></div><span id="ftgAtlVal" class="ftg-num">—</span></div>
+            <div class="ftg-row"><span class="ftg-lbl">CTL</span><div class="ftg-track"><div id="ftgCtlBar" class="ftg-fill ftg-ctl"></div></div><span id="ftgCtlVal" class="ftg-num">—</span></div>
+            <div class="ftg-row"><span class="ftg-lbl">TSB</span><div class="ftg-track"><div id="ftgTsbBar" class="ftg-fill"></div></div><span id="ftgTsbVal" class="ftg-num">—</span></div>
+          </div>
+          <button class="ftg-help" id="fadigaHelpBtn" title="O que é ATL/CTL/TSB?">?</button>
         </div>
       </div>
       <div class="save-menu-wrap" id="saveMenuWrap">
@@ -50,6 +54,26 @@
     </div>
   </div>
 </nav>
+
+<!-- Popover explicação ATL/CTL/TSB -->
+<div id="fadigaHelpPop" class="nfw-help-pop" hidden>
+  <div class="nfw-hp-row">
+    <span class="nfw-hp-tag nfw-hp-atl">ATL</span>
+    <div><b>Fadiga aguda</b> — carga acumulada nos últimos dias. Sobe ao treinar, cai ao descansar (τ ≈ 7–14 dias).</div>
+  </div>
+  <div class="nfw-hp-row">
+    <span class="nfw-hp-tag nfw-hp-ctl">CTL</span>
+    <div><b>Condicionamento</b> — adaptação construída em semanas e meses (τ = 42 dias). Cresce devagar, cai devagar.</div>
+  </div>
+  <div class="nfw-hp-row">
+    <span class="nfw-hp-tag nfw-hp-tsb">TSB</span>
+    <div><b>Saldo = CTL − ATL.</b><br>
+      <span style="color:var(--lime)">▲ Positivo</span> → descansado, ótimo para PR.<br>
+      <span style="color:var(--muted)">● Zero</span> → equilíbrio, treino normal.<br>
+      <span style="color:var(--amber)">▼ Negativo</span> → fadiga acumulada, bloco pesado.<br>
+      <span style="color:var(--red)">✖ Muito negativo</span> → risco de overtraining.</div>
+  </div>
+</div>
 
 <!-- ══ MODAL: Login com Google ══ -->
 <div id="mFbLogin" class="mbg">
@@ -139,6 +163,18 @@
 
   <!-- Cards de lifts personalizados -->
   <div id="customRmCards" style="display:none;"></div>
+
+  <!-- Proporção de Força -->
+  <div id="rmRatioSection" style="margin-bottom:14px;">
+    <div class="cycle-wrap" style="padding-bottom:14px;">
+      <div class="cycle-hdr" style="margin-bottom:12px;">
+        <span class="cycle-title">PROPORÇÃO DE FORÇA</span>
+        <span class="cycle-sep">·</span>
+        <span class="cycle-sub">Sup · Aga · Ter</span>
+      </div>
+      <div id="rmRatioCard"></div>
+    </div>
+  </div>
 
   <!-- Progresso do Ciclo -->
   <div class="cycle-wrap" id="cycleProgressCard">

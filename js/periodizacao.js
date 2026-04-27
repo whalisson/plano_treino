@@ -6,6 +6,8 @@ import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates,
   rmHistory, periodLog, setPeriodLog } from './state.js';
+import { DAYS, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE } from './constants.js';
+export { DAYS, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE };
 
 function parseRMDate(dStr) {
   var p = dStr.split('/');
@@ -33,14 +35,8 @@ export var periodBase = [
   },
 ];
 
-// ── Dicts de aparência por lift (usados no histórico de ciclos) ──
-export var LIFT_LABELS = { supino:'Supino', agacha:'Agachamento', terra:'Terra' };
-export var LIFT_COLORS = { supino:'rgba(80,227,194,.9)', agacha:'rgba(201,255,58,.9)', terra:'rgba(255,79,216,.9)' };
-export var LIFT_FILL   = { supino:'rgba(80,227,194,.12)', agacha:'rgba(201,255,58,.12)', terra:'rgba(255,79,216,.12)' };
-export var LIFT_SOLID  = { supino:'#50e3c2', agacha:'#c9ff3a', terra:'#ff4fd8' };
-
-// ── Referência de cores para lifts customizados ──
-export var CUSTOM_LIFT_PALETTE = ['#f472b6','#fb923c','#a78bfa','#34d399','#60a5fa','#e879f9','#facc15'];
+// LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE
+// estão em constants.js e re-exportados no topo deste arquivo.
 
 export function hexToRgb(hex) {
   return parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16);
@@ -172,11 +168,21 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
 
         inp.addEventListener('input', function() {
           var v = parseFloat(inp.value);
+          var rmTestCbKey = 'rmtest';
+          var eIdx = periodLog.findIndex(function(e) {
+            return e.liftKey === liftKey && e.weekIdx === wi && e.cbKey === rmTestCbKey;
+          });
           if (v > 0) {
             rmTestValues[liftKey][wi] = v;
             updBtn.classList.add('visible');
+            var rmId  = { supino:'rm-supino', agacha:'rm-agacha', terra:'rm-terra' }[liftKey] || ('rm-custom-' + liftKey);
+            var curRm = parseFloat((g(rmId) || {}).value) || v;
+            var entry = { liftKey: liftKey, weekIdx: wi, cbKey: rmTestCbKey, vol: v, pct: v / curRm, ts: Date.now() };
+            if (eIdx === -1) periodLog.push(entry);
+            else periodLog[eIdx] = entry;
           } else {
             updBtn.classList.remove('visible');
+            if (eIdx !== -1) periodLog.splice(eIdx, 1);
           }
           saveState();
         });
@@ -255,7 +261,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
           setTimeout(function() { rmEl.style.color = ''; }, 1200);
         });
 
-        var cbWrap = makeCbEl(liftKey, wi, 0, weekState, totalChecks, block, 0, 0);
+        var cbWrap = makeCbEl(liftKey, wi, checkIdx, weekState, totalChecks, block, 0, 0);
         testWrap.appendChild(inp);
         testWrap.appendChild(updBtn);
         checksWrap.appendChild(cbWrap);
@@ -273,6 +279,38 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     c.appendChild(block);
   });
 }
+
+function updateRestCounters() {
+  var restDays = typeof globalThis.calcRestDays === 'function' ? globalThis.calcRestDays() : 0;
+  ['supino','agacha','terra'].concat((customLifts||[]).map(function(l){return l.id;})).forEach(function(lk) {
+    var c = g('tbl-' + lk) || g('tbl-custom-' + lk);
+    if (!c) return;
+    var existing = c.querySelector('.rest-day-counter');
+    if (restDays > 0) {
+      if (!existing) {
+        existing = document.createElement('div');
+        existing.className = 'rest-day-counter';
+        existing.style.cssText = 'margin-top:8px;background:rgba(255,181,52,.07);border:1px solid rgba(255,181,52,.22);border-radius:9px;padding:11px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+        c.appendChild(existing);
+      }
+      existing.innerHTML =
+        '<div style="display:flex;align-items:center;gap:9px;">'
+          + '<span style="font-size:16px;">🛌</span>'
+          + '<div>'
+            + '<div style="font-family:var(--mono);font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Descanso sugerido</div>'
+            + '<div style="font-size:12px;color:var(--muted);">Fadiga acima do baseline · aguarde antes do próximo treino</div>'
+          + '</div>'
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0;">'
+          + '<div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--amber);line-height:1;">' + restDays + '</div>'
+          + '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">' + (restDays === 1 ? 'dia' : 'dias') + '</div>'
+        + '</div>';
+    } else if (existing) {
+      existing.remove();
+    }
+  });
+}
+globalThis.updateRestCounters = updateRestCounters;
 
 function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol, serPct) {
   var label = document.createElement('label');
@@ -317,6 +355,8 @@ function makeCbEl(liftKey, wi, cbKey, weekState, totalChecks, blockEl, serVol, s
     if (progTxt) progTxt.textContent = done + '/' + totalChecks;
 
     buildCycleProgress();
+    if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
+    updateRestCounters();
     if (allDone && !blockEl.classList.contains('completed')) {
       blockEl.classList.add('completed');
       var hdr = blockEl.querySelector('.week-header');
@@ -534,6 +574,7 @@ export function buildAllPeriod() {
   buildWeekTable(periodBase, 'tbl-terra',  'terra',  ter);
   try { buildCycleProgress(); } catch(e) { console.warn('buildCycleProgress:', e); }
   try { buildRmDashboard();   } catch(e) { console.warn('buildRmDashboard:', e); }
+  if (typeof globalThis.renderRatioCard === 'function') globalThis.renderRatioCard();
 }
 
 ['rm-supino','rm-agacha','rm-terra'].forEach(function(id) {

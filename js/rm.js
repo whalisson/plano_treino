@@ -168,7 +168,134 @@ export function renderRMHistory() {
     row.appendChild(del);
     list.appendChild(row);
   });
+
+  renderRatioCard();
 }
+
+let _ratioPorLado = false;
+globalThis.toggleRatioPorLado = function() { _ratioPorLado = !_ratioPorLado; renderRatioCard(); };
+
+export function renderRatioCard() {
+  var card = g('rmRatioCard');
+  if (!card) return;
+
+  var rawSup = parseFloat((g('rm-supino') || {}).value) || BASE_SUP;
+  var rawAga = parseFloat((g('rm-agacha') || {}).value) || BASE_AGA;
+  var rawTer = parseFloat((g('rm-terra')  || {}).value) || BASE_TER;
+
+  var sup = _ratioPorLado ? rawSup * 2 + 20 : rawSup;
+  var aga = _ratioPorLado ? rawAga * 2 + 20 : rawAga;
+  var ter = _ratioPorLado ? rawTer * 2 + 20 : rawTer;
+
+  var ratioAga = aga / sup;
+  var ratioTer = ter / sup;
+
+  var tiers = [
+    { name: 'Iniciante',     aga: 1.20, ter: 1.40 },
+    { name: 'Intermediário', aga: 1.33, ter: 1.60 },
+    { name: 'Avançado',      aga: 1.50, ter: 1.75 },
+    { name: 'Elite',         aga: 1.65, ter: 1.90 },
+  ];
+
+  var currentTier = -1;
+  tiers.forEach(function(t, i) {
+    if (ratioAga >= t.aga && ratioTer >= t.ter) currentTier = i;
+  });
+
+  var nextTier = currentTier + 1 < tiers.length ? tiers[currentTier + 1] : null;
+
+  var tierColors   = ['#8a9998', '#50e3c2', '#a59eff', '#c9ff3a'];
+  var tierBgRgba   = ['rgba(95,107,106,.10)', 'rgba(80,227,194,.07)', 'rgba(165,158,255,.08)', 'rgba(201,255,58,.08)'];
+  var tierBordRgba = ['rgba(95,107,106,.30)', 'rgba(80,227,194,.35)', 'rgba(165,158,255,.35)', 'rgba(201,255,58,.35)'];
+
+  var liftColors = { supino: '#a59eff', agacha: '#50e3c2', terra: '#ffb534' };
+  var liftsData  = [
+    { key: 'supino', label: 'Supino', kg: sup, ratio: 1.00 },
+    { key: 'agacha', label: 'Agacha', kg: aga, ratio: ratioAga },
+    { key: 'terra',  label: 'Terra',  kg: ter, ratio: ratioTer },
+  ];
+
+  var btnStyle = _ratioPorLado
+    ? 'background:var(--accent);border:1px solid var(--accent);color:#0d1114;font-weight:700;'
+    : 'background:transparent;border:1px solid var(--border);color:var(--muted);';
+
+  var html = '';
+
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">'
+    + '<button onclick="toggleRatioPorLado()" style="font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:5px;cursor:pointer;line-height:1.4;' + btnStyle + '">p/lado</button>'
+    + '</div>';
+
+  // 3-column values
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">';
+  liftsData.forEach(function(l) {
+    html += '<div style="background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:10px;text-align:center;">'
+      + '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">' + l.label + '</div>'
+      + '<div style="font-size:16px;font-weight:700;font-family:var(--mono);color:' + liftColors[l.key] + ';">' + l.kg.toFixed(1) + '</div>'
+      + '<div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:2px;">&times;' + l.ratio.toFixed(2) + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Tier rows
+  html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+  tiers.forEach(function(t, i) {
+    var isCurrent  = i === currentTier;
+    var agaOk      = ratioAga >= t.aga;
+    var terOk      = ratioTer >= t.ter;
+    var met        = agaOk && terOk;
+    var rowBg      = isCurrent ? tierBgRgba[i]   : 'transparent';
+    var rowBorder  = isCurrent ? tierBordRgba[i]  : 'var(--border)';
+    var nameColor  = met ? tierColors[i] : (i === currentTier + 1 ? 'var(--text)' : 'var(--muted)');
+    var fontWeight = isCurrent ? '700' : '400';
+
+    html += '<div style="display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:' + rowBg + ';border:1px solid ' + rowBorder + ';">'
+      + '<span style="font-family:var(--mono);font-size:11px;font-weight:' + fontWeight + ';color:' + nameColor + ';min-width:96px;">' + t.name + '</span>'
+      + '<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">'
+        + '1.00 · <span style="color:' + (agaOk ? 'var(--teal)' : 'var(--muted)') + ';">' + t.aga.toFixed(2) + '</span>'
+        + ' · <span style="color:' + (terOk ? 'var(--amber)' : 'var(--muted)') + ';">' + t.ter.toFixed(2) + '</span>'
+      + '</span>'
+      + '<span style="font-size:11px;color:' + (agaOk ? 'var(--teal)' : 'var(--red)') + ';">' + (agaOk ? '✓' : '✗') + '</span>'
+      + '<span style="font-size:11px;color:' + (terOk ? 'var(--amber)' : 'var(--red)') + ';">' + (terOk ? '✓' : '✗') + '</span>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Next tier targets
+  if (nextTier) {
+    var neededAga = Math.ceil(sup * nextTier.aga * 2) / 2;
+    var neededTer = Math.ceil(sup * nextTier.ter * 2) / 2;
+    var gapAga    = neededAga - aga;
+    var gapTer    = neededTer - ter;
+
+    var parts = [];
+    if (gapAga > 0) parts.push(
+      '<span style="font-family:var(--mono);font-size:11px;">'
+      + '<span style="color:var(--muted);">Agacha </span>'
+      + '<span style="color:var(--teal);font-weight:600;">' + neededAga + ' kg</span>'
+      + '<span style="color:var(--muted);font-size:10px;"> (+' + gapAga.toFixed(1) + ')</span>'
+      + '</span>'
+    );
+    if (gapTer > 0) parts.push(
+      '<span style="font-family:var(--mono);font-size:11px;">'
+      + '<span style="color:var(--muted);">Terra </span>'
+      + '<span style="color:var(--amber);font-weight:600;">' + neededTer + ' kg</span>'
+      + '<span style="color:var(--muted);font-size:10px;"> (+' + gapTer.toFixed(1) + ')</span>'
+      + '</span>'
+    );
+
+    if (parts.length) {
+      html += '<div style="margin-top:10px;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;">'
+        + '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;">Para ' + nextTier.name + '</div>'
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;">' + parts.join('') + '</div>'
+        + '</div>';
+    }
+  } else if (currentTier === tiers.length - 1) {
+    html += '<div style="margin-top:10px;padding:9px 12px;background:rgba(201,255,58,.05);border:1px solid rgba(201,255,58,.2);border-radius:7px;font-family:var(--mono);font-size:11px;color:var(--accent);text-align:center;">Nível Elite atingido</div>';
+  }
+
+  card.innerHTML = html;
+}
+globalThis.renderRatioCard = renderRatioCard;
 
 populateRMLiftSelect();
 

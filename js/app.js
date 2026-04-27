@@ -23,6 +23,7 @@ import { workoutLog, setWorkoutLog,
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
+import { updateFadigaBar } from './fadiga.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
 // (testes substituem via global.* no beforeEach; produção usa as funções reais)
@@ -254,23 +255,19 @@ export function applyState(saved) {
     if (saved.periodLog && Array.isArray(saved.periodLog)) setPeriodLog(saved.periodLog);
   }
   syncDeloadBtn();
-  // Call render functions — use globalThis lookups so tests can mock them
-  if (typeof globalThis.buildAllPeriod === 'function') globalThis.buildAllPeriod();
-  if (typeof globalThis.calcRM === 'function') globalThis.calcRM();
-  if (typeof globalThis.renderCustomLifts === 'function') globalThis.renderCustomLifts();
-  if (typeof globalThis.populateRMLiftSelect === 'function') globalThis.populateRMLiftSelect();
-  if (typeof globalThis.renderRMHistory === 'function') globalThis.renderRMHistory();
-  if (typeof globalThis.renderKanban === 'function') globalThis.renderKanban();
-  if (typeof globalThis.renderBank === 'function') globalThis.renderBank();
-  if (typeof globalThis.setupBankDropzone === 'function') globalThis.setupBankDropzone();
-  if (typeof globalThis.renderPeriodGrid === 'function') globalThis.renderPeriodGrid();
-  if (typeof globalThis.renderProgressCharts === 'function') globalThis.renderProgressCharts();
-  if (typeof globalThis.renderBuilderSegs === 'function') globalThis.renderBuilderSegs();
-  if (typeof globalThis.renderSavedWorkouts === 'function') globalThis.renderSavedWorkouts();
-  if (typeof globalThis.renderCycleHistory === 'function') globalThis.renderCycleHistory();
-  if (typeof globalThis.renderRPEBlocks === 'function') globalThis.renderRPEBlocks();
-  if (typeof globalThis.renderWorkoutHistory === 'function') globalThis.renderWorkoutHistory();
-  if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
+  // Fila de renders — iterar aqui garante que nenhuma função seja esquecida.
+  // Para adicionar um novo render: inclua o nome string abaixo e registre a
+  // função via globalThis no módulo correspondente (igual às demais).
+  var RENDER_QUEUE = [
+    'buildAllPeriod', 'calcRM', 'renderCustomLifts', 'populateRMLiftSelect',
+    'renderRMHistory', 'renderRatioCard', 'renderKanban', 'renderBank', 'setupBankDropzone',
+    'renderPeriodGrid', 'renderProgressCharts', 'renderBuilderSegs',
+    'renderSavedWorkouts', 'renderCycleHistory', 'renderRPEBlocks',
+    'renderWorkoutHistory', 'updateFadigaBar', 'updateRestCounters',
+  ];
+  RENDER_QUEUE.forEach(function(fn) {
+    if (typeof globalThis[fn] === 'function') globalThis[fn]();
+  });
   // Persiste após cada renderização do kanban
   var _boardLoaded = !!(saved && saved.board);
   var _origRenderKanban = globalThis.renderKanban;
@@ -501,203 +498,6 @@ if (_btnConfirm) _btnConfirm.addEventListener('click', globalThis.applyProgressi
 if (_incInput) _incInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') globalThis.applyProgressionIncrease();
 });
-
-// ── Fadiga acumulada — Modelo Banister (decaimento exponencial) ──
-// TL = reps × kg × (kg/1RM)  — pondera intensidade relativa, não só volume
-// τ por categoria: terra/agacha têm recuperação de SNC ~5 dias; supino ~7; demais ~10
-// Baseline SS = Σ(avgDailyTL_lift × τ_lift)  (últimos 42 dias, por lift)
-var SS_WIN_MS = 42 * 24 * 3600 * 1000;  // janela de 42 dias para estimar baseline
-var SS_FLOOR  = 7500;                    // piso de estado estacionário (usuários novos)
-
-// τ = persistência da fadiga: terra/agacha ~14d, supino ~9d, acessórios ~6d
-var _TAU_MS = { agacha: 14 * 86400000, terra: 14 * 86400000, supino: 9 * 86400000 };
-var _TAU_DEF_MS = 6 * 86400000;
-
-function _tauMs(lk)  { return _TAU_MS[lk] || _TAU_DEF_MS; }
-function _tauDay(lk) { return (_TAU_MS[lk] || _TAU_DEF_MS) / 86400000; }
-function _lkOf(name) {
-  if (typeof globalThis.liftKeyForExerciseName === 'function')
-    return globalThis.liftKeyForExerciseName(name || '') || '_other';
-  return '_other';
-}
-
-// Aceita refTime opcional para projetar fadiga futura (sem alterar SS)
-function getFatigaRaw(refTime) {
-  var t   = (refTime !== undefined) ? refTime : Date.now();
-  var now = Date.now();
-
-  var oneRMs = {
-    supino: parseFloat((g('rm-supino') || {}).value) || BASE_SUP,
-    agacha: parseFloat((g('rm-agacha') || {}).value) || BASE_AGA,
-    terra:  parseFloat((g('rm-terra')  || {}).value) || BASE_TER,
-  };
-  customLifts.forEach(function(cl) { oneRMs[cl.id] = cl.rm || 1; });
-  function rmFor(lk) { return oneRMs[lk] || 100; }
-
-  var fatigue = 0;
-  workoutLog.forEach(function(s) {
-    if (!s.startedAt) return;
-    s.exercises.forEach(function(ex) {
-      var lk    = _lkOf(ex.name);
-      var decay = Math.exp(-(t - s.startedAt) / _tauMs(lk));
-      if (decay < 0.001) return;
-      var rm = rmFor(lk);
-      ex.sets.forEach(function(set) {
-        var kg = set.kg || 0;
-        fatigue += (set.reps || 0) * kg * (kg / rm) * decay;
-      });
-    });
-  });
-  periodLog.forEach(function(e) {
-    if (!e.ts) return;
-    var lk    = e.liftKey || '_other';
-    var decay = Math.exp(-(t - e.ts) / _tauMs(lk));
-    if (decay < 0.001) return;
-    fatigue += (e.vol || 0) * (e.pct || 0.75) * decay;
-  });
-  rpeBlocks.forEach(function(blk) {
-    if (!blk.execHistory) return;
-    blk.execHistory.forEach(function(exec) {
-      if (!exec.date) return;
-      exec.exercises.forEach(function(ex) {
-        var lk    = _lkOf(ex.name);
-        var decay = Math.exp(-(t - exec.date) / _tauMs(lk));
-        if (decay < 0.001) return;
-        var rm = ex.rmAfter || ex.rmBefore || rmFor(lk);
-        ex.sets.forEach(function(set) {
-          var kg = set.kg || 0;
-          fatigue += (set.reps || 0) * kg * (kg / rm) * decay;
-        });
-      });
-    });
-  });
-
-  // Steady-state ancorado no momento real (não se desloca com refTime)
-  var cutoff   = now - SS_WIN_MS;
-  var tlByLift = {};
-  workoutLog.forEach(function(s) {
-    if (!s.startedAt || s.startedAt < cutoff) return;
-    s.exercises.forEach(function(ex) {
-      var lk = _lkOf(ex.name);
-      var rm = rmFor(lk);
-      ex.sets.forEach(function(set) {
-        var kg = set.kg || 0;
-        tlByLift[lk] = (tlByLift[lk] || 0) + (set.reps || 0) * kg * (kg / rm);
-      });
-    });
-  });
-  periodLog.forEach(function(e) {
-    if (!e.ts || e.ts < cutoff) return;
-    var lk = e.liftKey || '_other';
-    tlByLift[lk] = (tlByLift[lk] || 0) + (e.vol || 0) * (e.pct || 0.75);
-  });
-  rpeBlocks.forEach(function(blk) {
-    if (!blk.execHistory) return;
-    blk.execHistory.forEach(function(exec) {
-      if (!exec.date || exec.date < cutoff) return;
-      exec.exercises.forEach(function(ex) {
-        var lk = _lkOf(ex.name);
-        var rm = ex.rmAfter || ex.rmBefore || rmFor(lk);
-        ex.sets.forEach(function(set) {
-          var kg = set.kg || 0;
-          tlByLift[lk] = (tlByLift[lk] || 0) + (set.reps || 0) * kg * (kg / rm);
-        });
-      });
-    });
-  });
-  var ss = 0;
-  Object.keys(tlByLift).forEach(function(lk) { ss += (tlByLift[lk] / 42) * _tauDay(lk); });
-
-  return { fatigue: fatigue, steadyState: Math.max(ss, SS_FLOOR) };
-}
-
-function calcFadiga() {
-  var r = getFatigaRaw();
-  return Math.round(r.fatigue / r.steadyState * 100);
-}
-
-// Projeta fadiga futura sem re-iterar os logs:
-// fatigue(now + d×dias) = Σ_τ [ fatigue_τ(now) × e^(-d×dia/τ) ]
-// Custo: 1× O(n) para pré-computar + 60 × O(|τ_grupos|) para projetar
-function calcRestDays() {
-  var base   = getFatigaRaw();
-  var target = 0.8 * base.steadyState;
-  if (base.fatigue <= target) return 0;
-
-  var now = Date.now();
-  var oneRMs = {
-    supino: parseFloat((g('rm-supino') || {}).value) || BASE_SUP,
-    agacha: parseFloat((g('rm-agacha') || {}).value) || BASE_AGA,
-    terra:  parseFloat((g('rm-terra')  || {}).value) || BASE_TER,
-  };
-  customLifts.forEach(function(cl) { oneRMs[cl.id] = cl.rm || 1; });
-  function rmFor(lk) { return oneRMs[lk] || 100; }
-
-  // Pré-computa fadiga agrupada por τ (1× O(n))
-  var fatByTau = {};
-  workoutLog.forEach(function(s) {
-    if (!s.startedAt) return;
-    s.exercises.forEach(function(ex) {
-      var lk  = _lkOf(ex.name);
-      var tau = _tauMs(lk);
-      var d0  = Math.exp(-(now - s.startedAt) / tau);
-      if (d0 < 0.001) return;
-      var rm  = rmFor(lk);
-      ex.sets.forEach(function(set) {
-        var kg = set.kg || 0;
-        fatByTau[tau] = (fatByTau[tau] || 0) + (set.reps || 0) * kg * (kg / rm) * d0;
-      });
-    });
-  });
-  periodLog.forEach(function(e) {
-    if (!e.ts) return;
-    var tau = _tauMs(e.liftKey || '_other');
-    var d0  = Math.exp(-(now - e.ts) / tau);
-    if (d0 < 0.001) return;
-    fatByTau[tau] = (fatByTau[tau] || 0) + (e.vol || 0) * (e.pct || 0.75) * d0;
-  });
-  rpeBlocks.forEach(function(blk) {
-    if (!blk.execHistory) return;
-    blk.execHistory.forEach(function(exec) {
-      if (!exec.date) return;
-      exec.exercises.forEach(function(ex) {
-        var lk  = _lkOf(ex.name);
-        var tau = _tauMs(lk);
-        var d0  = Math.exp(-(now - exec.date) / tau);
-        if (d0 < 0.001) return;
-        var rm = ex.rmAfter || ex.rmBefore || rmFor(lk);
-        ex.sets.forEach(function(set) {
-          var kg = set.kg || 0;
-          fatByTau[tau] = (fatByTau[tau] || 0) + (set.reps || 0) * kg * (kg / rm) * d0;
-        });
-      });
-    });
-  });
-
-  // Projeção: 60 × O(|τ_grupos|) — tipicamente ≤ 4 grupos
-  var DAY_MS  = 86400000;
-  var tauKeys = Object.keys(fatByTau);
-  for (var d = 1; d <= 60; d++) {
-    var proj = 0;
-    for (var i = 0; i < tauKeys.length; i++) {
-      proj += fatByTau[tauKeys[i]] * Math.exp(-d * DAY_MS / tauKeys[i]);
-    }
-    if (proj <= target) return d;
-  }
-  return 60;
-}
-globalThis.calcRestDays = calcRestDays;
-
-function updateFadigaBar() {
-  var fill  = g('fatigaFill');
-  var label = g('fatigaLabel');
-  if (!fill || !label) return;
-  var pct = calcFadiga();
-  fill.style.width      = Math.min(100, pct) + '%';
-  fill.style.background = pct < 80 ? 'var(--lime)' : pct < 120 ? 'var(--amber)' : 'var(--red)';
-  label.style.color     = pct < 80 ? 'var(--muted)' : pct < 120 ? 'var(--amber)' : 'var(--red)';
-}
-globalThis.updateFadigaBar = updateFadigaBar;
 
 // ── Modo Deload ───────────────────────────────
 function syncDeloadBtn() {

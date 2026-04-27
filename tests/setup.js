@@ -235,6 +235,9 @@ import * as periodizacaoModule from '../js/periodizacao.js';
 // ── 4. Expose simple globals (uid, g, round05, etc.) ────────────────────────
 Object.assign(globalThis, stateModule);
 Object.assign(globalThis, periodizacaoModule);
+// Setters de board/bank expostos como funções chamáveis nos testes
+globalThis.setBoard = setBoard;
+globalThis.setBank  = setBank;
 
 // ── 5. Proxy globals for mutable state ───────────────────────────────────────
 const proxyMap = {

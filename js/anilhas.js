@@ -297,7 +297,7 @@ export function renderAnilhas() {
     + ' &nbsp;·&nbsp; ' + cur.series
     + ' &nbsp;·&nbsp; <span style="color:var(--muted)">' + cur.pct + '% RM</span>';
 
-  g('anilhasTotalKg').textContent = toUnit(totalKg) + ' ' + ul + (plateMode === 'total' ? ' na barra' : ' por lado');
+  g('anilhasTotalKg').textContent = toUnit(totalKg) + ' ' + ul + (plateMode === 'total' ? ' na barra' : ' total');
   g('anilhasSideKg').textContent  = plateMode === 'total'
     ? ('Cada lado: ' + toUnit(info.side) + ' ' + ul + '  ·  Barra: ' + toUnit(BAR_KG) + ' ' + ul)
     : ('Cada lado: ' + toUnit(info.side) + ' ' + ul);
