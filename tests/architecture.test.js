@@ -34,18 +34,20 @@ const RENDER_FNS = [
   'renderRPEBlocks',
   'renderWorkoutHistory',
   'updateFadigaBar',
+  'updateDeloadBanner',
 ];
 
 // ── Chaves canônicas do payload de gorila-save ────────────────────────────────
 // Qualquer chave nova salva precisa ser adicionada aqui E tratada em applyState.
 const SAVE_KEYS = [
-  'board', 'bank',
-  'cardioExtra', 'cardioGoal', 'cardioDailyGoal',
+  'bank', 'board',
+  'cardioDailyGoal', 'cardioExtra', 'cardioGoal',
   'checks', 'customLifts', 'cycleHistory', 'cycleStartDates',
   'deloadMode',
   'kgHistory',
   'periodLog',
-  'rpeBlocks', 'rmHistory', 'rmSupino', 'rmAgacha', 'rmTerra', 'rmTests',
+  'rmAgacha', 'rmHistory', 'rmSupino', 'rmTerra', 'rmTests',
+  'rpeBlocks',
   'savedWorkouts',
   'workoutLog',
 ];
@@ -177,10 +179,13 @@ describe('Constantes — periodBase', () => {
 
 describe('applyState — completude dos renders', () => {
   test('chama todas as render functions da lista canônica', () => {
+    // Captura referências ANTES de applyState — ela sobrescreve renderKanban
+    // com um wrapper real após o RENDER_QUEUE, invalidando o vi.fn().
+    const mocks = Object.fromEntries(RENDER_FNS.map(fn => [fn, globalThis[fn]]));
     applyState(null);
     RENDER_FNS.forEach(fn => {
       expect(
-        globalThis[fn].mock.calls.length,
+        mocks[fn].mock.calls.length,
         `"${fn}" deveria ter sido chamada mas não foi`
       ).toBeGreaterThanOrEqual(1);
     });
