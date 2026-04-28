@@ -197,7 +197,7 @@ function addTouchDrag(el, getItemFn) {
         if (di >= 0) {
           if (dragItem.type === 'bank') {
             var ex = bank.find(function(b) { return b.id === dragItem.id; });
-            if (ex) board[di].splice(insertIdx, 0, { id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps });
+            if (ex) board[di].splice(insertIdx, 0, { id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps, group:ex.group||'', bilateral:ex.bilateral||false });
           } else if (dragItem.type === 'board') {
             var fromDay = dragItem.fromDay, fromIdx = dragItem.fromIdx;
             var item = board[fromDay].splice(fromIdx, 1)[0];
@@ -214,7 +214,7 @@ function addTouchDrag(el, getItemFn) {
         if (di >= 0) {
           if (dragItem.type === 'bank') {
             var ex = bank.find(function(b) { return b.id === dragItem.id; });
-            if (ex) board[di].push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps });
+            if (ex) board[di].push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps, group:ex.group||'', bilateral:ex.bilateral||false });
           } else if (dragItem.type === 'board' && dragItem.fromDay !== di) {
             var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
             if (item) board[di].push(item);
@@ -252,7 +252,7 @@ function makeBankPill(ex) {
     : '';
   var row1 = document.createElement('div');
   row1.className = 'bprow1';
-  row1.innerHTML = (groupBadge ? groupBadge + ' ' : '') + '<span class="bpname">' + ex.name + '</span>';
+  row1.innerHTML = (groupBadge ? groupBadge + ' ' : '') + '<span class="bpname">' + ex.name + '</span>' + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '');
   row1.draggable = false;
   el.appendChild(row1);
 
@@ -311,7 +311,7 @@ function makeBoardCard(ex, di, ei) {
   el.dataset.exid = ex.id;
   var dispKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg;
   if (deloadMode && ex.kg > 0) el.classList.add('kex--deload');
-  el.innerHTML = '<div class="kexname">' + ex.name + '</div>'
+  el.innerHTML = '<div class="kexname">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
     + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
     + (dispKg > 0 ? dispKg + 'kg · ' : '') + ex.reps + '</div>';
 
@@ -382,7 +382,7 @@ function makeBoardCard(ex, di, ei) {
       var insertIdx = before ? ei : ei + 1;
       if (dragItem.type === 'bank') {
         var ex2 = bank.find(function(b) { return b.id === dragItem.id; });
-        if (ex2) board[di].splice(insertIdx, 0, { id:uid(), srcId:ex2.id, name:ex2.name, kg:ex2.kg, reps:ex2.reps });
+        if (ex2) board[di].splice(insertIdx, 0, { id:uid(), srcId:ex2.id, name:ex2.name, kg:ex2.kg, reps:ex2.reps, group:ex2.group||'', bilateral:ex2.bilateral||false });
       } else if (dragItem.type === 'board') {
         var fromDay = dragItem.fromDay, fromIdx = dragItem.fromIdx;
         var item = board[fromDay].splice(fromIdx, 1)[0];
@@ -417,7 +417,7 @@ function setupDropzone(colEl, dayIndex) {
     if (dragItem.type === 'bank') {
       var ex = bank.find(function(b) { return b.id === dragItem.id; });
       if (!ex) return;
-      board[dayIndex].push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps });
+      board[dayIndex].push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps, group:ex.group||'', bilateral:ex.bilateral||false });
     } else if (dragItem.type === 'board') {
       if (dragItem.fromDay === dayIndex) return; // solto no espaço vazio da mesma coluna → sem mudança
       var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
@@ -509,6 +509,7 @@ function openAddModal() {
   g('mExTitle').textContent = 'Novo Exercício';
   g('mExName').value = ''; g('mExKg').value = ''; g('mExReps').value = ''; g('mExRepGoal').value = '';
   g('mExGroup').value = _bankGroup || '';
+  g('mExBilateral').checked = false;
   g('btnConfirmEx').textContent = 'Adicionar';
   g('mExDeleteWrap').style.display = 'none';
   g('mAddEx').classList.add('on');
@@ -521,6 +522,7 @@ function openEditModal(id) {
   g('mExTitle').textContent = 'Editar Exercício';
   g('mExName').value = ex.name; g('mExKg').value = ex.kg || ''; g('mExReps').value = ex.reps || ''; g('mExRepGoal').value = ex.repGoal || '';
   g('mExGroup').value = ex.group || '';
+  g('mExBilateral').checked = !!ex.bilateral;
   g('btnConfirmEx').textContent = 'Salvar';
   g('mExDeleteWrap').style.display = 'block';
   g('mAddEx').classList.add('on');
@@ -544,11 +546,12 @@ g('bankGroupFilter').addEventListener('click', function(e) {
 });
 
 g('btnConfirmEx').addEventListener('click', function() {
-  var name    = g('mExName').value.trim(); if (!name) return;
-  var kg      = parseFloat(g('mExKg').value) || 0;
-  var reps    = g('mExReps').value.trim() || '3x10';
-  var group   = g('mExGroup').value;
-  var repGoal = parseInt(g('mExRepGoal').value, 10) || 0;
+  var name     = g('mExName').value.trim(); if (!name) return;
+  var kg       = parseFloat(g('mExKg').value) || 0;
+  var reps     = g('mExReps').value.trim() || '3x10';
+  var group    = g('mExGroup').value;
+  var repGoal  = parseInt(g('mExRepGoal').value, 10) || 0;
+  var bilateral = g('mExBilateral').checked;
   if (editingExId) {
     var ex      = bank.find(function(b) { return b.id === editingExId; });
     var oldName = ex ? ex.name : null;
@@ -559,19 +562,19 @@ g('btnConfirmEx').addEventListener('click', function() {
       var hist = kgHistory[editingExId];
       if (hist.length === 0 && oldKg > 0) hist.push({ date:now, kg:oldKg, name:ex.name, note:'inicial' });
       if (kg !== oldKg && kg > 0)         hist.push({ date:now, kg:kg, name:name, note:'editado' });
-      ex.name = name; ex.kg = kg; ex.reps = reps; ex.group = group; ex.repGoal = repGoal;
+      ex.name = name; ex.kg = kg; ex.reps = reps; ex.group = group; ex.repGoal = repGoal; ex.bilateral = bilateral;
     }
     board.forEach(function(day) {
       day.forEach(function(item) {
         if (item.srcId === editingExId || item.id === editingExId || (oldName && item.name === oldName)) {
           item.name = name; item.kg = kg; item.reps = reps;
-          item.srcId = editingExId;
+          item.srcId = editingExId; item.bilateral = bilateral;
         }
       });
     });
     renderKanban(); renderPeriodGrid();
   } else {
-    bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group, repGoal:repGoal });
+    bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group, repGoal:repGoal, bilateral:bilateral });
   }
   g('mAddEx').classList.remove('on');
   renderBank();

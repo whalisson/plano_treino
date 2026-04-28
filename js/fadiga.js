@@ -296,7 +296,7 @@ export function getFatigaRaw(refTime) {
         var kg = +(set.kg) || 0, reps = +(set.reps) || 0;
         if (!kg || !reps) return;
         var intensity = _intensityFor(lk, kg, reps, rm, ex.name);
-        var tlBase    = reps * kg * intensity * effortFactor(intensity);
+        var tlBase    = reps * kg * intensity * effortFactor(intensity) * (ex.bilateral ? 2 : 1);
         if (!isFinite(tlBase) || tlBase <= 0) return;
         var eccentric = _eccentricOf(lk, ex.name);
         var sdMult    = _sameDayMult(s.startedAt, allSessionTs);
@@ -364,7 +364,7 @@ export function getFatigaRaw(refTime) {
           var kg = +(set.kg) || 0, reps = +(set.reps) || 0;
           if (!kg || !reps) return;
           var intensity = _intensityFor(lk, kg, reps, rm, ex.name);
-          var tlBase    = reps * kg * intensity * effortFactor(intensity);
+          var tlBase    = reps * kg * intensity * effortFactor(intensity) * (ex.bilateral ? 2 : 1);
           if (!isFinite(tlBase) || tlBase <= 0) return;
           var eccentric = _eccentricOf(lk, ex.name);
           var sdMult    = _sameDayMult(exec.date, allSessionTs);
@@ -420,7 +420,7 @@ export function getFatigaRaw(refTime) {
         if (!kg || !reps) return;
         var intensity = _intensityFor(lk, kg, reps, rm, ex.name);
         if (!isFinite(intensity)) return;
-        tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name);
+        tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name) * (ex.bilateral ? 2 : 1);
       });
     });
   });
@@ -444,7 +444,7 @@ export function getFatigaRaw(refTime) {
           if (!kg || !reps) return;
           var intensity = _intensityFor(lk, kg, reps, rm, ex.name);
           if (!isFinite(intensity)) return;
-          tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name);
+          tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name) * (ex.bilateral ? 2 : 1);
         });
       });
     });

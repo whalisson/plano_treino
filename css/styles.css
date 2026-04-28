@@ -551,6 +551,7 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .bank-filter-btn.active[data-group="legs"]{background:rgba(201,255,58,.1);border-color:rgba(201,255,58,.3);color:var(--lime);}
 .bank-filter-btn.active[data-group="core"]{background:rgba(255,181,52,.1);border-color:rgba(255,181,52,.3);color:var(--amber);}
 .bpgroup{font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;margin-left:5px;vertical-align:middle;white-space:nowrap;letter-spacing:.04em;}
+.bilat-badge{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.35);color:var(--accent);vertical-align:middle;white-space:nowrap;margin-left:2px;}
 .bpg-push{background:rgba(80,227,194,.1);color:var(--cy);border:1px solid rgba(80,227,194,.25);}
 .bpg-pull{background:rgba(255,79,216,.08);color:var(--mag);border:1px solid rgba(255,79,216,.25);}
 .bpg-legs{background:rgba(201,255,58,.08);color:var(--lime);border:1px solid rgba(201,255,58,.2);}
