@@ -419,6 +419,23 @@
       <canvas id="rmHistChart"></canvas>
     </div>
     <div id="rmHistList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div>
+
+    <!-- Projeção de 1RM -->
+    <div id="rmProjectionSection">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Projeção</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);">em</span>
+          <select id="rmProjectWeeks" style="background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:5px;padding:4px 8px;font-size:12px;font-family:var(--mono);cursor:pointer;">
+            <option value="4">4 sem</option>
+            <option value="8" selected>8 sem</option>
+            <option value="12">12 sem</option>
+            <option value="16">16 sem</option>
+          </select>
+        </div>
+      </div>
+      <div id="rmProjectionCards" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
   </div>
 
 </div>

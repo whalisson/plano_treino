@@ -92,6 +92,90 @@ export function parseRMDate(dStr) {
   return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
 }
 
+function formatDateLabel(date) {
+  return String(date.getDate()).padStart(2,'0') + '/'
+    + String(date.getMonth()+1).padStart(2,'0') + '/'
+    + date.getFullYear();
+}
+
+function linearRegression(points) {
+  var n = points.length;
+  if (n < 2) return null;
+  var sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  points.forEach(function(p) { sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumX2 += p.x * p.x; });
+  var denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return null;
+  var slope = (n * sumXY - sumX * sumY) / denom;
+  var intercept = (sumY - slope * sumX) / n;
+  var yMean = sumY / n;
+  var ssTot = points.reduce(function(acc, p) { return acc + Math.pow(p.y - yMean, 2); }, 0);
+  var ssRes = points.reduce(function(acc, p) { return acc + Math.pow(p.y - (slope * p.x + intercept), 2); }, 0);
+  var r2 = ssTot === 0 ? 1 : 1 - ssRes / ssTot;
+  return { slope: slope, intercept: intercept, r2: r2 };
+}
+
+function projectRM(lift, weeksAhead) {
+  var entries = rmHistory.filter(function(r) { return r.lift === lift; });
+  if (entries.length < 2) return null;
+  var pts = entries.map(function(r) {
+    return { x: parseRMDate(r.date).getTime() / 86400000, y: r.kg };
+  }).sort(function(a, b) { return a.x - b.x; });
+  var reg = linearRegression(pts);
+  if (!reg) return null;
+  var todayDay = Date.now() / 86400000;
+  var futureDay = todayDay + weeksAhead * 7;
+  var projected = reg.slope * futureDay + reg.intercept;
+  return {
+    kg:          Math.max(0, projected),
+    weeklyGain:  reg.slope * 7,
+    r2:          reg.r2,
+    lastKg:      pts[pts.length - 1].y,
+    pointCount:  pts.length,
+  };
+}
+
+function renderProjectionCard(weeksAhead) {
+  var container = g('rmProjectionCards');
+  if (!container) return;
+  var lifts = ['supino','agacha','terra'].concat((customLifts||[]).map(function(l){ return l.id; }));
+  var html = '';
+  var anyProj = false;
+
+  lifts.forEach(function(lk) {
+    var proj = projectRM(lk, weeksAhead);
+    if (!proj) return;
+    anyProj = true;
+    var color    = LIFT_SOLID[lk]  || '#a59eff';
+    var name     = LIFT_LABELS[lk] || lk;
+    var gain     = proj.weeklyGain;
+    var gainStr  = (gain >= 0 ? '+' : '') + gain.toFixed(2) + ' kg/sem';
+    var gainColor= gain >= 0 ? 'var(--teal)' : 'var(--red)';
+    var projKg   = Math.round(proj.kg * 10) / 10;
+    var r2Pct    = Math.round(proj.r2 * 100);
+    var confColor= proj.r2 >= 0.8 ? 'var(--teal)' : (proj.r2 >= 0.6 ? 'var(--amber)' : 'var(--red)');
+    var lowConf  = proj.r2 < 0.6 || proj.pointCount < 3;
+
+    html += '<div style="display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">'
+      + '<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:' + color + ';min-width:90px;">' + name + '</span>'
+      + '<span style="font-family:var(--mono);font-size:11px;color:' + gainColor + ';">' + gainStr + '</span>'
+      + '<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text);">' + projKg + ' kg</span>'
+      + '<span style="font-family:var(--mono);font-size:9px;color:' + confColor + ';background:rgba(255,255,255,.05);border-radius:4px;padding:2px 5px;" title="R² — qualidade do ajuste (quanto mais próximo de 100, mais linear a progressão)">R²' + r2Pct + '</span>'
+      + '</div>';
+
+    if (lowConf) {
+      html += '<div style="font-size:10px;color:var(--amber);margin-top:-2px;padding:0 4px;">⚠ '
+        + (proj.pointCount < 3
+          ? 'Poucos registros — adicione mais dados para melhor precisão'
+          : 'Tendência inconsistente — confie com cautela')
+        + '</div>';
+    }
+  });
+
+  container.innerHTML = anyProj
+    ? html
+    : '<div style="font-size:11px;color:var(--muted);padding:4px 0;">Adicione pelo menos 2 registros por levantamento para ver a projeção.</div>';
+}
+
 export function renderRMHistory() {
   var section = g('rmHistorySection');
   if (!rmHistory.length) { section.style.display = 'none'; return; }
@@ -104,6 +188,11 @@ export function renderRMHistory() {
   allDates = allDates.filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){
     return parseRMDate(a) - parseRMDate(b);
   });
+
+  var weeksAhead = parseInt((g('rmProjectWeeks') || {value:'8'}).value) || 8;
+  var futureDate    = new Date(Date.now() + weeksAhead * 7 * 86400000);
+  var futureDateStr = formatDateLabel(futureDate);
+  if (allDates[allDates.length - 1] !== futureDateStr) allDates.push(futureDateStr);
 
   var datasets = lifts.map(function(lk) {
     var pts = allDates.map(function(d) {
@@ -127,6 +216,37 @@ export function renderRMHistory() {
       spanGaps:             true,
     };
   }).filter(Boolean);
+
+  // Datasets de projeção (linha tracejada até a data futura)
+  lifts.forEach(function(lk) {
+    var proj = projectRM(lk, weeksAhead);
+    if (!proj) return;
+    var realDs = datasets.find(function(d){ return d.label === (LIFT_LABELS[lk]||lk); });
+    if (!realDs) return;
+    var lastIdx = -1;
+    realDs.data.forEach(function(v, i){ if (v !== null) lastIdx = i; });
+    if (lastIdx < 0) return;
+    var projData = allDates.map(function(){ return null; });
+    projData[lastIdx]              = realDs.data[lastIdx];
+    projData[allDates.length - 1] = Math.round(proj.kg * 10) / 10;
+    var radii = allDates.map(function(_, i){ return i === allDates.length - 1 ? 5 : 0; });
+    datasets.push({
+      label:                (LIFT_LABELS[lk]||lk) + ' ›',
+      data:                 projData,
+      borderColor:          LIFT_COLORS[lk] || 'rgba(200,200,200,.7)',
+      backgroundColor:      'transparent',
+      borderWidth:          1.5,
+      borderDash:           [6, 4],
+      pointRadius:          radii,
+      pointHoverRadius:     radii.map(function(r){ return r ? 7 : 0; }),
+      pointBackgroundColor: LIFT_SOLID[lk]  || '#ccc',
+      pointBorderColor:     '#0c0c0f',
+      pointBorderWidth:     2,
+      fill:                 false,
+      tension:              0,
+      spanGaps:             true,
+    });
+  });
 
   rmHistChartInst = new Chart(g('rmHistChart').getContext('2d'), {
     type: 'line',
@@ -170,6 +290,7 @@ export function renderRMHistory() {
   });
 
   renderRatioCard();
+  renderProjectionCard(weeksAhead);
 }
 
 let _ratioPorLado = false;
@@ -302,6 +423,10 @@ populateRMLiftSelect();
 g('btnSaveRM').addEventListener('click', saveRMRecord);
 g('rmW').addEventListener('input', calcRM);
 g('rmR').addEventListener('input', calcRM);
+
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'rmProjectWeeks') renderRMHistory();
+});
 
 g('rmHistDate').addEventListener('input', function() {
   var digits = this.value.replace(/\D/g, '').slice(0, 8);
