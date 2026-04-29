@@ -479,6 +479,21 @@ export function checkDeload() {
   };
 }
 
+// Verifica se TSB esteve abaixo de −30% do steady-state por >= 3 dias consecutivos.
+export function checkOverreaching() {
+  var DAY = 86400000, now = Date.now();
+  var THRESHOLD = -0.30, MIN_DAYS = 3;
+  var days = 0;
+  for (var d = 0; d < 14; d++) {
+    var r = getFadigaRaw(now - d * DAY);
+    if (r.steadyState > 0 && (r.tsb / r.steadyState) < THRESHOLD) days++;
+    else break;
+  }
+  var cur    = getFadigaRaw();
+  var tsbPct = cur.steadyState > 0 ? Math.round(cur.tsb / cur.steadyState * 100) : 0;
+  return { needed: days >= MIN_DAYS, days: days, tsbPct: tsbPct };
+}
+
 export function calcRestDays() {
   var base   = getFatigaRaw();
   var target = 0.8 * base.steadyState;

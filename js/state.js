@@ -65,9 +65,12 @@ export let cycleStartDates = {};
 export let rmHistory = [];
 // periodLog = [{liftKey, weekIdx, cbKey, vol, ts}] — timestamp por set marcado
 export let periodLog = [];
+// amrapReps[liftKey][weekIdx] = extraReps digitados pelo usuário na série AMRAP
+export let amrapReps = { supino: {}, agacha: {}, terra: {} };
 
 export function setChecksState(v) { checksState = v; }
 export function setPeriodLog(v) { periodLog = v; }
+export function setAmrapReps(v) { amrapReps = v; }
 export function setRmHistory(v) { rmHistory = v; }
 export function setRmTestValues(v) { rmTestValues = v; }
 export function setKgHistory(v) { kgHistory = v; }

@@ -5,7 +5,8 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
   customLifts, setCustomLifts, cycleStartDates, setCycleStartDates,
-  rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog } from './state.js';
+  rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog,
+  amrapReps, setAmrapReps } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, setBoard, setBank,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
@@ -20,16 +21,56 @@ import { workoutLog, setWorkoutLog,
   openWorkoutLogModal, wlAddSet, wlRemoveSet,
   renderWorkoutHistory, deleteExerciseHistory,
   openExLog, exLogAddSet, exLogSave } from './workoutlog.js';
-import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase } from './periodizacao.js';
+import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase, resetCycle } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
 import { picoCompDate, setPicoCompDate, renderPico, picoOpenLogModal, picoSetDate, picoConfirmLog } from './pico.js';
-import { updateFadigaBar, checkDeload } from './fadiga.js';
+import { updateFadigaBar, checkDeload, checkOverreaching } from './fadiga.js';
 import { renderVolumeBars } from './volume.js';
 
 // ── Expor render functions no globalThis para que applyState as encontre ──────
 // (testes substituem via global.* no beforeEach; produção usa as funções reais)
 globalThis.buildAllPeriod       = buildAllPeriod;
+globalThis.openResetCycleModal  = function() {
+  var body = document.getElementById('mResetCycleBody');
+  if (!body) return;
+  body.innerHTML = '';
+
+  var LIFT_LABEL_MAP = { supino: 'Supino', agacha: 'Agachamento', terra: 'Terra' };
+  var LIFT_COLOR_MAP = { supino: 'var(--teal)', agacha: 'var(--lime)', terra: 'var(--mag)' };
+
+  var allLifts = ['supino', 'agacha', 'terra']
+    .map(function(k) { return { key: k, label: LIFT_LABEL_MAP[k], color: LIFT_COLOR_MAP[k] }; })
+    .concat(customLifts.map(function(l) { return { key: l.id, label: l.name, color: 'var(--accent)' }; }));
+
+  allLifts.forEach(function(lft) {
+    var btn = document.createElement('button');
+    btn.className = 'sec';
+    btn.style.cssText = 'width:100%;text-align:left;padding:9px 13px;display:flex;justify-content:space-between;align-items:center;';
+    btn.innerHTML = '<span style="color:' + lft.color + ';font-weight:600;">' + lft.label + '</span>'
+      + '<span style="font-size:11px;color:var(--muted);">↺ resetar</span>';
+    btn.onclick = function() {
+      document.getElementById('mResetCycle').classList.remove('on');
+      resetCycle(lft.key);
+    };
+    body.appendChild(btn);
+  });
+
+  var divider = document.createElement('div');
+  divider.style.cssText = 'height:1px;background:var(--border);margin:6px 0;';
+  body.appendChild(divider);
+
+  var btnAll = document.createElement('button');
+  btnAll.style.cssText = 'width:100%;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.28);color:var(--red);';
+  btnAll.textContent = '↺ Resetar todos';
+  btnAll.onclick = function() {
+    document.getElementById('mResetCycle').classList.remove('on');
+    resetCycle();
+  };
+  body.appendChild(btnAll);
+
+  document.getElementById('mResetCycle').classList.add('on');
+};
 globalThis.renderAnilhas        = renderAnilhas;
 globalThis.renderFeeder         = renderFeeder;
 globalThis.renderPico           = renderPico;
@@ -131,10 +172,35 @@ function updateDeloadBanner() {
 }
 globalThis.updateDeloadBanner = updateDeloadBanner;
 
+// ── Overreaching banner ───────────────────────
+var _overreachDismissedDay = null;
+function updateOverreachingBanner() {
+  var banner  = document.getElementById('overreachingBanner');
+  var subEl   = document.getElementById('overreachingBannerSub');
+  var dismiss = document.getElementById('overreachingBannerDismiss');
+  if (!banner) return;
+  var today = new Date().toDateString();
+  if (_overreachDismissedDay === today) { banner.style.display = 'none'; return; }
+  var info = checkOverreaching();
+  if (!info.needed) { banner.style.display = 'none'; return; }
+  if (subEl) subEl.textContent =
+    'TSB ' + info.tsbPct + '% há ' + info.days + ' dias · reduza volume 40–50% por 3–5 dias antes de retomar';
+  banner.style.display = 'flex';
+  if (dismiss && !dismiss._bound) {
+    dismiss._bound = true;
+    dismiss.addEventListener('click', function() {
+      _overreachDismissedDay = today;
+      banner.style.display = 'none';
+    });
+  }
+}
+globalThis.updateOverreachingBanner = updateOverreachingBanner;
+
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
   setSyncStatus('saving');
   updateFadigaBar();
+  updateOverreachingBanner();
   renderVolumeBars();
   var data = {
     rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
@@ -158,6 +224,7 @@ document.addEventListener('gorila-save', function() {
     deloadMode:    deloadMode,
     periodLog:     periodLog,
     picoCompDate:  picoCompDate,
+    amrapReps:     amrapReps,
   };
   idbSet(RECORD_KEY, data)
     .then(function() { setSyncStatus('saved'); })
@@ -209,6 +276,7 @@ export function exportData() {
     customLifts:   customLifts,
     cycleStartDates: cycleStartDates,
     workoutLog:    workoutLog,
+    amrapReps:     amrapReps,
   };
   var json  = JSON.stringify(data, null, 2);
   var blob  = new Blob([json], { type:'application/json' });
@@ -289,6 +357,7 @@ export function applyState(saved) {
     if (saved.deloadMode !== undefined) setDeloadMode(saved.deloadMode);
     if (saved.periodLog && Array.isArray(saved.periodLog)) setPeriodLog(saved.periodLog);
     if (saved.picoCompDate) setPicoCompDate(saved.picoCompDate);
+    if (saved.amrapReps && typeof saved.amrapReps === 'object') setAmrapReps(saved.amrapReps);
   }
   syncDeloadBtn();
   // Fila de renders — iterar aqui garante que nenhuma função seja esquecida.
@@ -299,7 +368,7 @@ export function applyState(saved) {
     'renderRMHistory', 'renderRatioCard', 'renderKanban', 'renderBank', 'setupBankDropzone',
     'renderPeriodGrid', 'renderProgressCharts', 'renderBuilderSegs',
     'renderSavedWorkouts', 'renderCycleHistory', 'renderRPEBlocks',
-    'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateRestCounters', 'renderPico',
+    'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateOverreachingBanner', 'updateRestCounters', 'renderPico',
     'renderVolumeBars',
   ];
   RENDER_QUEUE.forEach(function(fn) {

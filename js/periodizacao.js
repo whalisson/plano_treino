@@ -5,7 +5,7 @@ import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
   BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates,
-  rmHistory, periodLog, setPeriodLog } from './state.js';
+  rmHistory, periodLog, setPeriodLog, amrapReps } from './state.js';
 import { DAYS, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE } from './constants.js';
 export { DAYS, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE };
 
@@ -23,7 +23,7 @@ export var periodBase = [
   { label:'Semana 5',  deload:true, note:'Volume −50% · Foco em técnica', series:[{r:'8 reps',p:.50},{r:'2x4',p:.60}] },
   { label:'Semana 6',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.53},{r:'4 reps',p:.65},{r:'4x3',p:.80}] },
   { label:'Semana 7',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'3x3',p:.85}] },
-  { label:'Semana 8',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'2x2',p:.90}] },
+  { label:'Semana 8',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'2x2',p:.90,amrap:true}] },
   { label:'Semana 9',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x3',p:.70}] },
   { label:'Semana 10', rest:true, note:'Descanso Total' },
   { label:'Semana 11', series:[{r:'8 reps',p:.50},{r:'5 reps',p:.60},{r:'3 reps',p:.70},{r:'2 reps',p:.80},{r:'1 rep',p:.90},{r:'1 rep',p:1.00},{r:'? reps',p:1.05}], note:'Teste Novo RM' },
@@ -274,6 +274,102 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
       checkIdx += numChecks;
       row.appendChild(checksWrap);
       block.appendChild(row);
+
+      if (s.amrap) {
+        // prescribed = reps por série (ex: '2x2' → 2)
+        var _prescribed = (function() { var m = s.r.match(/^(\d+)x(\d+)$/); return m ? parseInt(m[2]) : 1; })();
+        var savedTotal  = (amrapReps[liftKey] && wi in amrapReps[liftKey]) ? amrapReps[liftKey][wi] : null;
+
+        var amrapDiv = document.createElement('div');
+        amrapDiv.style.cssText = 'background:rgba(201,255,58,.05);border:1px solid rgba(201,255,58,.15);border-radius:8px;padding:10px 13px;margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;';
+
+        var amrapLbl = document.createElement('span');
+        amrapLbl.style.cssText = 'font-size:11px;color:var(--muted);flex:1;min-width:130px;';
+        amrapLbl.innerHTML = 'Total de reps na última série <span style="opacity:.5;">(prescrição: ' + _prescribed + ')</span>:';
+
+        var amrapInp = document.createElement('input');
+        amrapInp.type = 'number'; amrapInp.min = '1'; amrapInp.max = '20'; amrapInp.step = '1';
+        amrapInp.placeholder = String(_prescribed);
+        amrapInp.value = savedTotal !== null ? String(savedTotal) : '';
+        amrapInp.style.cssText = 'width:58px;font-family:var(--mono);text-align:center;padding:5px 8px;font-size:13px;';
+
+        var amrapProj = document.createElement('span');
+        amrapProj.style.cssText = 'font-size:11px;font-family:var(--mono);color:var(--muted);';
+
+        var amrapBtn = document.createElement('button');
+        amrapBtn.className = 'sec';
+        amrapBtn.style.cssText = 'font-size:11px;padding:5px 11px;display:none;';
+        amrapBtn.textContent = '↑ Aplicar RM';
+
+        var _rm = rm;
+        var _pct = s.p;
+        var _presc = _prescribed;
+        // Back-calculation: kg/pct confirma o RM atual; cada rep extra ≈ +3.3% RM
+        function calcAmrapRM(totalReps) {
+          var extra = Math.max(0, totalReps - _presc);
+          var kg    = round05(_rm * _pct);
+          return round05((kg / _pct) * (1 + 0.033 * extra));
+        }
+
+        function updateAmrap() {
+          var raw = amrapInp.value;
+          if (raw === '') { amrapProj.textContent = ''; amrapBtn.style.display = 'none'; return; }
+          var total = Math.max(1, parseInt(raw) || 1);
+          var proj  = calcAmrapRM(total);
+          var diff  = round05(proj - _rm);
+          var sign  = diff >= 0 ? '+' : '';
+          amrapProj.textContent = '→ ' + proj + ' kg (' + sign + diff + ')';
+          amrapProj.style.color = diff > 0 ? 'var(--lime)' : 'var(--muted)';
+          amrapBtn.style.display = '';
+          if (!amrapReps[liftKey]) amrapReps[liftKey] = {};
+          amrapReps[liftKey][wi] = total;
+          saveState();
+        }
+
+        if (amrapInp.value !== '') updateAmrap();
+        amrapInp.addEventListener('input', updateAmrap);
+
+        amrapBtn.addEventListener('click', function() {
+          var total = Math.max(1, parseInt(amrapInp.value) || 1);
+          var proj  = calcAmrapRM(total);
+          if (!proj || proj <= 0) return;
+          var rmId     = { supino:'rm-supino', agacha:'rm-agacha', terra:'rm-terra' }[liftKey] || ('rm-custom-' + liftKey);
+          var rmStart  = parseFloat(g(rmId).value) || 0;
+
+          if (rmStart > 0) {
+            var today   = new Date();
+            var dateEnd = String(today.getDate()).padStart(2,'0') + '/' + String(today.getMonth()+1).padStart(2,'0') + '/' + today.getFullYear();
+            var isPR    = proj > rmStart;
+            var prevBest = cycleHistory.filter(function(c) { return c.lift === liftKey; }).reduce(function(max, c) { return Math.max(max, c.rmEnd); }, 0);
+            cycleHistory.push({ lift: liftKey, rmStart: rmStart, rmEnd: proj, gain: Math.round((proj - rmStart)*10)/10, dateStart: cycleStartDates[liftKey] || null, dateEnd: dateEnd, id: uid() });
+            delete cycleStartDates[liftKey];
+            renderCycleHistory();
+            if (isPR) {
+              var _lc = { supino:'#a59eff', agacha:'#2dd4bf', terra:'#fbbf24' };
+              var _ll = { supino:'Supino', agacha:'Agachamento', terra:'Terra' };
+              showPRBanner(_ll[liftKey] || (LIFT_LABELS[liftKey] || liftKey), _lc[liftKey] || (LIFT_SOLID[liftKey] || '#a59eff'), rmStart, proj, isPR && (prevBest === 0 || proj > prevBest));
+            }
+          }
+
+          g(rmId).value = proj;
+          checksState[liftKey]  = {};
+          rmTestValues[liftKey] = {};
+          amrapReps[liftKey]    = {};
+          var _cl = customLifts.find(function(l) { return l.id === liftKey; });
+          if (_cl) { _cl.rm = proj; buildWeekTable(periodBase, 'tbl-custom-' + liftKey, liftKey, proj); }
+          else { buildAllPeriod(); }
+          saveState();
+          var rmEl = g(rmId);
+          rmEl.style.transition = 'color .3s'; rmEl.style.color = 'var(--lime)';
+          setTimeout(function() { rmEl.style.color = ''; }, 1200);
+        });
+
+        amrapDiv.appendChild(amrapLbl);
+        amrapDiv.appendChild(amrapInp);
+        amrapDiv.appendChild(amrapProj);
+        amrapDiv.appendChild(amrapBtn);
+        block.appendChild(amrapDiv);
+      }
     });
 
     c.appendChild(block);
@@ -715,6 +811,27 @@ g('btnConfirmLift').addEventListener('click', function() {
   renderCustomLifts();
   saveState();
 });
+
+// ── Resetar Ciclo ────────────────────────────
+// liftKey opcional: se fornecido reseta só aquele lift; se omitido reseta todos
+export function resetCycle(liftKey) {
+  var liftKeys = liftKey
+    ? [liftKey]
+    : ['supino', 'agacha', 'terra'].concat(customLifts.map(function(l) { return l.id; }));
+  liftKeys.forEach(function(k) {
+    checksState[k]  = {};
+    rmTestValues[k] = {};
+    amrapReps[k]    = {};
+    delete cycleStartDates[k];
+  });
+  for (var i = periodLog.length - 1; i >= 0; i--) {
+    if (liftKeys.indexOf(periodLog[i].liftKey) !== -1) periodLog.splice(i, 1);
+  }
+  buildAllPeriod();
+  if (typeof globalThis.updateFadigaBar  === 'function') globalThis.updateFadigaBar();
+  if (typeof globalThis.renderVolumeBars === 'function') globalThis.renderVolumeBars();
+  saveState();
+}
 
 // ── Histórico de Ciclos ───────────────────────
 var cycleChartInst = null;

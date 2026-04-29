@@ -150,6 +150,7 @@
     <div class="shtitle">Periodização</div>
     <span class="badge bp">12 semanas</span>
     <button onclick="scrollToCurrentWeek()" class="sec" style="margin-left:auto;font-family:var(--mono);font-size:10px;padding:5px 11px;letter-spacing:.04em;text-transform:uppercase;">▶ Semana atual</button>
+    <button onclick="openResetCycleModal()" class="sec" style="margin-left:6px;font-family:var(--mono);font-size:10px;padding:5px 11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);" title="Apagar progresso do ciclo atual">↺ Resetar</button>
   </div>
   <div class="sub">progressão linear · supino / agachamento / terra</div>
 
@@ -160,6 +161,15 @@
       <div class="deload-banner-sub" id="deloadBannerSub"></div>
     </div>
     <button class="deload-banner-dismiss" id="deloadBannerDismiss" title="Dispensar hoje">✕</button>
+  </div>
+
+  <div id="overreachingBanner" class="overreaching-banner" style="display:none;">
+    <div class="deload-banner-icon">🔴</div>
+    <div class="deload-banner-body">
+      <div class="overreaching-banner-title">Overreaching detectado</div>
+      <div class="deload-banner-sub" id="overreachingBannerSub"></div>
+    </div>
+    <button class="deload-banner-dismiss" id="overreachingBannerDismiss" title="Dispensar hoje">✕</button>
   </div>
 
   <!-- RM Dashboard -->
@@ -748,6 +758,16 @@
       <button onclick="concludeExecRPE()" style="flex:1;background:rgba(74,222,128,.18);border:1px solid rgba(74,222,128,.35);color:var(--green);">✓ Concluir Treino</button>
       <button class="sec" id="btnCloseExecRPE" style="padding:9px 14px;">✕ Fechar</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal: Resetar Ciclo -->
+<div class="mbg" id="mResetCycle">
+  <div class="mbox" style="max-width:320px;">
+    <div class="mtitle">Resetar ciclo</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.6;">Séries marcadas são apagadas. RMs e histórico de ciclos não são alterados.</p>
+    <div id="mResetCycleBody" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+    <button class="sec" onclick="document.getElementById('mResetCycle').classList.remove('on')" style="width:100%;">Cancelar</button>
   </div>
 </div>
 

@@ -35,11 +35,13 @@ const RENDER_FNS = [
   'renderWorkoutHistory',
   'updateFadigaBar',
   'updateDeloadBanner',
+  'updateOverreachingBanner',
 ];
 
 // ── Chaves canônicas do payload de gorila-save ────────────────────────────────
 // Qualquer chave nova salva precisa ser adicionada aqui E tratada em applyState.
 const SAVE_KEYS = [
+  'amrapReps',
   'bank', 'board',
   'cardioDailyGoal', 'cardioExtra', 'cardioGoal',
   'checks', 'customLifts', 'cycleHistory', 'cycleStartDates',
