@@ -199,42 +199,66 @@ globalThis.updateOverreachingBanner = updateOverreachingBanner;
 // ── gorila-save event handler ─────────────────
 document.addEventListener('gorila-save', function() {
   setSyncStatus('saving');
-  updateFadigaBar();
-  updateOverreachingBanner();
-  renderVolumeBars();
-  var data = {
-    rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
-    rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
-    rmTerra:       parseFloat(g('rm-terra').value)  || BASE_TER,
-    checks:        checksState,
-    rmTests:       rmTestValues,
-    board:         board,
-    bank:          bank,
-    kgHistory:     kgHistory,
-    cycleHistory:  cycleHistory,
-    rmHistory:       rmHistory,
-    cardioExtra:     cardioExtra,
-    cardioGoal:      parseInt(g('cardioGoal').value)      || 300,
-    cardioDailyGoal: parseInt(g('cardioDailyGoal').value) || 43,
-    savedWorkouts: savedWorkouts,
-    rpeBlocks:     rpeBlocks,
-    customLifts:   customLifts,
-    cycleStartDates: cycleStartDates,
-    workoutLog:    workoutLog,
-    deloadMode:    deloadMode,
-    periodLog:     periodLog,
-    picoCompDate:  picoCompDate,
-    amrapReps:     amrapReps,
-  };
-  idbSet(RECORD_KEY, data)
-    .then(function() { setSyncStatus('saved'); })
-    .catch(function() {
-      setSyncStatus('error');
-      try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(ex) {}
-    });
-  if (document.getElementById('pg-feeder') && document.getElementById('pg-feeder').classList.contains('on')) {
-    if (typeof globalThis.renderFeeder === 'function') globalThis.renderFeeder();
+
+  // Renders defensivos — um erro aqui não deve bloquear o save
+  try { updateFadigaBar(); } catch(e) {}
+  try { updateOverreachingBanner(); } catch(e) {}
+  try { renderVolumeBars(); } catch(e) {}
+
+  var data;
+  try {
+    data = {
+      rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
+      rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
+      rmTerra:       parseFloat(g('rm-terra').value)  || BASE_TER,
+      checks:        checksState,
+      rmTests:       rmTestValues,
+      board:         board,
+      bank:          bank,
+      kgHistory:     kgHistory,
+      cycleHistory:  cycleHistory,
+      rmHistory:       rmHistory,
+      cardioExtra:     cardioExtra,
+      cardioGoal:      parseInt(g('cardioGoal').value)      || 300,
+      cardioDailyGoal: parseInt(g('cardioDailyGoal').value) || 43,
+      savedWorkouts: savedWorkouts,
+      rpeBlocks:     rpeBlocks,
+      customLifts:   customLifts,
+      cycleStartDates: cycleStartDates,
+      workoutLog:    workoutLog,
+      deloadMode:    deloadMode,
+      periodLog:     periodLog,
+      picoCompDate:  picoCompDate,
+      amrapReps:     amrapReps,
+    };
+  } catch(e) {
+    setSyncStatus('error');
+    return;
   }
+
+  // Backup imediato no localStorage — garante que o dado não se perde
+  // se o app for fechado antes do IDB confirmar (especialmente no iOS Safari)
+  try { localStorage.setItem('gorila_fallback', JSON.stringify(data)); } catch(e) {}
+
+  // IDB com timeout de 5s para evitar travar em "Salvando..." no Safari
+  var saved = false;
+  var idbTimeout = setTimeout(function() {
+    if (!saved) { saved = true; setSyncStatus('saved'); }
+  }, 5000);
+
+  idbSet(RECORD_KEY, data)
+    .then(function() {
+      if (!saved) { saved = true; clearTimeout(idbTimeout); setSyncStatus('saved'); }
+    })
+    .catch(function() {
+      if (!saved) { saved = true; clearTimeout(idbTimeout); setSyncStatus('error'); }
+    });
+
+  try {
+    if (document.getElementById('pg-feeder') && document.getElementById('pg-feeder').classList.contains('on')) {
+      if (typeof globalThis.renderFeeder === 'function') globalThis.renderFeeder();
+    }
+  } catch(e) {}
 });
 
 // ── Navegação entre abas ──────────────────────

@@ -6,6 +6,13 @@ import { DAYS } from './constants.js';
 var _bankQuery = '';
 var _bankGroup = '';
 
+function saveBoardState() {
+  saveState();
+  if (typeof globalThis.renderVolumeBars === 'function') {
+    try { globalThis.renderVolumeBars(); } catch(e) {}
+  }
+}
+
 var DELOAD_FACTOR = 0.6;
 export var deloadMode = false;
 export function setDeloadMode(v) { deloadMode = v; }
@@ -206,7 +213,7 @@ function addTouchDrag(el, getItemFn) {
               board[di].splice(Math.max(0, insertIdx), 0, item);
             }
           }
-          renderKanban(); renderPeriodGrid(); saveState();
+          renderKanban(); renderPeriodGrid(); saveBoardState();
         }
       } else if (target.classList.contains('kcol')) {
         var cols = Array.from(document.querySelectorAll('.kcol'));
@@ -219,11 +226,11 @@ function addTouchDrag(el, getItemFn) {
             var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
             if (item) board[di].push(item);
           }
-          renderKanban(); renderPeriodGrid(); saveState();
+          renderKanban(); renderPeriodGrid(); saveBoardState();
         }
       } else if (target.id === 'ebank' && dragItem.type === 'board') {
         board[dragItem.fromDay].splice(dragItem.fromIdx, 1);
-        renderKanban(); renderPeriodGrid(); saveState();
+        renderKanban(); renderPeriodGrid(); saveBoardState();
       }
     }
     dragItem = null; touchLastTarget = null;
@@ -412,7 +419,7 @@ function makeBoardCard(ex, di, ei) {
         }
       }
       dragOverCard = null;
-      renderKanban(); renderPeriodGrid(); saveState();
+      renderKanban(); renderPeriodGrid(); saveBoardState();
     });
   }
   addTouchDrag(el, function() { return { type:'board', id:ex.id, fromDay:di, fromIdx:ei }; });
@@ -443,7 +450,7 @@ function setupDropzone(colEl, dayIndex) {
       var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
       if (item) board[dayIndex].push(item);
     }
-    renderKanban(); renderPeriodGrid(); saveState();
+    renderKanban(); renderPeriodGrid(); saveBoardState();
   });
 }
 
@@ -455,7 +462,7 @@ export function setupBankDropzone() {
     e.preventDefault(); bk.style.borderColor = '';
     if (!dragItem || dragItem.type !== 'board') return;
     board[dragItem.fromDay].splice(dragItem.fromIdx, 1);
-    renderKanban(); renderPeriodGrid(); saveState();
+    renderKanban(); renderPeriodGrid(); saveBoardState();
   });
 }
 
