@@ -284,13 +284,31 @@ function makeBankPill(ex) {
   delBtn.className = 'bpdel';
   delBtn.textContent = '×';
   delBtn.title = 'Remover';
+  var _delPending = false, _delTimer = null;
+  var _cancelDelPending = function() {
+    _delPending = false;
+    clearTimeout(_delTimer);
+    delBtn.textContent = '×';
+    delBtn.style.background = '';
+    delBtn.style.color = '';
+  };
   var _delBank = function(e) {
     e.stopPropagation();
-    var saved = JSON.parse(JSON.stringify(ex));
-    var idx   = bank.findIndex(function(b) { return b.id === ex.id; });
-    bank = bank.filter(function(b) { return b.id !== ex.id; });
-    renderBank();
-    showUndo('"' + ex.name + '" removido do banco', function() { bank.splice(idx, 0, saved); renderBank(); saveState(); }, saveState);
+    if (!_delPending) {
+      _delPending = true;
+      delBtn.textContent = '✓?';
+      delBtn.style.background = 'var(--red,#e05)';
+      delBtn.style.color = '#fff';
+      _delTimer = setTimeout(_cancelDelPending, 3000);
+    } else {
+      clearTimeout(_delTimer);
+      _delPending = false;
+      var saved = JSON.parse(JSON.stringify(ex));
+      var idx   = bank.findIndex(function(b) { return b.id === ex.id; });
+      bank = bank.filter(function(b) { return b.id !== ex.id; });
+      renderBank();
+      showUndo('"' + ex.name + '" removido do banco', function() { bank.splice(idx, 0, saved); renderBank(); saveState(); }, saveState);
+    }
   };
   delBtn.addEventListener('click',      _delBank);
   delBtn.addEventListener('touchend',   function(e) { e.preventDefault(); _delBank(e); }, { passive:false });
