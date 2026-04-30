@@ -61,8 +61,10 @@ function calcWeeklySets() {
   // Fallback: planejado (board) — nenhum dado real disponível
   board.forEach(function(day) {
     day.forEach(function(ex) {
-      if (ex.group && acc[ex.group] !== undefined)
-        acc[ex.group] += parseSetCount(String(ex.reps || '1'));
+      var grp = ex.group || detectExerciseGroup(ex.name || '')
+        || ((bank.find(function(b) { return b.name === ex.name; }) || {}).group) || '';
+      if (grp && acc[grp] !== undefined)
+        acc[grp] += parseSetCount(String(ex.reps || '1'));
     });
   });
 

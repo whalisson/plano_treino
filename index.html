@@ -324,19 +324,24 @@
   <div class="kboard" id="kboard"></div>
   <div class="div"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
-    <div style="font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Banco de Exercícios</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Banco de Exercícios</div>
+      <button id="btnToggleBank" class="mag" style="font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:2px 8px;" title="Ocultar banco">▲ ocultar</button>
+    </div>
     <button id="btnAddEx" class="mag" style="font-family:var(--mono);font-size:11px;letter-spacing:.04em;">+ Novo</button>
   </div>
-  <input type="text" id="bankSearch" placeholder="› buscar exercício..." style="margin-bottom:8px;font-family:var(--mono);font-size:12px;letter-spacing:.01em;">
-  <div id="bankGroupFilter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-    <button class="bank-filter-btn active" data-group="">Todos</button>
-    <button class="bank-filter-btn" data-group="push">Push</button>
-    <button class="bank-filter-btn" data-group="pull">Pull</button>
-    <button class="bank-filter-btn" data-group="legs">Legs</button>
-    <button class="bank-filter-btn" data-group="core">Core</button>
+  <div id="bankBody">
+    <input type="text" id="bankSearch" placeholder="› buscar exercício..." style="margin-bottom:8px;font-family:var(--mono);font-size:12px;letter-spacing:.01em;">
+    <div id="bankGroupFilter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="bank-filter-btn active" data-group="">Todos</button>
+      <button class="bank-filter-btn" data-group="push">Push</button>
+      <button class="bank-filter-btn" data-group="pull">Pull</button>
+      <button class="bank-filter-btn" data-group="legs">Legs</button>
+      <button class="bank-filter-btn" data-group="core">Core</button>
+    </div>
+    <div id="ebank" style="display:flex;flex-wrap:wrap;gap:7px;min-height:52px;padding:11px;background:var(--bg3);border:2px dashed var(--border2);border-radius:10px;"
+      data-dropzone="bank"></div>
   </div>
-  <div id="ebank" style="display:flex;flex-wrap:wrap;gap:7px;min-height:52px;padding:11px;background:var(--bg3);border:2px dashed var(--border2);border-radius:10px;"
-    data-dropzone="bank"></div>
 
   <!-- Histórico de Execução -->
   <div id="wlHistorySection" style="display:none;">
@@ -903,5 +908,31 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/firebase.js"></script>
 <script type="module" src="js/app.js"></script>
+
+<!-- Modal de confirmação genérico -->
+<div class="mbg" id="mConfirm" style="display:none;align-items:center;justify-content:center;">
+  <div class="mbox" style="max-width:320px;text-align:center;">
+    <div class="mtitle" id="mConfirmTitle" style="margin-bottom:14px;"></div>
+    <p id="mConfirmMsg" style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5;"></p>
+    <div style="display:flex;gap:10px;">
+      <button id="mConfirmCancel" class="sec" style="flex:1;">Cancelar</button>
+      <button id="mConfirmOk" style="flex:1;background:var(--red,#c0392b);color:#fff;border:none;border-radius:8px;padding:9px;font-family:var(--mono);font-size:12px;cursor:pointer;letter-spacing:.04em;">APAGAR</button>
+    </div>
+  </div>
+</div>
+<script>
+window.showConfirm = function(title, msg, onOk) {
+  var el = document.getElementById('mConfirm');
+  document.getElementById('mConfirmTitle').textContent = title;
+  document.getElementById('mConfirmMsg').textContent   = msg;
+  el.style.display = 'flex';
+  var ok  = document.getElementById('mConfirmOk');
+  var cancel = document.getElementById('mConfirmCancel');
+  function close() { el.style.display = 'none'; ok.onclick = null; cancel.onclick = null; }
+  ok.onclick     = function() { close(); onOk(); };
+  cancel.onclick = close;
+  el.onclick     = function(e) { if (e.target === el) close(); };
+};
+</script>
 </body>
 </html>

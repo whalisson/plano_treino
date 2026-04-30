@@ -298,7 +298,7 @@ export function renderWorkoutHistory() {
   container.querySelectorAll('.wlh-del').forEach(function(btn) {
     btn.onclick = function() {
       var n = btn.getAttribute('data-name');
-      if (confirm('Apagar todo o histórico de "' + n + '"?')) deleteExerciseHistory(n);
+      window.showConfirm('Apagar histórico', 'Apagar todo o histórico de "' + n + '"?', function() { deleteExerciseHistory(n); });
     };
   });
 }

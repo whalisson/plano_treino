@@ -332,13 +332,33 @@ function makeBoardCard(ex, di, ei) {
   var rm = document.createElement('button');
   rm.className = 'kexrm'; rm.textContent = '×';
   rm.style.touchAction = 'manipulation';
-  var _removeCard = function(e) {
-    e.stopPropagation();
+  var _rmPending = false, _rmTimer = null;
+  var _doRemove = function() {
     var saved = JSON.parse(JSON.stringify(board[di][ei]));
     var savedDi = di, savedEi = ei;
     board[di].splice(ei, 1);
     renderKanban(); renderPeriodGrid();
     showUndo('"' + saved.name + '" removido de ' + DAYS[savedDi], function() { board[savedDi].splice(savedEi, 0, saved); renderKanban(); renderPeriodGrid(); saveState(); }, saveState);
+  };
+  var _cancelPending = function() {
+    _rmPending = false;
+    clearTimeout(_rmTimer);
+    rm.textContent = '×';
+    rm.style.background = '';
+    rm.style.color = '';
+  };
+  var _removeCard = function(e) {
+    e.stopPropagation();
+    if (!_rmPending) {
+      _rmPending = true;
+      rm.textContent = '✓?';
+      rm.style.background = 'var(--red,#e05)';
+      rm.style.color = '#fff';
+      _rmTimer = setTimeout(_cancelPending, 3000);
+    } else {
+      clearTimeout(_rmTimer);
+      _doRemove();
+    }
   };
   rm.addEventListener('click',      _removeCard);
   rm.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
@@ -535,6 +555,24 @@ g('mExName').addEventListener('input', function() {
 });
 
 g('btnAddEx').addEventListener('click', openAddModal);
+
+(function() {
+  var body = g('bankBody');
+  var btn  = g('btnToggleBank');
+  if (!body || !btn) return;
+  var hidden = localStorage.getItem('bankHidden') === '1';
+  function applyBankToggle() {
+    body.style.display = hidden ? 'none' : '';
+    btn.textContent = hidden ? '▼ mostrar' : '▲ ocultar';
+    btn.title = hidden ? 'Mostrar banco' : 'Ocultar banco';
+  }
+  applyBankToggle();
+  btn.addEventListener('click', function() {
+    hidden = !hidden;
+    localStorage.setItem('bankHidden', hidden ? '1' : '0');
+    applyBankToggle();
+  });
+})();
 g('btnCancelEx').addEventListener('click', function() { g('mAddEx').classList.remove('on'); });
 
 g('bankGroupFilter').addEventListener('click', function(e) {
