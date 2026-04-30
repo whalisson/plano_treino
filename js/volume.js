@@ -1,9 +1,9 @@
 // ── GORILA GYM — volume.js ────────────────────
 // MEV / MAV / MRV semanal por grupo muscular (metodologia RP)
 
-import { parseSetCount, periodLog, customLifts } from './state.js';
+import { periodLog, customLifts } from './state.js';
 import { workoutLog } from './workoutlog.js';
-import { board, bank, detectExerciseGroup } from './logbook.js';
+import { bank, detectExerciseGroup } from './logbook.js';
 
 var ZONES = {
   push: { label:'Push', mev:8,  mavLo:10, mavHi:20, mrv:25, col:'var(--mag)'   },
@@ -56,19 +56,7 @@ function calcWeeklySets() {
       }
     });
 
-  if (hasReal) return { sets:acc, source:'real' };
-
-  // Fallback: planejado (board) — nenhum dado real disponível
-  board.forEach(function(day) {
-    day.forEach(function(ex) {
-      var grp = ex.group || detectExerciseGroup(ex.name || '')
-        || ((bank.find(function(b) { return b.name === ex.name; }) || {}).group) || '';
-      if (grp && acc[grp] !== undefined)
-        acc[grp] += parseSetCount(String(ex.reps || '1'));
-    });
-  });
-
-  return { sets:acc, source:'plan' };
+  return { sets:acc, source:'real' };
 }
 
 function p(v, cap) {

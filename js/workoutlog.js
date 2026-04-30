@@ -288,7 +288,7 @@ export function renderWorkoutHistory() {
     return '<div class="wlh-card">' +
       '<div class="wlh-header">' +
         '<span class="wlh-name">' + name + '</span>' +
-        '<button class="wlh-del" onclick="wlDeleteExHistory(\'' + safeId + '\')" data-name="' + name + '" title="Apagar histórico">🗑</button>' +
+        '<button class="wlh-del" onclick="wlDeleteExHistory(\'' + safeId + '\')" data-name="' + name + '" title="Apagar histórico"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' +
       '</div>' +
       '<table class="wlh-table"><thead><tr><th>Data</th><th>Séries</th><th>Volume</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>';
@@ -362,7 +362,7 @@ export function exLogSave() {
   var existing = getLastSessionForDay(workoutLog, _exLog.dayIdx);
   var session;
   if (existing && existing.finishedAt === null) {
-    session = existing;
+    session = Object.assign({}, existing);
   } else {
     session = { id: uid(), date: dateStr, dayIdx: _exLog.dayIdx, dayLabel: DAYS[_exLog.dayIdx] || '',
       startedAt: Date.now(), finishedAt: null, exercises: [] };
@@ -385,6 +385,7 @@ export function exLogSave() {
   workoutLog = workoutLog.map(function(s) { return s.id === session.id ? finishSession(session) : s; });
   saveState();
   if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
+  if (typeof globalThis.renderVolumeBars === 'function') { try { globalThis.renderVolumeBars(); } catch(e) {} }
   renderWorkoutHistory();
   g('mExLog').classList.remove('on');
   _exLog = null;

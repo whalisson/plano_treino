@@ -91,22 +91,25 @@ export function saveState() {
 export function loadState() {
   return idbGet(RECORD_KEY).then(function(data) {
     if (data) return data;
-    // Migrar de localStorage antigo
+    // Migrar de localStorage para IDB
     try {
       var raw = localStorage.getItem('treino_v2') || localStorage.getItem('gorila_fallback');
       if (raw) {
         var parsed = JSON.parse(raw);
+        // Só remove do localStorage depois que IDB confirmar a escrita
         idbSet(RECORD_KEY, parsed).then(function() {
           localStorage.removeItem('treino_v2');
           localStorage.removeItem('gorila_fallback');
-        });
+        }).catch(function() {});
         return parsed;
       }
     } catch(ex) {}
     return null;
   }).catch(function() {
+    // IDB falhou completamente — tenta qualquer fallback disponível
     try {
-      var raw = localStorage.getItem('treino_v2');
+      var raw = localStorage.getItem('gorila_fallback')
+             || localStorage.getItem('treino_v2');
       return raw ? JSON.parse(raw) : null;
     } catch(e) { return null; }
   });

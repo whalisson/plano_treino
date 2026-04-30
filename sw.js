@@ -1,16 +1,24 @@
-// Gorila Gym — Service Worker v12
-const CACHE = 'gorila-gym-v16';
+// Gorila Gym — Service Worker v13
+const CACHE = 'gorila-gym-v17';
 const ASSETS = [
   './index.html',
   './css/styles.css',
   './js/db.js',
   './js/state.js',
+  './js/constants.js',
   './js/periodizacao.js',
   './js/logbook.js',
   './js/rm.js',
   './js/cardio.js',
   './js/rpe.js',
   './js/workoutlog.js',
+  './js/fadiga.js',
+  './js/volume.js',
+  './js/pico.js',
+  './js/anilhas.js',
+  './js/feeder.js',
+  './js/firebase.js',
+  './js/firebase-config.js',
   './js/app.js',
   './manifest.json',
   './img/icon.svg',

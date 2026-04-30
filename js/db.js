@@ -30,12 +30,12 @@ export function idbSet(key, value) {
       var req = st.put(value, key);
       req.onsuccess = function() {
         resolve();
-        // Sincroniza com Firebase em segundo plano (fire-and-forget)
-        if (typeof fbSave === 'function') fbSave(value);
+        try { if (typeof fbSave === 'function') fbSave(value); } catch(e) {}
       };
-      req.onerror = function() { reject(req.error); };
+      req.onerror = function() { _db = null; reject(req.error); };
+      tx.onerror  = function() { _db = null; };
     });
-  });
+  }).catch(function(err) { _db = null; return Promise.reject(err); });
 }
 
 export function idbGet(key) {
@@ -45,7 +45,8 @@ export function idbGet(key) {
       var st  = tx.objectStore(STORE_NAME);
       var req = st.get(key);
       req.onsuccess = function() { resolve(req.result); };
-      req.onerror   = function() { reject(req.error); };
+      req.onerror   = function() { _db = null; reject(req.error); };
+      tx.onerror    = function() { _db = null; };
     });
-  });
+  }).catch(function(err) { _db = null; return Promise.reject(err); });
 }

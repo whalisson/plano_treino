@@ -8,9 +8,6 @@ var _bankGroup = '';
 
 function saveBoardState() {
   saveState();
-  if (typeof globalThis.renderVolumeBars === 'function') {
-    try { globalThis.renderVolumeBars(); } catch(e) {}
-  }
 }
 
 var DELOAD_FACTOR = 0.6;
@@ -293,7 +290,7 @@ function makeBankPill(ex) {
     var idx   = bank.findIndex(function(b) { return b.id === ex.id; });
     bank = bank.filter(function(b) { return b.id !== ex.id; });
     renderBank();
-    showUndo('"' + ex.name + '" removido do banco', function() { bank.splice(idx, 0, saved); renderBank(); }, saveState);
+    showUndo('"' + ex.name + '" removido do banco', function() { bank.splice(idx, 0, saved); renderBank(); saveState(); }, saveState);
   };
   delBtn.addEventListener('click',      _delBank);
   delBtn.addEventListener('touchend',   function(e) { e.preventDefault(); _delBank(e); }, { passive:false });

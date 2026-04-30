@@ -398,14 +398,19 @@ export function applyState(saved) {
   RENDER_QUEUE.forEach(function(fn) {
     if (typeof globalThis[fn] === 'function') globalThis[fn]();
   });
-  // Persiste após cada renderização do kanban
-  var _boardLoaded = !!(saved && saved.board);
-  var _origRenderKanban = globalThis.renderKanban;
-  globalThis.renderKanban = function() {
-    if (typeof _origRenderKanban === 'function') _origRenderKanban();
-    var hasItems = board.some(function(day) { return day.length > 0; });
-    if (hasItems || _boardLoaded) saveState();
-  };
+  // Persiste após cada renderização do kanban (instala o wrapper apenas uma vez)
+  // _boardLoaded vive em globalThis para ser atualizado em chamadas subsequentes de applyState
+  globalThis._boardLoaded = globalThis._boardLoaded || !!(saved && saved.board);
+  if (!globalThis._kanbanSaveWrapInstalled) {
+    globalThis._kanbanSaveWrapInstalled = true;
+    var _origRenderKanban = globalThis.renderKanban;
+    globalThis.renderKanban = function() {
+      if (typeof _origRenderKanban === 'function') _origRenderKanban();
+      var hasItems = board.some(function(day) { return day.length > 0; });
+      if (hasItems || globalThis._boardLoaded) saveState();
+    };
+  }
+  if (saved && saved.board) globalThis._boardLoaded = true;
 }
 globalThis.applyState = applyState;
 
@@ -432,14 +437,14 @@ loadState().then(function(saved) {
   }, { once: true });
 }).catch(function() { applyState(null); });
 
-// gorila-state-loaded event (for firebase integration)
+// gorila-state-loaded event (re-login ou dados mais recentes do Firebase)
+// Só aplica se trouxer dados reais — nunca chama applyState(null) aqui
+// para não sobrescrever dados locais já carregados
 document.addEventListener('gorila-state-loaded', function(e) {
   var result = e.detail;
   if (result && result.data) {
     applyState(result.data);
     idbSet(RECORD_KEY, result.data).catch(function() {});
-  } else if (result && result.user) {
-    applyState(null);
   }
 });
 
