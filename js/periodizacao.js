@@ -137,7 +137,12 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
       kgSpan.className = 'ser-kg';
       kgSpan.style.fontWeight = (isMainSet || isQreps) ? 600 : 400;
       kgSpan.style.color = isQreps ? 'var(--green)' : isMainSet ? 'var(--accent)' : 'var(--text)';
-      kgSpan.textContent = kg + ' kg';
+      var lado = Math.round((kg - 20) * 2) / 4; // arredonda ao 0.25 mais próximo
+      if (isMainSet && kg > 20) {
+        kgSpan.innerHTML = kg + ' kg<br><span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.02em;">lado: ' + lado + ' kg</span>';
+      } else {
+        kgSpan.textContent = kg + ' kg';
+      }
       row.appendChild(kgSpan);
 
       var pctSpan = document.createElement('span');
