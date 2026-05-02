@@ -1,7 +1,7 @@
-// Gorila Gym — Service Worker v28
+// Gorila Gym — Service Worker v29
 // Bump CACHE só quando precisar forçar limpeza total (mudança estrutural).
 // Para deploys normais, stale-while-revalidate atualiza os assets automaticamente.
-const CACHE = 'gorila-gym-v28';
+const CACHE = 'gorila-gym-v29';
 const ASSETS = [
   './index.html',
   './css/styles.css',

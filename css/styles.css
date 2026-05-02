@@ -17,7 +17,7 @@ nav:not(#bottomnav){position:sticky;top:0;z-index:100;background:linear-gradient
 .nav-inner.dragging{cursor:grabbing;}
 /* Linha 1: logo + ações — sempre visível */
 .logo{font-size:14px;font-weight:700;color:var(--text);padding:14px 0;margin-right:0;letter-spacing:-.03em;flex-shrink:0;display:flex;align-items:center;}
-.logo-icon{height:46px;width:46px;flex-shrink:0;background-image:url('../img/icon_nav.png');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#0d1114;background-blend-mode:screen;}
+.logo-icon{height:46px;width:46px;flex-shrink:0;background-image:url('../img/icon_nav_x_fundo.png');background-size:contain;background-position:center;background-repeat:no-repeat;}
 .logo em{color:var(--lime);font-style:normal;text-shadow:0 0 10px rgba(201,255,58,.6),0 0 22px rgba(201,255,58,.25);}
 .nav-actions{margin-left:auto;display:flex;gap:6px;padding:14px 0;align-items:center;flex-shrink:0;}
 /* Linha 2: abas — scrollável horizontalmente */
