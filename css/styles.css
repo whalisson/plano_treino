@@ -820,6 +820,9 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
   .nav-dot{display:none;}
   #fbUserWrap span>span{display:none!important;}
   .nav-meter{gap:6px;}
+  /* Espaçamento uniforme entre logo e barras */
+  .nav-inner{gap:0 14px;}
+  .nav-actions{margin-left:0;gap:10px;}
 }
 
 /* ── Menu Mais ── */
