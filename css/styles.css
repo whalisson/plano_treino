@@ -11,7 +11,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;letter-spacing:-.003em;}
 
-nav{position:sticky;top:0;z-index:100;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);border-bottom:1px solid var(--border);overflow-x:clip;}
+nav:not(#bottomnav){position:sticky;top:0;z-index:100;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);border-bottom:1px solid var(--border);overflow-x:clip;}
 .nav-inner{display:flex;flex-wrap:wrap;padding:0 20px;}
 .nav-inner::-webkit-scrollbar{display:none;}
 .nav-inner.dragging{cursor:grabbing;}
