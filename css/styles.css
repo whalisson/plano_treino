@@ -840,15 +840,19 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 @keyframes kexEnter{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 .kex{animation:kexEnter .18s ease;}
 
-/* ── Bottom sheet modais (mobile) ── */
+/* ── Modais centralizados no mobile ── */
 @media(max-width:700px){
-  .mbg.on{align-items:flex-end;}
+  .mbg.on{align-items:center;}
   .mbg.on .mbox{
-    width:100%;max-width:100%;border-radius:16px 16px 0 0;
-    padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));
-    animation:sheetUp .3s cubic-bezier(.32,.72,0,1);
+    width:calc(100% - 32px);max-width:480px;border-radius:12px;
+    max-height:calc(100dvh - 130px - env(safe-area-inset-bottom,0px));
+    overflow-y:auto;
+    animation:modalIn .22s cubic-bezier(.25,.46,.45,.94);
   }
-  @keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  @keyframes modalIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:scale(1);}}
+  /* Toasts acima do bottom nav */
+  #execToast{bottom:calc(64px + 12px);}
+  #undoToast{bottom:calc(64px + 12px);}
 }
 
 /* ── Steppers +/− ── */
