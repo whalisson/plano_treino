@@ -328,36 +328,13 @@ document.addEventListener('click', function(e) {
 
 // ── Swipe entre abas ──
 (function() {
-  var sx = 0, sy = 0, sTime = 0, swipeAxis = null;
-  var ind = document.createElement('div');
-  ind.id = 'swipe-ind';
-  document.body.appendChild(ind);
-
-  function indHide() {
-    ind.classList.remove('active');
-    ind.style.width = '0';
-  }
-
+  var sx = 0, sy = 0, sTime = 0;
   document.addEventListener('touchstart', function(e) {
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     sTime = Date.now();
-    swipeAxis = null;
   }, { passive: true });
-
-  document.addEventListener('touchmove', function(e) {
-    if (document.querySelector('.mbg.on')) return;
-    var dx = e.touches[0].clientX - sx;
-    var dy = e.touches[0].clientY - sy;
-    if (swipeAxis === null) swipeAxis = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
-    if (swipeAxis !== 'h') return;
-    var progress = Math.min(Math.abs(dx) / window.innerWidth, 1);
-    ind.style.width = (progress * 100) + '%';
-    ind.classList.add('active');
-  }, { passive: true });
-
   document.addEventListener('touchend', function(e) {
-    indHide();
     if (document.querySelector('.mbg.on')) return; // modal aberto
     if (e.target.closest('#bottomnav') || e.target.closest('#maisMenu')) return;
     if (e.target.closest('.kboard')) return; // kanban drag-drop
