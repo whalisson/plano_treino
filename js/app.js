@@ -630,7 +630,7 @@ function makeDraggable(el) {
 makeDraggable(document.getElementById('customRmCards'));
 
 // ── Nav drag-to-scroll ────────────────────────
-makeDraggable(document.getElementById('navInner'));
+makeDraggable(document.getElementById('ntabs'));
 
 // ── Service Worker ────────────────────────────
 if ('serviceWorker' in navigator) {
