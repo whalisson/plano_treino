@@ -349,11 +349,11 @@ document.addEventListener('click', function(e) {
 function fixNavPadding() {
   var nav = document.querySelector('nav:not(#bottomnav)');
   if (!nav || window.innerWidth > 700) { document.body.style.paddingTop = ''; return; }
-  document.body.style.paddingTop = nav.offsetHeight + 'px';
+  var h = nav.getBoundingClientRect().height || nav.offsetHeight;
+  if (h > 20) document.body.style.paddingTop = h + 'px';
 }
-window.addEventListener('load', fixNavPadding);
+window.addEventListener('load', function() { requestAnimationFrame(fixNavPadding); });
 window.addEventListener('resize', fixNavPadding);
-fixNavPadding();
 
 // ── Export / Import de dados ──────────────────
 export function exportData() {
