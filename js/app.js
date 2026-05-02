@@ -262,7 +262,7 @@ document.addEventListener('gorila-save', function() {
 });
 
 // ── Navegação entre abas ──────────────────────
-var TAB_ORDER = ['periodizacao','logbook','rm','cardio','rpe','anilhas','feeder','pico'];
+var TAB_ORDER = ['periodizacao','logbook','rm','cardio','rpe','anilhas','feeder','pico']; // ordem original
 
 function switchTab(p) {
   if (!g('pg-' + p)) return;
