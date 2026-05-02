@@ -782,7 +782,7 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
   .logo-icon{height:36px;width:36px;}
   .logo{padding:8px 0;}
   .nav-actions{padding:8px 0;}
-  body{padding-top:calc(52px + env(safe-area-inset-top,44px));padding-bottom:64px;}
+  body{padding-bottom:64px;}
   main{padding-bottom:72px;}
   #bottomnav{
     display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;
