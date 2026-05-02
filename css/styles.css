@@ -815,6 +815,11 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
   .ftg-track{width:36px;}
   .ftg-num{width:20px;}
   #bottomnav{display:flex;}
+  /* Compacta nav-actions para logo e barras caberem na mesma linha */
+  .nav-meter>span:nth-child(2){display:none;}
+  .nav-dot{display:none;}
+  #fbUserWrap span>span{display:none!important;}
+  .nav-meter{gap:6px;}
 }
 
 /* ── Menu Mais ── */
