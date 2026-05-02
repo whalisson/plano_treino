@@ -769,3 +769,73 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
   .vmrv-cur{font-size:16px;}
   .vmrv-st{font-size:8px;}
 }
+
+/* ══════════════════════════════════════════════
+   UX IMPROVEMENTS
+   ══════════════════════════════════════════════ */
+
+/* ── Bottom Nav ── */
+#bottomnav{display:none;}
+@media(max-width:700px){
+  nav .ntabs{display:none;}
+  body{padding-bottom:64px;}
+  main{padding-bottom:72px;}
+  #bottomnav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;
+    background:var(--bg2);border-top:1px solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    height:calc(56px + env(safe-area-inset-bottom,0px));
+    align-items:stretch;
+  }
+  .bntab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;background:transparent;border:none;color:var(--muted);
+    font-family:var(--mono);font-size:9px;letter-spacing:.04em;text-transform:uppercase;
+    cursor:pointer;padding:6px 2px;transition:color .15s;-webkit-tap-highlight-color:transparent;
+  }
+  .bntab svg{width:20px;height:20px;flex-shrink:0;}
+  .bntab.on{color:var(--lime);}
+  .bntab.on svg{filter:drop-shadow(0 0 4px rgba(201,255,58,.5));}
+}
+
+/* ── Menu Mais ── */
+#maisMenu{
+  display:none;position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));right:0;
+  z-index:210;background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;
+  min-width:160px;overflow:hidden;
+  animation:maisIn .18s ease;
+}
+@keyframes maisIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+#maisMenu.on{display:block;}
+.mais-item{
+  display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;
+  background:transparent;border:none;border-bottom:1px solid var(--border);
+  color:var(--text);font-size:13px;cursor:pointer;text-align:left;
+  font-family:var(--font);-webkit-tap-highlight-color:transparent;
+}
+.mais-item:last-child{border-bottom:none;}
+.mais-item svg{width:18px;height:18px;color:var(--muted);flex-shrink:0;}
+.mais-item:active{background:rgba(255,255,255,.04);}
+
+/* ── Card animation (Kanban) ── */
+@keyframes kexEnter{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.kex{animation:kexEnter .18s ease;}
+
+/* ── Bottom sheet modais (mobile) ── */
+@media(max-width:700px){
+  .mbg.on{align-items:flex-end;}
+  .mbg.on .mbox{
+    width:100%;max-width:100%;border-radius:16px 16px 0 0;
+    padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));
+    animation:sheetUp .3s cubic-bezier(.32,.72,0,1);
+  }
+  @keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+}
+
+/* ── Steppers +/− ── */
+.wl-stepper{display:inline-flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.wl-step{width:28px;height:32px;background:var(--bg3);border:none;color:var(--text);font-size:16px;cursor:pointer;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+.wl-step:active{background:rgba(201,255,58,.12);}
+.wl-stepper input{width:52px;height:32px;text-align:center;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px;font-family:var(--mono);}
+.wl-stepper input[placeholder="reps"]{width:44px;}
+.wl-add-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;}

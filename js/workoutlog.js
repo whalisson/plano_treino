@@ -209,9 +209,16 @@ function renderWorkoutLogBody(lastSession) {
       (lastSets ? '<div class="wl-last">Última vez: ' + lastSets + '</div>' : '') +
       '<div class="wl-sets" id="wl-sets-' + idx + '">' + setsHtml + '</div>' +
       '<div class="wl-add-row">' +
-        '<input type="number" class="wl-kg" id="wl-kg-' + idx + '" step="0.5" placeholder="kg" value="' + (ex.plannedKg || '') + '" style="width:70px;">' +
-        '<span style="color:var(--muted);">×</span>' +
-        '<input type="number" class="wl-reps" id="wl-reps-' + idx + '" placeholder="reps" style="width:60px;">' +
+        '<div class="wl-stepper">' +
+          '<button class="wl-step" onclick="wlStep(\'wl-kg-' + idx + '\',-0.5)" type="button">−</button>' +
+          '<input type="number" inputmode="decimal" class="wl-kg" id="wl-kg-' + idx + '" step="0.5" placeholder="kg" value="' + (ex.plannedKg || '') + '">' +
+          '<button class="wl-step" onclick="wlStep(\'wl-kg-' + idx + '\',0.5)" type="button">+</button>' +
+        '</div>' +
+        '<div class="wl-stepper">' +
+          '<button class="wl-step" onclick="wlStep(\'wl-reps-' + idx + '\',-1)" type="button">−</button>' +
+          '<input type="number" inputmode="numeric" class="wl-reps" id="wl-reps-' + idx + '" placeholder="reps">' +
+          '<button class="wl-step" onclick="wlStep(\'wl-reps-' + idx + '\',1)" type="button">+</button>' +
+        '</div>' +
         '<button class="wl-add-btn" onclick="wlAddSet(' + idx + ')">+ Série</button>' +
       '</div>' +
     '</div>';
@@ -223,10 +230,21 @@ export function wlAddSet(exIdx) {
   var kg   = parseFloat(g('wl-kg-' + exIdx).value);
   var reps = parseInt(g('wl-reps-' + exIdx).value, 10);
   if (!kg || !reps) return;
+  if (navigator.vibrate) navigator.vibrate(30);
   _activeSession = addSet(_activeSession, ex.name, { kg: kg, reps: reps });
   var lastSession = getLastSessionForDay(workoutLog, _activeSession.dayIdx);
   renderWorkoutLogBody(lastSession);
+  var kgInput = g('wl-kg-' + exIdx);
+  if (kgInput) kgInput.value = kg; // pré-fill com kg da última série
 }
+
+export function wlStep(id, delta) {
+  var input = g(id); if (!input) return;
+  var val = parseFloat(input.value) || 0;
+  var newVal = Math.max(0, val + delta);
+  input.value = (delta % 1 !== 0) ? Math.round(newVal * 2) / 2 : Math.round(newVal);
+}
+globalThis.wlStep = wlStep;
 
 export function wlRemoveSet(exIdx, setIdx) {
   var ex = _activeSession.exercises[exIdx];
@@ -237,6 +255,7 @@ export function wlRemoveSet(exIdx, setIdx) {
 
 export function finishWorkoutLog() {
   if (!_activeSession) return;
+  if (navigator.vibrate) navigator.vibrate([50, 30, 100]);
   var dateInput = g('mWorkoutLogDate').value.trim();
   if (dateInput) _activeSession = Object.assign({}, _activeSession, { date: dateInput });
   _activeSession = finishSession(_activeSession);
@@ -346,6 +365,7 @@ export function exLogAddSet() {
   var kg   = parseFloat(g('mExLogKg').value);
   var reps = parseInt(g('mExLogReps').value, 10);
   if (!kg || !reps) return;
+  if (navigator.vibrate) navigator.vibrate(30);
   _exLog.sets.push({ kg: kg, reps: reps, completedAt: Date.now() });
   _renderExLogSets();
   g('mExLogReps').value = '';

@@ -262,12 +262,13 @@ document.addEventListener('gorila-save', function() {
 });
 
 // ── Navegação entre abas ──────────────────────
-g('ntabs').addEventListener('click', function(e) {
-  var tab = e.target.closest('.ntab'); if (!tab) return;
-  var p   = tab.dataset.p;
-  document.querySelectorAll('.ntab').forEach(function(t)  { t.classList.remove('on'); });
-  document.querySelectorAll('.pg').forEach(function(pg)   { pg.classList.remove('on'); });
-  tab.classList.add('on');
+var TAB_ORDER = ['periodizacao','logbook','rm','cardio','rpe','anilhas','feeder','pico'];
+
+function switchTab(p) {
+  if (!g('pg-' + p)) return;
+  document.querySelectorAll('.ntab,.bntab').forEach(function(t) { t.classList.remove('on'); });
+  document.querySelectorAll('.pg').forEach(function(pg) { pg.classList.remove('on'); });
+  document.querySelectorAll('[data-p="' + p + '"]').forEach(function(t) { t.classList.add('on'); });
   g('pg-' + p).classList.add('on');
   if (p === 'cardio')       buildCardioChart();
   if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
@@ -275,7 +276,74 @@ g('ntabs').addEventListener('click', function(e) {
   if (p === 'feeder')       renderFeeder();
   if (p === 'pico')         renderPico();
   if (p === 'logbook')      renderVolumeBars();
+}
+globalThis.switchTab = switchTab;
+
+g('ntabs').addEventListener('click', function(e) {
+  var tab = e.target.closest('.ntab'); if (!tab) return;
+  switchTab(tab.dataset.p);
 });
+
+// ── Bottom nav ──
+var _maisOpen = false;
+function closeMaisMenu() {
+  _maisOpen = false;
+  var m = g('maisMenu'); if (m) m.classList.remove('on');
+  var b = g('btnMais');  if (b) b.classList.remove('on');
+}
+function toggleMaisMenu() {
+  _maisOpen = !_maisOpen;
+  var m = g('maisMenu'); if (m) m.classList.toggle('on', _maisOpen);
+  var b = g('btnMais');  if (b) b.classList.toggle('on', _maisOpen);
+}
+var bnav = g('bottomnav');
+if (bnav) {
+  bnav.addEventListener('click', function(e) {
+    var tab = e.target.closest('.bntab'); if (!tab) return;
+    var p = tab.dataset.p;
+    if (p === 'mais') { toggleMaisMenu(); return; }
+    switchTab(p);
+    closeMaisMenu();
+  });
+}
+var maisMenu = g('maisMenu');
+if (maisMenu) {
+  maisMenu.addEventListener('click', function(e) {
+    var btn = e.target.closest('.mais-item'); if (!btn) return;
+    switchTab(btn.dataset.p);
+    closeMaisMenu();
+  });
+}
+document.addEventListener('click', function(e) {
+  if (!_maisOpen) return;
+  if (e.target.closest('#maisMenu') || e.target.closest('#btnMais')) return;
+  closeMaisMenu();
+});
+
+// ── Swipe entre abas ──
+(function() {
+  var sx = 0, sy = 0, sTime = 0;
+  document.addEventListener('touchstart', function(e) {
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    sTime = Date.now();
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    if (document.querySelector('.mbg.on')) return; // modal aberto
+    if (e.target.closest('#bottomnav') || e.target.closest('#maisMenu')) return;
+    if (e.target.closest('.kboard')) return; // kanban drag-drop
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = e.changedTouches[0].clientY - sy;
+    var dt = Date.now() - sTime;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > 80 || dt > 500) return;
+    var cur = document.querySelector('.ntab.on,.bntab.on[data-p]');
+    if (!cur || cur.dataset.p === 'mais') return;
+    var idx = TAB_ORDER.indexOf(cur.dataset.p);
+    if (idx < 0) return;
+    var next = dx < 0 ? TAB_ORDER[idx + 1] : TAB_ORDER[idx - 1];
+    if (next) switchTab(next);
+  }, { passive: true });
+})();
 
 // ── Export / Import de dados ──────────────────
 export function exportData() {
