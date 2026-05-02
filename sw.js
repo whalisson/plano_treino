@@ -1,5 +1,7 @@
-// Gorila Gym — Service Worker v13
-const CACHE = 'gorila-gym-v17';
+// Gorila Gym — Service Worker v18
+// Bump CACHE só quando precisar forçar limpeza total (mudança estrutural).
+// Para deploys normais, stale-while-revalidate atualiza os assets automaticamente.
+const CACHE = 'gorila-gym-v18';
 const ASSETS = [
   './index.html',
   './css/styles.css',
@@ -70,13 +72,20 @@ self.addEventListener('fetch', function(e){
       })
     );
   } else if (!isExternal && e.request.method === 'GET') {
-    // Cache first apenas para assets do próprio app (GET)
+    // Stale-while-revalidate: serve do cache imediatamente + atualiza em background.
+    // Garante carregamento rápido e assets sempre atualizados no próximo acesso.
     e.respondWith(
-      caches.match(e.request).then(function(r){
-        return r || fetch(e.request).then(function(fr){
-          var clone = fr.clone();
-          caches.open(CACHE).then(function(c){ c.put(e.request, clone); });
-          return fr;
+      caches.open(CACHE).then(function(cache) {
+        return cache.match(e.request).then(function(cached) {
+          var networkFetch = fetch(e.request).then(function(response) {
+            if (response && response.ok) {
+              cache.put(e.request, response.clone());
+            }
+            return response;
+          }).catch(function() {
+            return cached;
+          });
+          return cached || networkFetch;
         });
       })
     );
