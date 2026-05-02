@@ -777,8 +777,9 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 /* ── Bottom Nav ── */
 #bottomnav{display:none;}
 @media(max-width:700px){
+  nav{position:fixed;top:0;left:0;right:0;z-index:150;}
   nav .ntabs{display:none;}
-  body{padding-bottom:64px;}
+  body{padding-top:57px;padding-bottom:64px;}
   main{padding-bottom:72px;}
   #bottomnav{
     display:flex;position:fixed;bottom:0;left:0;right:0;z-index:200;
