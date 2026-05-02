@@ -345,16 +345,6 @@ document.addEventListener('click', function(e) {
   }, { passive: true });
 })();
 
-// ── Ajuste dinâmico do padding-top (mobile) ──
-function fixNavPadding() {
-  var nav = document.querySelector('nav:not(#bottomnav)');
-  if (!nav || window.innerWidth > 700) { document.body.style.paddingTop = ''; return; }
-  var h = nav.getBoundingClientRect().height || nav.offsetHeight;
-  if (h > 20) document.body.style.paddingTop = h + 'px';
-}
-window.addEventListener('load', function() { requestAnimationFrame(fixNavPadding); });
-window.addEventListener('resize', fixNavPadding);
-
 // ── Export / Import de dados ──────────────────
 export function exportData() {
   var data = {
