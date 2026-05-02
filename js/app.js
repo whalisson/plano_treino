@@ -264,12 +264,18 @@ document.addEventListener('gorila-save', function() {
 // ── Navegação entre abas ──────────────────────
 var TAB_ORDER = ['periodizacao','logbook','rm','cardio','rpe','anilhas','feeder','pico']; // ordem original
 
-function switchTab(p) {
+function switchTab(p, dir) {
   if (!g('pg-' + p)) return;
   document.querySelectorAll('.ntab,.bntab').forEach(function(t) { t.classList.remove('on'); });
-  document.querySelectorAll('.pg').forEach(function(pg) { pg.classList.remove('on'); });
+  document.querySelectorAll('.pg').forEach(function(pg) { pg.classList.remove('on','pg-enter-r','pg-enter-l'); });
   document.querySelectorAll('[data-p="' + p + '"]').forEach(function(t) { t.classList.add('on'); });
-  g('pg-' + p).classList.add('on');
+  var newPg = g('pg-' + p);
+  newPg.classList.add('on');
+  if (dir) {
+    var cls = dir === 'r' ? 'pg-enter-r' : 'pg-enter-l';
+    newPg.classList.add(cls);
+    setTimeout(function() { newPg.classList.remove(cls); }, 280);
+  }
   if (p === 'cardio')       buildCardioChart();
   if (p === 'periodizacao') setTimeout(scrollToCurrentWeek, 80);
   if (p === 'anilhas')      renderAnilhas();
@@ -322,13 +328,36 @@ document.addEventListener('click', function(e) {
 
 // ── Swipe entre abas ──
 (function() {
-  var sx = 0, sy = 0, sTime = 0;
+  var sx = 0, sy = 0, sTime = 0, swipeAxis = null;
+  var ind = document.createElement('div');
+  ind.id = 'swipe-ind';
+  document.body.appendChild(ind);
+
+  function indHide() {
+    ind.classList.remove('active');
+    ind.style.width = '0';
+  }
+
   document.addEventListener('touchstart', function(e) {
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
     sTime = Date.now();
+    swipeAxis = null;
   }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (document.querySelector('.mbg.on')) return;
+    var dx = e.touches[0].clientX - sx;
+    var dy = e.touches[0].clientY - sy;
+    if (swipeAxis === null) swipeAxis = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+    if (swipeAxis !== 'h') return;
+    var progress = Math.min(Math.abs(dx) / window.innerWidth, 1);
+    ind.style.width = (progress * 100) + '%';
+    ind.classList.add('active');
+  }, { passive: true });
+
   document.addEventListener('touchend', function(e) {
+    indHide();
     if (document.querySelector('.mbg.on')) return; // modal aberto
     if (e.target.closest('#bottomnav') || e.target.closest('#maisMenu')) return;
     if (e.target.closest('.kboard')) return; // kanban drag-drop
@@ -341,7 +370,7 @@ document.addEventListener('click', function(e) {
     var idx = TAB_ORDER.indexOf(cur.dataset.p);
     if (idx < 0) return;
     var next = dx < 0 ? TAB_ORDER[idx + 1] : TAB_ORDER[idx - 1];
-    if (next) switchTab(next);
+    if (next) switchTab(next, dx < 0 ? 'r' : 'l');
   }, { passive: true });
 })();
 

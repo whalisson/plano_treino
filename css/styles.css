@@ -31,6 +31,12 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .save-menu-item:hover{color:var(--lime);background:rgba(201,255,58,.07);box-shadow:none;opacity:1;transform:none;}
 .save-menu-item input{display:none;}
 .pg{display:none;}.pg.on{display:block;}
+.pg.on.pg-enter-r{animation:pgEnterR .22s cubic-bezier(.25,.46,.45,.94) both;}
+.pg.on.pg-enter-l{animation:pgEnterL .22s cubic-bezier(.25,.46,.45,.94) both;}
+@keyframes pgEnterR{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pgEnterL{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:translateX(0)}}
+#swipe-ind{position:fixed;top:0;left:0;height:2px;width:0;background:var(--lime);box-shadow:0 0 8px var(--lime),0 0 18px rgba(201,255,58,.35);z-index:999;pointer-events:none;opacity:0;transition:opacity .15s ease;border-radius:0 2px 2px 0;}
+#swipe-ind.active{opacity:1;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:20px;}
 .met{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;}
