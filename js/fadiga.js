@@ -223,14 +223,18 @@ function intensityFromSet(kg, reps, rm) {
   return Math.min(est1RM / rm, 1.0);
 }
 
-// Para _other: usa pseudo-RM do cache (max est1RM histórico) se disponível.
-// Fallback: intensidade dependente só de reps (1/(1+reps/30)) quando sem histórico.
+// Para _other: evita circularidade onde pseudo-RM = est1RM do próprio set → intensity 1.0.
+// relInt (rep-based) é o piso independente de kg; absInt (RM-based) escala com histórico.
+// Retorna o mais conservador, capado em 0.90 para não explodir o effortFactor.
 function _intensityFor(lk, kg, reps, rm, name) {
   if (lk !== '_other') return intensityFromSet(kg, reps, rm);
+  var relInt = 1 / (1 + reps / 30);
   var stored = _pseudoRM[name];
-  if (stored) return Math.min(intensityFromSet(kg, reps, stored), 1.0);
-  var est1RM = kg * (1 + reps / 30);
-  return Math.min(kg / est1RM, 0.95);
+  if (stored) {
+    var absInt = Math.min(intensityFromSet(kg, reps, stored), 0.90);
+    return Math.min(relInt, absInt);
+  }
+  return Math.min(relInt, 0.90);
 }
 
 // Sobreposição muscular entre dois lifts (0–1, normalizado pelo lift-alvo)
@@ -292,6 +296,33 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
     var tauD = pat.tau / 86400000 * _recoveryMult();
     var ecc  = pat.eccentric || 1.15;
     ss += cl.rm * K * ecc * tauD;
+  });
+
+  // Exercícios _other frequentes (ex: Hip Thrust, Leg Press) contribuem para o
+  // denominador conforme histórico acumula — evita ATL% cronicamente alto
+  // só por falta de representação no baseline.
+  var otherTL = {}, otherCount = {};
+  workoutLog.forEach(function(s) {
+    if (!s.startedAt || s.startedAt < now - SS_WIN_MS) return;
+    (s.exercises || []).forEach(function(ex) {
+      if (_lkOf(ex.name) !== '_other') return;
+      var lkf = '_other:' + _patternKeyOf(ex.name);
+      (ex.sets || []).forEach(function(set) {
+        var kg = +(set.kg) || 0, reps = +(set.reps) || 0;
+        if (!kg || !reps) return;
+        otherTL[lkf]    = (otherTL[lkf]    || 0) + kg * reps;
+        otherCount[lkf] = (otherCount[lkf] || 0) + 1;
+      });
+    });
+  });
+  Object.keys(otherTL).forEach(function(lkf) {
+    if (otherCount[lkf] < 3) return;
+    var patName = lkf.slice(7);
+    var pat  = MOVEMENT_PATTERNS[patName] || MOVEMENT_PATTERNS.push;
+    var tauD = pat.tau / 86400000 * _recoveryMult();
+    var ecc  = pat.eccentric || 1.0;
+    var avgTL = (otherTL[lkf] / 42) * 0.75 * effortFactor(0.75);
+    ss += avgTL * ecc * tauD;
   });
 
   return Math.max(ss, 3000);
