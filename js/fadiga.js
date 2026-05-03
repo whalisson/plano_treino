@@ -8,7 +8,7 @@
 //   3. Fator excêntrico por lift (agacha 1.4×, supino 1.3×, terra 1.0×)
 //   4. Densidade intra-dia: 2º treino no mesmo dia → +25% (stacking simplificado)
 //   5. Perfil de recuperação individual (idade, anos de treino)
-//   6. effortFactor com corte abaixo de 40% 1RM
+//   6. effortFactor com corte abaixo de 55% 1RM (aquecimentos)
 //   7. intensityFromSet via Epley (intensidade real considerando reps)
 //   8. Cross-fatigue quadrático (score²)
 //   9. SS_FLOOR dinâmico baseado no RM do usuário
@@ -18,6 +18,40 @@
 import { g, BASE_SUP, BASE_AGA, BASE_TER, customLifts, periodLog } from './state.js';
 import { workoutLog } from './workoutlog.js';
 import { rpeBlocks } from './rpe.js';
+
+// Cache de pseudo-1RM para exercícios _other (sem RM registrado).
+// Rebuilda automaticamente quando workoutLog cresce (nova sessão registrada).
+// Não precisa ser persistido — é derivado do workoutLog, que já é salvo.
+var _pseudoRM = {};
+var _pseudoRMLastLen = -1;
+
+function _ensurePseudoRM() {
+  if (workoutLog.length === _pseudoRMLastLen) return;
+  _pseudoRMLastLen = workoutLog.length;
+  _pseudoRM = {};
+  function _updatePseudo(name, kg, reps) {
+    if (!kg || !reps || _lkOf(name) !== '_other') return;
+    var est = kg * (1 + reps / 30);
+    if (!_pseudoRM[name] || est > _pseudoRM[name]) _pseudoRM[name] = est;
+  }
+  workoutLog.forEach(function(s) {
+    if (!s.exercises) return;
+    s.exercises.forEach(function(ex) {
+      if (!ex || !ex.sets) return;
+      ex.sets.forEach(function(set) { _updatePseudo(ex.name, +(set.kg), +(set.reps)); });
+    });
+  });
+  rpeBlocks.forEach(function(blk) {
+    if (!blk.execHistory) return;
+    blk.execHistory.forEach(function(exec) {
+      if (!exec.exercises) return;
+      exec.exercises.forEach(function(ex) {
+        if (!ex || !ex.sets) return;
+        ex.sets.forEach(function(set) { _updatePseudo(ex.name, +(set.kg), +(set.reps)); });
+      });
+    });
+  });
+}
 
 // ── Constantes temporais (lifts nomeados) ─────
 var SS_WIN_MS          = 42 * 24 * 3600 * 1000;
@@ -127,8 +161,10 @@ var _recoveryProfile = { age: 28, trainingYears: 3 };
 globalThis.recoveryProfile = _recoveryProfile;
 
 function _recoveryMult() {
-  var age = parseFloat((g('user-age') || {}).value) || _recoveryProfile.age || 28;
-  var exp = parseFloat((g('user-exp') || {}).value) || _recoveryProfile.trainingYears || 3;
+  var ageRaw = parseFloat((g('user-age') || {}).value);
+  var expRaw = parseFloat((g('user-exp') || {}).value);
+  var age = isNaN(ageRaw) || ageRaw <= 0 ? (_recoveryProfile.age || 28) : ageRaw;
+  var exp = isNaN(expRaw)               ? (_recoveryProfile.trainingYears || 3) : expRaw;
   return (age < 30 ? 1.0 : age < 40 ? 1.15 : 1.35) * (exp > 5 ? 0.85 : 1.0);
 }
 
@@ -141,11 +177,12 @@ function _tauMs(lk, intensity, name) {
 
 // τ para steady-state (sem mult dinâmico). Aceita chaves _other:* compostas.
 function _tauDay(lkFull) {
+  var rm = _recoveryMult();
   if (lkFull.startsWith('_other:')) {
     var pname = lkFull.slice(7);
-    return ((MOVEMENT_PATTERNS[pname] || MOVEMENT_PATTERNS.push).tau) / 86400000;
+    return ((MOVEMENT_PATTERNS[pname] || MOVEMENT_PATTERNS.push).tau) * rm / 86400000;
   }
-  return (_TAU_MS[lkFull] || _TAU_DEF_MS) / 86400000;
+  return (_TAU_MS[lkFull] || _TAU_DEF_MS) * rm / 86400000;
 }
 
 function _tauNeuralMs(lk, name) {
@@ -166,7 +203,7 @@ function _tlScaleOf(lk, name) {
 // Custo de esforço exponencial. Referência = 65% 1RM (carga de trabalho típica = 1.0).
 // Abaixo de 40%: quadrático (aquecimentos leves = fadiga desprezível).
 function effortFactor(intensity) {
-  if (intensity < 0.4) return Math.pow(intensity / 0.4, 2) * 0.3;
+  if (intensity < 0.55) return Math.pow(intensity / 0.55, 2) * 0.3;
   return Math.exp(2 * (intensity - 0.65));
 }
 
@@ -176,9 +213,12 @@ function intensityFromSet(kg, reps, rm) {
   return Math.min(est1RM / rm, 1.0);
 }
 
-// Para _other não há 1RM real — usa Epley direto (= 1/(1+reps/30)) clipado em 95%.
+// Para _other: usa pseudo-RM do cache (max est1RM histórico) se disponível.
+// Fallback: intensidade dependente só de reps (1/(1+reps/30)) quando sem histórico.
 function _intensityFor(lk, kg, reps, rm, name) {
   if (lk !== '_other') return intensityFromSet(kg, reps, rm);
+  var stored = _pseudoRM[name];
+  if (stored) return Math.min(intensityFromSet(kg, reps, stored), 1.0);
   var est1RM = kg * (1 + reps / 30);
   return Math.min(kg / est1RM, 0.95);
 }
@@ -215,10 +255,50 @@ function _adaptScale(intensity, lkFull, avgIntByLift) {
   return _ADAPT_MIN + (1.0 - _ADAPT_MIN) * ratio;
 }
 
+// ── SS_FLOOR derivado de princípios físicos ───────────────────────────────
+// ATL steady-state = Σ_lifts [ RM × K × eccentric × τ_dias ]
+// K = sets × reps × intensity × effortFactor(intensity) × (freq/7)
+// Parâmetros: 3 séries, 5 reps, 80% 1RM, frequência real (mín 2×/semana).
+function _computeSsFloor(oneRMs, allSessionTs, now) {
+  var TYPICAL_SETS = 3;
+  var TYPICAL_REPS = 5;
+  var TYPICAL_INT  = 0.80;
+
+  var recentSessions = allSessionTs.filter(function(ts) {
+    return ts >= now - SS_WIN_MS && ts <= now;
+  }).length;
+  var freqPerDay = Math.max(recentSessions / 42, 2 / 7);
+
+  var K = TYPICAL_SETS * TYPICAL_REPS * TYPICAL_INT
+        * effortFactor(TYPICAL_INT)
+        * freqPerDay;
+
+  var ss = 0;
+
+  [{ lk: 'supino', rm: oneRMs.supino },
+   { lk: 'agacha', rm: oneRMs.agacha },
+   { lk: 'terra',  rm: oneRMs.terra  }].forEach(function(item) {
+    if (!item.rm) return;
+    ss += item.rm * K * (_ECCENTRIC[item.lk] || 1.0) * _tauDay(item.lk);
+  });
+
+  customLifts.forEach(function(cl) {
+    if (!cl.rm) return;
+    var pat  = _patternOf(cl.name);
+    var tauD = pat.tau / 86400000 * _recoveryMult();
+    var ecc  = pat.eccentric || 1.15;
+    ss += cl.rm * K * ecc * tauD;
+  });
+
+  return Math.max(ss, 3000);
+}
+
 // ── Núcleo: calcula ATL/CTL/TSB para um dado refTime ──
 export function getFatigaRaw(refTime) {
-  var t   = refTime !== undefined ? refTime : Date.now();
-  var now = Date.now();
+  _ensurePseudoRM();
+  var now     = refTime !== undefined ? refTime : Date.now();
+  var t       = now;
+  var realNow = Date.now();
 
   var oneRMs = {
     supino: parseFloat((g('rm-supino') || {}).value) || BASE_SUP,
@@ -227,13 +307,15 @@ export function getFatigaRaw(refTime) {
   };
   customLifts.forEach(function(cl) { oneRMs[cl.id] = cl.rm || 1; });
   function rmFor(lk) { return oneRMs[lk] || 100; }
-  var SS_FLOOR = Math.max((oneRMs.supino + oneRMs.agacha + oneRMs.terra) * 20, 3000);
 
   var allSessionTs = [];
   workoutLog.forEach(function(s) { if (s.startedAt) allSessionTs.push(s.startedAt); });
   rpeBlocks.forEach(function(blk) {
     if (blk.execHistory) blk.execHistory.forEach(function(exec) { if (exec.date) allSessionTs.push(exec.date); });
   });
+  // SS_FLOOR usa apenas sessões reais (workoutLog + rpeBlocks) para estimar frequência.
+  // periodLog tem 1 entrada por checkbox — não é sessão — e inflaria freqPerDay.
+  var SS_FLOOR = _computeSsFloor(oneRMs, allSessionTs, realNow);
   periodLog.forEach(function(e) { if (e.ts) allSessionTs.push(e.ts); });
   allSessionTs.sort(function(a, b) { return a - b; });
 
@@ -452,6 +534,12 @@ export function getFatigaRaw(refTime) {
   var ss = 0;
   Object.keys(tlByLift).forEach(function(lkf) { ss += (tlByLift[lkf] / 42) * _tauDay(lkf); });
 
+  // Escala ss pelo mesmo fator de cross-fatigue do numerador, evitando ATL% cronicamente
+  // alto em programas que combinam terra + agacha (alta sobreposição muscular).
+  var directTotal = allLks.reduce(function(s, lk) { return s + (perLiftATL[lk] || 0); }, 0);
+  var crossFactor = directTotal > 0 ? fatigue / directTotal : 1;
+  ss *= crossFactor;
+
   return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue, steadyState: Math.max(ss, SS_FLOOR) };
 }
 
@@ -485,11 +573,11 @@ export function checkOverreaching() {
   var THRESHOLD = -0.30, MIN_DAYS = 3;
   var days = 0;
   for (var d = 0; d < 14; d++) {
-    var r = getFadigaRaw(now - d * DAY);
+    var r = getFatigaRaw(now - d * DAY);
     if (r.steadyState > 0 && (r.tsb / r.steadyState) < THRESHOLD) days++;
     else break;
   }
-  var cur    = getFadigaRaw();
+  var cur    = getFatigaRaw();
   var tsbPct = cur.steadyState > 0 ? Math.round(cur.tsb / cur.steadyState * 100) : 0;
   return { needed: days >= MIN_DAYS, days: days, tsbPct: tsbPct };
 }

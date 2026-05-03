@@ -224,6 +224,35 @@
   <!-- Cards de lifts personalizados -->
   <div id="customRmCards" style="display:none;"></div>
 
+  <!-- Perfil de Recuperação -->
+  <div class="cycle-wrap" style="margin-bottom:14px;">
+    <div class="cycle-hdr" style="margin-bottom:12px;">
+      <span class="cycle-title">PERFIL DE RECUPERAÇÃO</span>
+      <span class="cycle-sep">·</span>
+      <span class="cycle-sub">afeta ATL/CTL/TSB</span>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <div style="flex:1;">
+        <label style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Idade</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input id="user-age" type="number" inputmode="numeric" min="14" max="80" value="28"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;font-family:var(--mono);padding:8px 10px;text-align:center;"
+            oninput="saveState();updateFadigaBar()">
+          <span style="font-size:12px;color:var(--muted);white-space:nowrap;">anos</span>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <label style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Exp. de treino</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input id="user-exp" type="number" inputmode="numeric" min="0" max="40" value="3"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;font-family:var(--mono);padding:8px 10px;text-align:center;"
+            oninput="saveState();updateFadigaBar()">
+          <span style="font-size:12px;color:var(--muted);white-space:nowrap;">anos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Proporção de Força -->
   <div id="rmRatioSection" style="margin-bottom:14px;">
     <div class="cycle-wrap" style="padding-bottom:14px;">

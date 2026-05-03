@@ -211,6 +211,8 @@ document.addEventListener('gorila-save', function() {
       rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
       rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
       rmTerra:       parseFloat(g('rm-terra').value)  || BASE_TER,
+      userAge:       parseInt(g('user-age').value)    || 28,
+      userExp:       parseInt(g('user-exp').value)    || 3,
       checks:        checksState,
       rmTests:       rmTestValues,
       board:         board,
@@ -359,6 +361,8 @@ export function exportData() {
     rmSupino:      parseFloat(g('rm-supino').value) || BASE_SUP,
     rmAgacha:      parseFloat(g('rm-agacha').value) || BASE_AGA,
     rmTerra:       parseFloat(g('rm-terra').value)  || BASE_TER,
+    userAge:       parseInt(g('user-age').value)    || 28,
+    userExp:       parseInt(g('user-exp').value)    || 3,
     checks:        checksState,
     rmTests:       rmTestValues,
     board:         board,
@@ -434,9 +438,11 @@ g('inputImport').addEventListener('change', function(e) {
 // ── Init: aplica estado salvo e renderiza tudo ─
 export function applyState(saved) {
   if (saved) {
-    if (saved.rmSupino)       g('rm-supino').value = saved.rmSupino;
-    if (saved.rmAgacha)       g('rm-agacha').value = saved.rmAgacha;
-    if (saved.rmTerra)        g('rm-terra').value  = saved.rmTerra;
+    if (saved.rmSupino)       g('rm-supino').value  = saved.rmSupino;
+    if (saved.rmAgacha)       g('rm-agacha').value  = saved.rmAgacha;
+    if (saved.rmTerra)        g('rm-terra').value   = saved.rmTerra;
+    if (saved.userAge)        g('user-age').value   = saved.userAge;
+    if (saved.userExp != null) g('user-exp').value  = saved.userExp;
     if (saved.checks)         setChecksState(saved.checks);
     if (saved.rmTests)        setRmTestValues(saved.rmTests);
     if (saved.board && saved.board.length === 7) setBoard(saved.board);
