@@ -19,15 +19,25 @@ import { g, BASE_SUP, BASE_AGA, BASE_TER, customLifts, periodLog } from './state
 import { workoutLog } from './workoutlog.js';
 import { rpeBlocks } from './rpe.js';
 
+// Mapeia nome de exercício para lift key; usa helper registrado em globalThis pelo app.js
+function _lkOf(name) {
+  if (typeof globalThis.liftKeyForExerciseName === 'function')
+    return globalThis.liftKeyForExerciseName(name || '') || '_other';
+  return '_other';
+}
+
 // Cache de pseudo-1RM para exercícios _other (sem RM registrado).
 // Rebuilda automaticamente quando workoutLog cresce (nova sessão registrada).
 // Não precisa ser persistido — é derivado do workoutLog, que já é salvo.
 var _pseudoRM = {};
-var _pseudoRMLastLen = -1;
+var _pseudoRMLastLen    = -1;
+var _pseudoRMLastRpeLen = -1;
 
 function _ensurePseudoRM() {
-  if (workoutLog.length === _pseudoRMLastLen) return;
-  _pseudoRMLastLen = workoutLog.length;
+  if (workoutLog.length === _pseudoRMLastLen &&
+      rpeBlocks.length  === _pseudoRMLastRpeLen) return;
+  _pseudoRMLastLen    = workoutLog.length;
+  _pseudoRMLastRpeLen = rpeBlocks.length;
   _pseudoRM = {};
   function _updatePseudo(name, kg, reps) {
     if (!kg || !reps || _lkOf(name) !== '_other') return;
@@ -238,12 +248,6 @@ function _sameDayMult(ts, allTs) {
   return allTs.filter(function(t) { return t >= dayStart && t < ts; }).length > 0 ? 1.25 : 1.0;
 }
 
-// Mapeia nome de exercício para lift key; usa helper registrado em globalThis pelo app.js
-function _lkOf(name) {
-  if (typeof globalThis.liftKeyForExerciseName === 'function')
-    return globalThis.liftKeyForExerciseName(name || '') || '_other';
-  return '_other';
-}
 
 // Desconto adaptativo: cargas abaixo da intensidade habitual custam menos fadiga.
 var _ADAPT_MIN = 0.45;
