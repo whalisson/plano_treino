@@ -217,9 +217,10 @@ function _tlScaleOf(lk, name) {
 }
 
 // Custo de esforço exponencial. Referência = 65% 1RM (carga de trabalho típica = 1.0).
-// Abaixo de 40%: quadrático (aquecimentos leves = fadiga desprezível).
+// Ramo quadrático abaixo de 55% casado com o exponencial em 0.55: exp(2×(0.55−0.65)) = exp(−0.2).
+var _EF_JOIN = Math.exp(-0.2); // ≈ 0.8187 — valor do exponencial exatamente em 0.55
 function effortFactor(intensity) {
-  if (intensity < 0.55) return Math.pow(intensity / 0.55, 2) * 0.3;
+  if (intensity < 0.55) return Math.pow(intensity / 0.55, 2) * _EF_JOIN;
   return Math.exp(2 * (intensity - 0.65));
 }
 
@@ -405,7 +406,8 @@ export function getFatigaRaw(refTime) {
   });
   // SS_FLOOR usa apenas sessões reais (workoutLog + rpeBlocks) para estimar frequência.
   // periodLog tem 1 entrada por checkbox — não é sessão — e inflaria freqPerDay.
-  var SS_FLOOR = _computeSsFloor(oneRMs, allSessionTs, realNow);
+  // Usa now (não realNow) para que projeções futuras reflitam a frequência decrescente.
+  var SS_FLOOR = _computeSsFloor(oneRMs, allSessionTs, now);
   periodLog.forEach(function(e) { if (e.ts) allSessionTs.push(e.ts); });
   allSessionTs.sort(function(a, b) { return a - b; });
 
@@ -480,14 +482,12 @@ export function getFatigaRaw(refTime) {
         var decayCTL  = Math.exp(-elapsed / _TAU_CTL_MS);
         if (decayATL >= 0.001) perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tl * decayATL;
         if (decayCTL >= 0.001) ctl += tl * decayCTL;
-        if (intensity > 0.85) {
+        if (intensity > 0.92) {
           var tauN   = _tauNeuralMs(lk, ex.name);
           var decayN = Math.exp(-elapsed / tauN);
-          if (decayN >= 0.001) {
-            var tlN = tl * 0.3 * Math.pow((intensity - 0.85) / 0.15, 2);
-            perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tlN * decayN;
-            ctl += tlN * Math.exp(-elapsed / _TAU_CTL_MS);
-          }
+          var tlN    = tl * 0.3 * Math.pow((intensity - 0.92) / 0.08, 2);
+          if (decayN   >= 0.001) perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tlN * decayN;
+          if (decayCTL >= 0.001) ctl += tlN * decayCTL;
         }
       });
     });
@@ -511,14 +511,12 @@ export function getFatigaRaw(refTime) {
     var decayCTL  = Math.exp(-elapsed / _TAU_CTL_MS);
     if (decayATL >= 0.001) perLiftATL[lk] = (perLiftATL[lk] || 0) + tl * decayATL;
     if (decayCTL >= 0.001) ctl += tl * decayCTL;
-    if (intensity > 0.85) {
+    if (intensity > 0.92) {
       var tauN   = _TAU_NEURAL_MS[lk] || _TAU_NEURAL_DEF_MS;
       var decayN = Math.exp(-elapsed / tauN);
-      if (decayN >= 0.001) {
-        var tlN = tl * 0.3 * Math.pow((intensity - 0.85) / 0.15, 2);
-        perLiftATL[lk] = (perLiftATL[lk] || 0) + tlN * decayN;
-        ctl += tlN * Math.exp(-elapsed / _TAU_CTL_MS);
-      }
+      var tlN    = tl * 0.3 * Math.pow((intensity - 0.92) / 0.08, 2);
+      if (decayN   >= 0.001) perLiftATL[lk] = (perLiftATL[lk] || 0) + tlN * decayN;
+      if (decayCTL >= 0.001) ctl += tlN * decayCTL;
     }
   });
 
@@ -548,14 +546,12 @@ export function getFatigaRaw(refTime) {
           var decayCTL  = Math.exp(-elapsed / _TAU_CTL_MS);
           if (decayATL >= 0.001) perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tl * decayATL;
           if (decayCTL >= 0.001) ctl += tl * decayCTL;
-          if (intensity > 0.85) {
+          if (intensity > 0.92) {
             var tauN   = _tauNeuralMs(lk, ex.name);
             var decayN = Math.exp(-elapsed / tauN);
-            if (decayN >= 0.001) {
-              var tlN = tl * 0.3 * Math.pow((intensity - 0.85) / 0.15, 2);
-              perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tlN * decayN;
-              ctl += tlN * Math.exp(-elapsed / _TAU_CTL_MS);
-            }
+            var tlN    = tl * 0.3 * Math.pow((intensity - 0.92) / 0.08, 2);
+            if (decayN   >= 0.001) perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tlN * decayN;
+            if (decayCTL >= 0.001) ctl += tlN * decayCTL;
           }
         });
       });
@@ -563,7 +559,14 @@ export function getFatigaRaw(refTime) {
   });
 
   // ── Cross-fatigue: leak muscular quadrático (score²) ──
-  // _MUSCLE_OVERLAP já inclui '_other:legs', '_other:pull', '_other:push'
+  // _MUSCLE_OVERLAP já inclui '_other:legs', '_other:pull', '_other:push'.
+  // customLifts sem entrada própria caem para o padrão do seu movimento.
+  customLifts.forEach(function(cl) {
+    if (!_MUSCLE_OVERLAP[cl.id]) {
+      var pat = _patternKeyOf(cl.name);
+      _MUSCLE_OVERLAP[cl.id] = (MOVEMENT_PATTERNS[pat] || MOVEMENT_PATTERNS.isolation).muscles;
+    }
+  });
   var crossATL = {};
   var allLks = Object.keys(perLiftATL);
   allLks.forEach(function(lkA) {
@@ -592,7 +595,7 @@ export function getFatigaRaw(refTime) {
         if (!kg || !reps) return;
         var intensity = _intensityFor(lk, kg, reps, rm, ex.name);
         if (!isFinite(intensity)) return;
-        tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name) * (ex.bilateral ? 2 : 1);
+        tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name) * (ex.bilateral ? 2 : 1) * _adaptScale(intensity, lkf, avgIntByLift);
       });
     });
   });
@@ -600,7 +603,7 @@ export function getFatigaRaw(refTime) {
     if (!e.ts || e.ts < cutoff || e.ts > now || !e.vol || !e.liftKey) return;
     var lk        = e.liftKey;
     var intensity = +e.pct || 0.75;
-    tlByLift[lk] = (tlByLift[lk] || 0) + (+e.vol) * intensity * effortFactor(intensity) * (_ECCENTRIC[lk] || 1.0);
+    tlByLift[lk] = (tlByLift[lk] || 0) + (+e.vol) * intensity * effortFactor(intensity) * (_ECCENTRIC[lk] || 1.0) * _adaptScale(intensity, lk, avgIntByLift);
   });
   rpeBlocks.forEach(function(blk) {
     if (!blk.execHistory) return;
@@ -616,7 +619,7 @@ export function getFatigaRaw(refTime) {
           if (!kg || !reps) return;
           var intensity = _intensityFor(lk, kg, reps, rm, ex.name);
           if (!isFinite(intensity)) return;
-          tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name) * (ex.bilateral ? 2 : 1);
+          tlByLift[lkf] = (tlByLift[lkf] || 0) + reps * kg * intensity * effortFactor(intensity) * _eccentricOf(lk, ex.name) * _tlScaleOf(lk, ex.name) * (ex.bilateral ? 2 : 1) * _adaptScale(intensity, lkf, avgIntByLift);
         });
       });
     });
