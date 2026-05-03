@@ -276,7 +276,7 @@ function _adaptScale(intensity, lkFull, avgIntByLift) {
 function _computeSsFloor(oneRMs, allSessionTs, now) {
   var TYPICAL_SETS = 3;
   var TYPICAL_REPS = 5;
-  var TYPICAL_INT  = 0.80;
+  var TYPICAL_INT  = 0.73;
 
   var recentSessions = allSessionTs.filter(function(ts) {
     return ts >= now - SS_WIN_MS && ts <= now;
@@ -621,17 +621,26 @@ export function getFatigaRaw(refTime) {
       });
     });
   });
-  var ss = 0;
-  Object.keys(tlByLift).forEach(function(lkf) { ss += (tlByLift[lkf] / 42) * _tauDay(lkf); });
+  // ATL steady-state: Σ (TL/42) × τ_ATL_lift  (denominador para ATL%)
+  // CTL steady-state: Σ (TL/42) × τ_CTL = Σ TL  (τ_CTL=42 cancela — denominador para CTL%)
+  var ss_raw = 0, ss_ctl_raw = 0;
+  Object.keys(tlByLift).forEach(function(lkf) {
+    ss_raw     += (tlByLift[lkf] / 42) * _tauDay(lkf);
+    ss_ctl_raw += tlByLift[lkf];
+  });
 
-  // Escala ss pelo mesmo fator de cross-fatigue do numerador, evitando ATL% cronicamente
-  // alto em programas que combinam terra + agacha (alta sobreposição muscular).
   var directTotal = allLks.reduce(function(s, lk) { return s + (perLiftATL[lk] || 0); }, 0);
   var crossFactor = directTotal > 0 ? fatigue / directTotal : 1;
-  ss *= crossFactor;
 
+  var ss         = ss_raw     * crossFactor;
+  var ss_ctl     = ss_ctl_raw * crossFactor;
   var ssFloorScaled = SS_FLOOR * crossFactor;
-  return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue, steadyState: Math.max(ss, ssFloorScaled) };
+  // Floor do CTL preserva a mesma relação τ_CTL/τ_ATL_médio presente nos dados reais.
+  var ssCtlFloor = ss_raw > 0 ? ssFloorScaled * (ss_ctl_raw / ss_raw) : ssFloorScaled * 4;
+
+  return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue,
+           steadyState:    Math.max(ss, ssFloorScaled),
+           steadyStateCTL: Math.max(ss_ctl, ssCtlFloor) };
 }
 
 export function calcFadiga() {
@@ -665,11 +674,14 @@ export function checkOverreaching() {
   var days = 0;
   for (var d = 0; d < 14; d++) {
     var r = getFatigaRaw(now - d * DAY);
-    if (r.steadyState > 0 && (r.tsb / r.steadyState) < THRESHOLD) days++;
+    var sa = r.steadyState, sc = r.steadyStateCTL || r.steadyState;
+    if (sa > 0 && sc > 0 && (r.ctl / sc - r.fatigue / sa) < THRESHOLD) days++;
     else break;
   }
   var cur    = getFatigaRaw();
-  var tsbPct = cur.steadyState > 0 ? Math.round(cur.tsb / cur.steadyState * 100) : 0;
+  var tsbPct = (cur.steadyState > 0 && cur.steadyStateCTL > 0)
+    ? Math.round(cur.ctl / cur.steadyStateCTL * 100) - Math.round(cur.fatigue / cur.steadyState * 100)
+    : 0;
   return { needed: days >= MIN_DAYS, days: days, tsbPct: tsbPct };
 }
 
@@ -699,10 +711,11 @@ export function updateFadigaBar() {
     return;
   }
 
-  var ss  = r.steadyState;
-  var atl = isFinite(r.fatigue / ss) ? Math.round(r.fatigue / ss * 100) : 0;
-  var ctl = isFinite(r.ctl     / ss) ? Math.round(r.ctl     / ss * 100) : 0;
-  var tsb = isFinite(r.tsb     / ss) ? Math.round(r.tsb     / ss * 100) : 0;
+  var ss_atl = r.steadyState;
+  var ss_ctl = r.steadyStateCTL || r.steadyState;
+  var atl = isFinite(r.fatigue / ss_atl) ? Math.round(r.fatigue / ss_atl * 100) : 0;
+  var ctl = isFinite(r.ctl     / ss_ctl) ? Math.round(r.ctl     / ss_ctl * 100) : 0;
+  var tsb = ctl - atl; // TSB normalizado: CTL% − ATL% (zera em steady-state)
 
   var atlBar = document.getElementById('ftgAtlBar');
   var atlVal = document.getElementById('ftgAtlVal');
