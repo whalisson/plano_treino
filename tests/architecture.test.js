@@ -51,6 +51,7 @@ const SAVE_KEYS = [
   'rmAgacha', 'rmHistory', 'rmSupino', 'rmTerra', 'rmTests',
   'rpeBlocks',
   'savedWorkouts',
+  'userAge', 'userExp',
   'workoutLog',
 ];
 
