@@ -287,17 +287,42 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
         * effortFactor(TYPICAL_INT)
         * freqPerDay;
 
+  // Lifts efetivamente treinados nos últimos 42d — evita que lifts não praticados
+  // (supino, terra) inflam o denominador quando o usuário só treina um lift.
+  var trainedLifts = new Set();
+  var _win = now - SS_WIN_MS;
+  workoutLog.forEach(function(s) {
+    if (!s.startedAt || s.startedAt < _win) return;
+    (s.exercises || []).forEach(function(ex) {
+      var lk = _lkOf(ex.name);
+      if (lk !== '_other') trainedLifts.add(lk);
+    });
+  });
+  rpeBlocks.forEach(function(blk) {
+    if (!blk.execHistory) return;
+    blk.execHistory.forEach(function(exec) {
+      if (!exec.date || exec.date < _win) return;
+      (exec.exercises || []).forEach(function(ex) {
+        var lk = _lkOf(ex.name);
+        if (lk !== '_other') trainedLifts.add(lk);
+      });
+    });
+  });
+  periodLog.forEach(function(e) {
+    if (e.ts && e.ts >= _win && e.liftKey) trainedLifts.add(e.liftKey);
+  });
+
   var ss = 0;
 
   [{ lk: 'supino', rm: oneRMs.supino },
    { lk: 'agacha', rm: oneRMs.agacha },
    { lk: 'terra',  rm: oneRMs.terra  }].forEach(function(item) {
-    if (!item.rm) return;
+    if (!item.rm || !trainedLifts.has(item.lk)) return;
     ss += item.rm * K * (_ECCENTRIC[item.lk] || 1.0) * _tauDay(item.lk);
   });
 
   customLifts.forEach(function(cl) {
-    if (!cl.rm) return;
+    if (!cl.rm || !trainedLifts.has(cl.id)) return;
     var pat  = _patternOf(cl.name);
     var tauD = pat.tau / 86400000 * _recoveryMult();
     var ecc  = pat.eccentric || 1.15;
