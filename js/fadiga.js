@@ -632,11 +632,12 @@ export function getFatigaRaw(refTime) {
   var directTotal = allLks.reduce(function(s, lk) { return s + (perLiftATL[lk] || 0); }, 0);
   var crossFactor = directTotal > 0 ? fatigue / directTotal : 1;
 
-  var ss         = ss_raw     * crossFactor;
-  var ss_ctl     = ss_ctl_raw * crossFactor;
+  // ATL recebe cross-fatigue → denominador escala junto.
+  // CTL não tem cross-fatigue no numerador → denominador também não.
+  var ss            = ss_raw * crossFactor;
+  var ss_ctl        = ss_ctl_raw;
   var ssFloorScaled = SS_FLOOR * crossFactor;
-  // Floor do CTL preserva a mesma relação τ_CTL/τ_ATL_médio presente nos dados reais.
-  var ssCtlFloor = ss_raw > 0 ? ssFloorScaled * (ss_ctl_raw / ss_raw) : ssFloorScaled * 4;
+  var ssCtlFloor    = ss_raw > 0 ? SS_FLOOR * (ss_ctl_raw / ss_raw) : SS_FLOOR * 4;
 
   return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue,
            steadyState:    Math.max(ss, ssFloorScaled),
