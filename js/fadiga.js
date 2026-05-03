@@ -39,16 +39,22 @@ function _ensurePseudoRM() {
   _pseudoRMLastLen    = workoutLog.length;
   _pseudoRMLastRpeLen = rpeBlocks.length;
   _pseudoRM = {};
-  function _updatePseudo(name, kg, reps) {
+  function _updatePseudo(name, kg, reps, ts) {
     if (!kg || !reps || _lkOf(name) !== '_other') return;
-    var est = kg * (1 + reps / 30);
-    if (!_pseudoRM[name] || est > _pseudoRM[name]) _pseudoRM[name] = est;
+    var est    = kg * (1 + reps / 30);
+    var age    = Math.max(0, Date.now() - (ts || Date.now()));
+    var weight = Math.exp(-age / (90 * 86400000));
+    if (!_pseudoRM[name]) {
+      _pseudoRM[name] = { val: est, w: weight };
+    } else if (est * weight > _pseudoRM[name].val * _pseudoRM[name].w) {
+      _pseudoRM[name] = { val: est, w: weight };
+    }
   }
   workoutLog.forEach(function(s) {
     if (!s.exercises) return;
     s.exercises.forEach(function(ex) {
       if (!ex || !ex.sets) return;
-      ex.sets.forEach(function(set) { _updatePseudo(ex.name, +(set.kg), +(set.reps)); });
+      ex.sets.forEach(function(set) { _updatePseudo(ex.name, +(set.kg), +(set.reps), s.startedAt); });
     });
   });
   rpeBlocks.forEach(function(blk) {
@@ -57,7 +63,7 @@ function _ensurePseudoRM() {
       if (!exec.exercises) return;
       exec.exercises.forEach(function(ex) {
         if (!ex || !ex.sets) return;
-        ex.sets.forEach(function(set) { _updatePseudo(ex.name, +(set.kg), +(set.reps)); });
+        ex.sets.forEach(function(set) { _updatePseudo(ex.name, +(set.kg), +(set.reps), exec.date); });
       });
     });
   });
@@ -231,7 +237,7 @@ function _intensityFor(lk, kg, reps, rm, name) {
   var relInt = 1 / (1 + reps / 30);
   var stored = _pseudoRM[name];
   if (stored) {
-    var absInt = Math.min(intensityFromSet(kg, reps, stored), 0.90);
+    var absInt = Math.min(intensityFromSet(kg, reps, stored.val), 0.90);
     return Math.min(relInt, absInt);
   }
   return Math.min(relInt, 0.90);
@@ -315,6 +321,23 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
       });
     });
   });
+  rpeBlocks.forEach(function(blk) {
+    if (!blk.execHistory) return;
+    blk.execHistory.forEach(function(exec) {
+      if (!exec.date || exec.date < now - SS_WIN_MS || exec.date > now) return;
+      (exec.exercises || []).forEach(function(ex) {
+        if (_lkOf(ex.name) !== '_other') return;
+        var lkf = '_other:' + _patternKeyOf(ex.name);
+        (ex.sets || []).forEach(function(set) {
+          var kg = +(set.kg) || 0, reps = +(set.reps) || 0;
+          if (!kg || !reps) return;
+          otherTL[lkf]    = (otherTL[lkf]    || 0) + kg * reps;
+          otherCount[lkf] = (otherCount[lkf] || 0) + 1;
+        });
+      });
+    });
+  });
+
   Object.keys(otherTL).forEach(function(lkf) {
     if (otherCount[lkf] < 3) return;
     var patName = lkf.slice(7);
@@ -323,6 +346,13 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
     var ecc  = pat.eccentric || 1.0;
     var avgTL = (otherTL[lkf] / 42) * 0.75 * effortFactor(0.75);
     ss += avgTL * ecc * tauD;
+  });
+
+  periodLog.forEach(function(e) {
+    if (!e.ts || e.ts < now - SS_WIN_MS || e.ts > now || !e.vol || !e.liftKey) return;
+    var lk        = e.liftKey;
+    var intensity = +e.pct || 0.75;
+    ss += (+e.vol / 42) * intensity * effortFactor(intensity) * (_ECCENTRIC[lk] || 1.0) * _tauDay(lk);
   });
 
   return Math.max(ss, 3000);
@@ -575,7 +605,8 @@ export function getFatigaRaw(refTime) {
   var crossFactor = directTotal > 0 ? fatigue / directTotal : 1;
   ss *= crossFactor;
 
-  return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue, steadyState: Math.max(ss, SS_FLOOR) };
+  var ssFloorScaled = SS_FLOOR * crossFactor;
+  return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue, steadyState: Math.max(ss, ssFloorScaled) };
 }
 
 export function calcFadiga() {
