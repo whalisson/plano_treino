@@ -639,9 +639,12 @@ export function getFatigaRaw(refTime) {
   var ssFloorScaled = SS_FLOOR * crossFactor;
   var ssCtlFloor    = ss_raw > 0 ? SS_FLOOR * (ss_ctl_raw / ss_raw) : SS_FLOOR * 4;
 
-  return { fatigue: fatigue, ctl: ctl, tsb: ctl - fatigue,
-           steadyState:    Math.max(ss, ssFloorScaled),
-           steadyStateCTL: Math.max(ss_ctl, ssCtlFloor) };
+  var _ss    = Math.max(ss, ssFloorScaled);
+  var _ssCtl = Math.max(ss_ctl, ssCtlFloor);
+  return { fatigue: fatigue, ctl: ctl,
+           tsbPct: (_ss > 0 && _ssCtl > 0) ? (ctl / _ssCtl - fatigue / _ss) * 100 : 0,
+           steadyState:    _ss,
+           steadyStateCTL: _ssCtl };
 }
 
 export function calcFadiga() {
@@ -675,15 +678,11 @@ export function checkOverreaching() {
   var days = 0;
   for (var d = 0; d < 14; d++) {
     var r = getFatigaRaw(now - d * DAY);
-    var sa = r.steadyState, sc = r.steadyStateCTL || r.steadyState;
-    if (sa > 0 && sc > 0 && (r.ctl / sc - r.fatigue / sa) < THRESHOLD) days++;
+    if (r.tsbPct / 100 < THRESHOLD) days++;
     else break;
   }
-  var cur    = getFatigaRaw();
-  var tsbPct = (cur.steadyState > 0 && cur.steadyStateCTL > 0)
-    ? Math.round(cur.ctl / cur.steadyStateCTL * 100) - Math.round(cur.fatigue / cur.steadyState * 100)
-    : 0;
-  return { needed: days >= MIN_DAYS, days: days, tsbPct: tsbPct };
+  var cur = getFatigaRaw();
+  return { needed: days >= MIN_DAYS, days: days, tsbPct: Math.round(cur.tsbPct) };
 }
 
 export function calcRestDays() {
@@ -716,7 +715,7 @@ export function updateFadigaBar() {
   var ss_ctl = r.steadyStateCTL || r.steadyState;
   var atl = isFinite(r.fatigue / ss_atl) ? Math.round(r.fatigue / ss_atl * 100) : 0;
   var ctl = isFinite(r.ctl     / ss_ctl) ? Math.round(r.ctl     / ss_ctl * 100) : 0;
-  var tsb = ctl - atl; // TSB normalizado: CTL% − ATL% (zera em steady-state)
+  var tsb = Math.round(r.tsbPct);
 
   var atlBar = document.getElementById('ftgAtlBar');
   var atlVal = document.getElementById('ftgAtlVal');
