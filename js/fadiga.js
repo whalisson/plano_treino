@@ -279,6 +279,7 @@ function _ensureCustomOverlap() {
   if (_customOverlapLen === customLifts.length) return;
   _customOverlapLen = customLifts.length;
   _sharedMuscleCache = {};  // invalida scores ao adicionar novos lifts
+  _fatigaCacheVer++;        // queries históricas em cache podem referenciar overlap desatualizado
   customLifts.forEach(function(cl) {
     if (!_MUSCLE_OVERLAP[cl.id]) {
       const pat = _patternKeyOf(cl.name);
@@ -287,6 +288,10 @@ function _ensureCustomOverlap() {
   });
 }
 
+// Assimetria intencional: score(A→B) mede quanto A "vaza" em B normalizado pela capacidade de A.
+// score(B→A) normaliza pela capacidade de B — valores diferentes são corretos.
+// Ex: terra vaza muito em agacha (eretores/glúteos compartilhados, alta capacidade de A),
+// mas agacha vaza menos em terra (quadríceps não contribui para terra).
 function _sharedMuscleScore(lkA, lkB) {
   const key = lkA + '|' + lkB;
   if (key in _sharedMuscleCache) return _sharedMuscleCache[key];
