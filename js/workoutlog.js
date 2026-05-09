@@ -279,23 +279,31 @@ export function deleteExerciseHistory(name) {
   renderWorkoutHistory();
 }
 
+var _wlHistoryGroup = '';
+
 export function renderWorkoutHistory() {
   var section = g('wlHistorySection');
   var container = g('wlHistoryCharts');
   if (!section || !container) return;
 
-  // Coleta nomes únicos de exercícios de todas as sessões finalizadas
-  var names = [];
+  // Coleta nomes únicos + grupo de cada exercício de sessões finalizadas
+  var exMap = {};
   workoutLog.filter(function(s) { return s.finishedAt !== null; }).forEach(function(s) {
     s.exercises.forEach(function(ex) {
-      if (ex.sets.length && names.indexOf(ex.name) === -1) names.push(ex.name);
+      if (ex.sets.length && !exMap[ex.name]) exMap[ex.name] = ex.group || '';
     });
   });
+  var names = Object.keys(exMap);
 
   if (!names.length) { section.style.display = 'none'; return; }
   section.style.display = '';
 
-  container.innerHTML = names.map(function(name) {
+  // Aplica filtro de grupo
+  var filtered = _wlHistoryGroup
+    ? names.filter(function(n) { return exMap[n] === _wlHistoryGroup; })
+    : names;
+
+  container.innerHTML = filtered.map(function(name) {
     var hist = getExerciseHistory(workoutLog, name).slice(-5);
     var safeId = name.replace(/[^a-z0-9]/gi, '_');
     var rows = hist.map(function(entry) {
@@ -435,5 +443,17 @@ if (typeof document !== 'undefined') {
     // Enter no campo reps adiciona série
     var repsInput = g('mExLogReps');
     if (repsInput) repsInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') exLogAddSet(); });
+
+    // Filtro de grupo no histórico de execução
+    var wlFilter = g('wlHistoryGroupFilter');
+    if (wlFilter) {
+      wlFilter.addEventListener('click', function(e) {
+        var btn = e.target.closest('.bank-filter-btn'); if (!btn) return;
+        _wlHistoryGroup = btn.dataset.group;
+        wlFilter.querySelectorAll('.bank-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        renderWorkoutHistory();
+      });
+    }
   });
 }
