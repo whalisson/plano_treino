@@ -51,7 +51,8 @@ export function parseVolume(items) {
     return total + r * ex.kg;
   }, 0);
 }
-export let board = DAYS.map(function() { return []; });
+export let board      = DAYS.map(function() { return []; });
+export let boardNames = DAYS.map(function() { return ''; });
 export let bank  = [
   { id:uid(), name:'Elev. Lateral Halt.',  kg:25,  reps:'3x12', group:'push' },
   { id:uid(), name:'Crux. Inv. Máquina',   kg:20,  reps:'3x12', group:'push' },
@@ -65,6 +66,7 @@ export let bank  = [
 ];
 
 export function setBoard(v) { board = v; }
+export function setBoardNames(v) { boardNames = v; }
 export function setBank(v) { bank = v; }
 
 // ── Drag & Drop ───────────────────────────────
@@ -506,8 +508,33 @@ export function renderKanban() {
     var kh   = document.createElement('div'); kh.className  = 'kch';
     var vol  = parseVolume(items) * (deloadMode ? DELOAD_FACTOR : 1);
     var volStr = vol >= 1000 ? (vol / 1000).toFixed(1) + 't' : (vol > 0 ? vol + 'kg' : '');
-    kh.innerHTML = '<span class="kday">' + DAYS[di] + '</span><span class="kcnt">' + items.length + '</span>'
-      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '');
+    var bname = boardNames[di] || '';
+    kh.innerHTML =
+      '<div class="kch-top">'
+      + '<span class="kday">' + DAYS[di] + '</span>'
+      + '<span class="kcnt">' + items.length + '</span>'
+      + (volStr ? '<span class="kvol">' + volStr + '</span>' : '')
+      + '</div>'
+      + '<span class="kwname' + (bname ? '' : ' kwname-empty') + '">'
+      + (bname ? bname : '+ treino')
+      + '</span>';
+    kh.querySelector('.kwname').addEventListener('click', function(e) {
+      e.stopPropagation();
+      var span = e.currentTarget;
+      var inp  = document.createElement('input');
+      inp.className   = 'kwname-inp';
+      inp.value       = boardNames[di] || '';
+      inp.placeholder = 'ex: Push A';
+      inp.maxLength   = 24;
+      span.replaceWith(inp);
+      inp.focus(); inp.select();
+      function save() { boardNames[di] = inp.value.trim(); renderKanban(); saveBoardState(); }
+      inp.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter')  { inp.blur(); }
+        if (ev.key === 'Escape') { renderKanban(); }
+      });
+      inp.addEventListener('blur', save);
+    });
     col.appendChild(kh);
     var body = document.createElement('div'); body.className = 'kbody';
     items.forEach(function(ex, ei) { body.appendChild(makeBoardCard(ex, di, ei)); });
@@ -536,7 +563,9 @@ export function renderPeriodGrid() {
   var pg = g('pgrid'); if (!pg) return; pg.innerHTML = '';
   board.forEach(function(items, di) {
     var card = document.createElement('div'); card.className = 'wcol';
-    var h = '<div class="wch"><span class="wcname">' + DAYS[di] + '</span></div><div class="wcbody">';
+    var h = '<div class="wch"><span class="wcname">' + DAYS[di] + '</span>'
+      + (boardNames[di] ? '<span class="wctag">' + boardNames[di] + '</span>' : '')
+      + '</div><div class="wcbody">';
     if (!items.length) { h += '<span style="font-size:11px;color:var(--muted);">—</span>'; }
     else { items.forEach(function(ex) { var pgKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg; h += '<div class="srow"><span class="slbl">' + ex.name + '</span><span class="sw' + (deloadMode && ex.kg > 0 ? ' sw--deload' : '') + '">' + (pgKg > 0 ? pgKg + 'kg' : '—') + '</span><span class="sr">' + ex.reps + '</span></div>'; }); }
     h += '</div>'; card.innerHTML = h; pg.appendChild(card);

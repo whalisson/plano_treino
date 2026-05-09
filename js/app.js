@@ -8,7 +8,7 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog,
   amrapReps, setAmrapReps } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
-import { board, bank, setBoard, setBank,
+import { board, bank, boardNames, setBoard, setBank, setBoardNames,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
   deloadMode, setDeloadMode } from './logbook.js';
 import { calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
@@ -216,6 +216,7 @@ document.addEventListener('gorila-save', function() {
       checks:        checksState,
       rmTests:       rmTestValues,
       board:         board,
+      boardNames:    boardNames,
       bank:          bank,
       kgHistory:     kgHistory,
       cycleHistory:  cycleHistory,
@@ -446,6 +447,7 @@ export function applyState(saved) {
     if (saved.checks)         setChecksState(saved.checks);
     if (saved.rmTests)        setRmTestValues(saved.rmTests);
     if (saved.board && saved.board.length === 7) setBoard(saved.board);
+    if (saved.boardNames && saved.boardNames.length === 7) setBoardNames(saved.boardNames);
     if (saved.bank)           setBank(saved.bank);
     if (saved.kgHistory)      setKgHistory(saved.kgHistory);
     if (saved.cycleHistory)   setCycleHistory(saved.cycleHistory);

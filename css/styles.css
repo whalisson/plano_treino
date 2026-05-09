@@ -132,6 +132,7 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .wcol{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .wch{padding:8px 10px 6px;border-bottom:1px solid var(--border);}
 .wcname{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.wctag{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--accent);margin-left:6px;}
 .wcbody{padding:9px 10px;}
 .srow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;}
 .srow:last-child{border-bottom:none;}
@@ -327,9 +328,15 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .kboard{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:22px;}
 .kcol{background:var(--bg2);border:1px solid var(--border);border-radius:7px;display:flex;flex-direction:column;min-height:200px;transition:border-color .15s;}
 .kcol.drag-over{border-color:var(--lime);background:rgba(201,255,58,.04);}
-.kch{padding:8px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.kch{padding:7px 10px 5px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px;}
+.kch-top{display:flex;align-items:center;justify-content:space-between;}
 .kday{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
 .kcnt{font-family:var(--mono);font-size:9px;color:var(--border2);}
+.kwname{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--accent);cursor:pointer;padding:1px 3px;border-radius:3px;transition:background .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kwname:hover{background:rgba(201,255,58,.09);}
+.kwname-empty{color:var(--border2);font-weight:400;}
+.kwname-empty:hover{color:var(--muted);background:rgba(255,255,255,.04);}
+.kwname-inp{font-family:var(--mono);font-size:9px;background:var(--bg3);border:1px solid var(--accent);color:var(--text);border-radius:3px;padding:1px 5px;width:100%;outline:none;}
 .kbody{flex:1;padding:6px;display:flex;flex-direction:column;gap:5px;}
 .kex{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:7px 8px;position:relative;cursor:grab;user-select:none;transition:opacity .15s,transform .1s;}
 .kex:active{cursor:grabbing;opacity:.7;transform:scale(.97);}
