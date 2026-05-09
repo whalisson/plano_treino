@@ -772,6 +772,158 @@ export function updateFadigaBar() {
 // globalThis: necessário para acesso legado fora do módulo
 globalThis.updateFadigaBar = updateFadigaBar;
 
+// ── Projeção de forma: TSB futuro ─────────────────────────────────────────────
+// weeklyFreq: dias/semana (0-7) · loadPct: fração da carga normal (0-2) · horizonDays: horizonte
+export function calcTSBProjection(weeklyFreq, loadPct, horizonDays) {
+  horizonDays = horizonDays || 60;
+  weeklyFreq  = Math.max(0, Math.min(7, weeklyFreq != null ? +weeklyFreq : 4));
+  loadPct     = Math.max(0, loadPct != null ? +loadPct : 1.0);
+
+  const DAY   = 86400000;
+  const cur   = getFatigaRaw();
+  const ss    = cur.steadyState    || 1;
+  const ssCtl = cur.steadyStateCTL || 1;
+  // τ médio ponderado (squat+DL 14d, bench 7d, custom 6d → ~10d)
+  const dA    = Math.exp(-DAY / (10 * DAY));
+  const dC    = Math.exp(-DAY / (42 * DAY));
+  // Carga por sessão normalizada: a 100% de load, 1 sessão/dia → ATL converge a SS
+  const lAtl  = ss    * (1 - dA) * loadPct;
+  const lCtl  = ssCtl * (1 - dC) * loadPct;
+
+  let atlRaw = cur.fatigue;
+  let ctlRaw = cur.ctl;
+  const out  = [];
+  for (let d = 1; d <= horizonDays; d++) {
+    atlRaw *= dA;
+    ctlRaw *= dC;
+    // Distribui dias de treino uniformemente dentro da semana
+    if (Math.floor(d * weeklyFreq / 7) > Math.floor((d - 1) * weeklyFreq / 7)) {
+      atlRaw += lAtl;
+      ctlRaw += lCtl;
+    }
+    out.push({
+      day:  d,
+      date: new Date(Date.now() + d * DAY),
+      tsb:  (ctlRaw / ssCtl - atlRaw / ss) * 100,
+      atl:  atlRaw / ss    * 100,
+      ctl:  ctlRaw / ssCtl * 100,
+    });
+  }
+  return out;
+}
+
+// Desenha o gráfico de projeção TSB num <canvas>. Retorna o primeiro ponto dentro da zona ótima.
+export function renderTSBChart(canvas, weeklyFreq, loadPct, compDate) {
+  if (!canvas) return null;
+  const W  = Math.max(canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 280, 200);
+  const H  = 130;
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const data    = calcTSBProjection(weeklyFreq, loadPct, 60);
+  const TSB_LO  = 5, TSB_HI = 25;
+  const PL = 28, PR = 6, PT = 10, PB = 18;
+  const cW = W - PL - PR, cH = H - PT - PB;
+
+  const curR   = getFadigaRaw();
+  const curTsb = (curR.steadyState > 0 && curR.steadyStateCTL > 0)
+    ? (curR.ctl / curR.steadyStateCTL - curR.fatigue / curR.steadyState) * 100 : 0;
+
+  const vals = data.map(function(p) { return p.tsb; });
+  const minV = Math.min(curTsb - 3, -5, Math.min.apply(null, vals));
+  const maxV = Math.max(curTsb + 3, 30, Math.max.apply(null, vals));
+  const rng  = maxV - minV || 1;
+
+  function xOf(day) { return PL + (day / 60) * cW; }
+  function yOf(v)   { return PT + (1 - (v - minV) / rng) * cH; }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Zona ótima (fundo verde suave)
+  const yHi = yOf(TSB_HI), yLo = yOf(TSB_LO);
+  ctx.fillStyle = 'rgba(201,255,58,0.09)';
+  ctx.fillRect(PL, yHi, cW, yLo - yHi);
+  ctx.strokeStyle = 'rgba(201,255,58,0.20)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(PL, yHi); ctx.lineTo(PL + cW, yHi); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PL, yLo); ctx.lineTo(PL + cW, yLo); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(201,255,58,0.35)';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('forma', PL + 3, yHi + 9);
+
+  // Linha zero
+  if (0 >= minV && 0 <= maxV) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(PL, yOf(0)); ctx.lineTo(PL + cW, yOf(0)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Marcador da data de competição
+  if (compDate) {
+    var dComp = Math.round((new Date(compDate) - Date.now()) / 86400000);
+    if (dComp >= 1 && dComp <= 60) {
+      var xC = xOf(dComp);
+      ctx.strokeStyle = 'rgba(108,99,255,0.65)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(xC, PT); ctx.lineTo(xC, PT + cH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(108,99,255,0.85)';
+      ctx.font = '8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('prova', xC, PT + 8);
+    }
+  }
+
+  // Curva TSB (segmentos coloridos por zona)
+  ctx.lineWidth = 2;
+  var prevPt = { day: 0, tsb: curTsb };
+  data.forEach(function(pt) {
+    ctx.strokeStyle = (pt.tsb >= TSB_LO && pt.tsb <= TSB_HI) ? '#c9ff3a'
+      : pt.tsb > TSB_HI ? '#ffb534' : '#ff5555';
+    ctx.beginPath();
+    ctx.moveTo(xOf(prevPt.day), yOf(prevPt.tsb));
+    ctx.lineTo(xOf(pt.day), yOf(pt.tsb));
+    ctx.stroke();
+    prevPt = pt;
+  });
+
+  // Ponto do TSB atual (dia 0)
+  ctx.fillStyle = (curTsb >= TSB_LO && curTsb <= TSB_HI) ? '#c9ff3a'
+    : curTsb > TSB_HI ? '#ffb534' : '#ff5555';
+  ctx.beginPath();
+  ctx.arc(xOf(0), yOf(curTsb), 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Labels eixo Y
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'right';
+  [-10, 0, 10, 20, 30].forEach(function(v) {
+    if (v >= minV && v <= maxV) ctx.fillText((v > 0 ? '+' : '') + v, PL - 3, yOf(v) + 3);
+  });
+
+  // Labels eixo X (dias)
+  ctx.textAlign = 'center';
+  [7, 14, 21, 30, 45, 60].forEach(function(d) {
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillText(d + 'd', xOf(d), H - 4);
+  });
+
+  // Retorna primeiro dia na zona ótima
+  for (var i = 0; i < data.length; i++) {
+    if (data[i].tsb >= TSB_LO && data[i].tsb <= TSB_HI) return data[i];
+  }
+  return null;
+}
+
 // Popover ATL/CTL/TSB
 (function () {
   const btn = document.getElementById('fadigaHelpBtn');

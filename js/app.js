@@ -24,7 +24,7 @@ import { workoutLog, setWorkoutLog,
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase, resetCycle } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
-import { picoCompDate, setPicoCompDate, renderPico, picoOpenLogModal, picoSetDate, picoConfirmLog } from './pico.js';
+import { picoCompDate, setPicoCompDate, renderPico, picoOpenLogModal, picoSetDate, picoConfirmLog, picoUpdateTSB } from './pico.js';
 import { updateFadigaBar, checkDeload, checkOverreaching } from './fadiga.js';
 import { renderVolumeBars } from './volume.js';
 
@@ -77,6 +77,7 @@ globalThis.renderPico           = renderPico;
 globalThis.picoOpenLogModal     = picoOpenLogModal;
 globalThis.picoSetDate          = picoSetDate;
 globalThis.picoConfirmLog       = picoConfirmLog;
+globalThis.picoUpdateTSB        = picoUpdateTSB;
 globalThis.calcRM               = calcRM;
 globalThis.renderCustomLifts    = renderCustomLifts;
 globalThis.populateRMLiftSelect = populateRMLiftSelect;
