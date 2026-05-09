@@ -41,8 +41,8 @@ const RENDER_FNS = [
 // ── Chaves canônicas do payload de gorila-save ────────────────────────────────
 // Qualquer chave nova salva precisa ser adicionada aqui E tratada em applyState.
 const SAVE_KEYS = [
-  'amrapReps',
-  'bank', 'board',
+  'altBoards', 'amrapReps',
+  'bank', 'board', 'boardNames',
   'cardioDailyGoal', 'cardioExtra', 'cardioGoal',
   'checks', 'customLifts', 'cycleHistory', 'cycleStartDates',
   'deloadMode',
