@@ -618,6 +618,10 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .overreaching-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;background:rgba(255,85,85,.08);border:1px solid rgba(255,85,85,.35);border-radius:10px;animation:overreachPulse 3s ease-in-out infinite;}
 .overreaching-banner-title{font-weight:700;font-size:13px;color:var(--red);}
 @keyframes overreachPulse{0%,100%{border-color:rgba(255,85,85,.35);}50%{border-color:rgba(255,85,85,.7);}}
+@keyframes tsbHint{0%,100%{color:var(--muted);}50%{color:var(--lime);text-shadow:0 0 6px rgba(201,255,58,.5);}}
+#ftgTsbRow .ftg-lbl{font-weight:700;animation:tsbHint 2.4s ease-in-out infinite;}
+#ftgTsbRow:hover .ftg-lbl{color:var(--lime);text-shadow:0 0 8px rgba(201,255,58,.7);animation:none;}
+#ftgTsbRow:hover{background:rgba(201,255,58,.05);border-radius:4px;}
 
 /* Fadiga ATL/CTL/TSB */
 .ftg-wrap{display:flex;align-items:center;gap:5px;}
