@@ -444,6 +444,25 @@ if (typeof document !== 'undefined') {
     var repsInput = g('mExLogReps');
     if (repsInput) repsInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') exLogAddSet(); });
 
+    // Toggle recolher/expandir histórico de execução
+    (function() {
+      var body = g('wlHistoryBody');
+      var btn  = g('btnToggleWlHistory');
+      if (!body || !btn) return;
+      var hidden = localStorage.getItem('wlHistoryHidden') === '1';
+      function apply() {
+        body.style.display = hidden ? 'none' : '';
+        btn.textContent = hidden ? '▼ mostrar' : '▲ ocultar';
+        btn.title = hidden ? 'Mostrar histórico' : 'Ocultar histórico';
+      }
+      apply();
+      btn.addEventListener('click', function() {
+        hidden = !hidden;
+        localStorage.setItem('wlHistoryHidden', hidden ? '1' : '0');
+        apply();
+      });
+    })();
+
     // Filtro de grupo no histórico de execução
     var wlFilter = g('wlHistoryGroupFilter');
     if (wlFilter) {

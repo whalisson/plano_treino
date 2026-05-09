@@ -404,15 +404,18 @@
     <div class="sh" style="margin-bottom:10px;">
       <div class="shtitle">Histórico de Execução</div>
       <span class="badge bp">Últimas 5 sessões por exercício</span>
+      <button id="btnToggleWlHistory" class="mag" style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:2px 8px;">▲ ocultar</button>
     </div>
-    <div id="wlHistoryGroupFilter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
-      <button class="bank-filter-btn active" data-group="">Todos</button>
-      <button class="bank-filter-btn" data-group="push">Push</button>
-      <button class="bank-filter-btn" data-group="pull">Pull</button>
-      <button class="bank-filter-btn" data-group="legs">Legs</button>
-      <button class="bank-filter-btn" data-group="core">Core</button>
+    <div id="wlHistoryBody">
+      <div id="wlHistoryGroupFilter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="bank-filter-btn active" data-group="">Todos</button>
+        <button class="bank-filter-btn" data-group="push">Push</button>
+        <button class="bank-filter-btn" data-group="pull">Pull</button>
+        <button class="bank-filter-btn" data-group="legs">Legs</button>
+        <button class="bank-filter-btn" data-group="core">Core</button>
+      </div>
+      <div id="wlHistoryCharts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:13px;"></div>
     </div>
-    <div id="wlHistoryCharts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:13px;"></div>
   </div>
 
   <!-- Progresso de Carga -->
