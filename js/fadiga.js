@@ -816,12 +816,13 @@ export function calcTSBProjection(curState, weeklyFreq, loadPct, horizonDays) {
 export function renderTSBChart(canvas, curState, weeklyFreq, loadPct, compDate) {
   if (!canvas || !curState) return null;
   const rect = canvas.getBoundingClientRect();
-  const W  = Math.max(rect.width || 280, 200);
+  const W  = Math.max(rect.width || (canvas.offsetWidth || 280), 200);
   const H  = 130;
   canvas.width  = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
+  if (!ctx) { console.error('[TSBChart] getContext retornou null'); return null; }
+  console.log('[TSBChart] canvas', W + 'x' + H, 'curTSB%', Math.round((curState.steadyStateCTL > 0 ? (curState.ctl / curState.steadyStateCTL - curState.fatigue / curState.steadyState) * 100 : 0)));
 
   const data    = calcTSBProjection(curState, weeklyFreq, loadPct, 60);
   const TSB_LO  = 5, TSB_HI = 25;
@@ -971,16 +972,24 @@ export function renderTSBChart(canvas, curState, weeklyFreq, loadPct, compDate) 
     if (loadV) loadV.textContent = Math.round(load * 100);
 
     let cur;
-    try { cur = getFadigaRaw(); } catch (e) { return; }
+    try { cur = getFadigaRaw(); } catch (e) { console.error('[TSBProj] getFadigaRaw:', e); return; }
 
-    const first = renderTSBChart(canvas, cur, freq, load, null);
+    let first;
+    try {
+      first = renderTSBChart(canvas, cur, freq, load, null);
+    } catch (e) {
+      console.error('[TSBProj] renderTSBChart:', e);
+      if (label) { label.textContent = 'Erro: ' + e.message; label.style.color = 'var(--red)'; }
+      return;
+    }
+
     if (!label) return;
     if (first) {
       const d = first.date;
       label.textContent = 'Forma ótima em ~' + first.day + 'd (' + d.getDate() + '/' + (d.getMonth() + 1) + ')';
       label.style.color = 'var(--lime)';
     } else {
-      label.textContent = 'TSB não entra na zona ótima em 60 dias';
+      label.textContent = 'Reduza a carga ou descanse para atingir a zona ótima';
       label.style.color = 'var(--amber)';
     }
   }
@@ -993,7 +1002,8 @@ export function renderTSBChart(canvas, curState, weeklyFreq, loadPct, compDate) 
     pop.style.top  = (rc.bottom + 8) + 'px';
     pop.style.left = Math.max(8, left) + 'px';
     pop.classList.add('on');
-    requestAnimationFrame(_updateTsbProj);
+    // duplo rAF garante que o layout do popover está completo antes de medir o canvas
+    requestAnimationFrame(function() { requestAnimationFrame(_updateTsbProj); });
   });
 
   pop.addEventListener('click', function (e) { e.stopPropagation(); });
