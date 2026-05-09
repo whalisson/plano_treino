@@ -8,9 +8,9 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog,
   amrapReps, setAmrapReps } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
-import { board, bank, boardNames, setBoard, setBank, setBoardNames,
+import { board, bank, boardNames, altBoards, setBoard, setBank, setBoardNames, setAltBoards,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
-  deloadMode, setDeloadMode } from './logbook.js';
+  renderAltBoards, deloadMode, setDeloadMode } from './logbook.js';
 import { calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
   buildCardioChart, renderBuilderSegs, renderSavedWorkouts,
@@ -86,6 +86,7 @@ globalThis.renderBank           = renderBank;
 globalThis.setupBankDropzone    = setupBankDropzone;
 globalThis.renderPeriodGrid     = renderPeriodGrid;
 globalThis.renderProgressCharts = renderProgressCharts;
+globalThis.renderAltBoards      = renderAltBoards;
 globalThis.renderBuilderSegs    = renderBuilderSegs;
 globalThis.renderSavedWorkouts  = renderSavedWorkouts;
 globalThis.renderCycleHistory   = renderCycleHistory;
@@ -217,6 +218,7 @@ document.addEventListener('gorila-save', function() {
       rmTests:       rmTestValues,
       board:         board,
       boardNames:    boardNames,
+      altBoards:     altBoards,
       bank:          bank,
       kgHistory:     kgHistory,
       cycleHistory:  cycleHistory,
@@ -367,6 +369,8 @@ export function exportData() {
     checks:        checksState,
     rmTests:       rmTestValues,
     board:         board,
+    boardNames:    boardNames,
+    altBoards:     altBoards,
     bank:          bank,
     kgHistory:     kgHistory,
     cycleHistory:  cycleHistory,
@@ -448,6 +452,7 @@ export function applyState(saved) {
     if (saved.rmTests)        setRmTestValues(saved.rmTests);
     if (saved.board && saved.board.length === 7) setBoard(saved.board);
     if (saved.boardNames && saved.boardNames.length === 7) setBoardNames(saved.boardNames);
+    if (saved.altBoards && Array.isArray(saved.altBoards)) setAltBoards(saved.altBoards);
     if (saved.bank)           setBank(saved.bank);
     if (saved.kgHistory)      setKgHistory(saved.kgHistory);
     if (saved.cycleHistory)   setCycleHistory(saved.cycleHistory);
@@ -472,7 +477,7 @@ export function applyState(saved) {
   var RENDER_QUEUE = [
     'buildAllPeriod', 'calcRM', 'renderCustomLifts', 'populateRMLiftSelect',
     'renderRMHistory', 'renderRatioCard', 'renderKanban', 'renderBank', 'setupBankDropzone',
-    'renderPeriodGrid', 'renderProgressCharts', 'renderBuilderSegs',
+    'renderPeriodGrid', 'renderProgressCharts', 'renderAltBoards', 'renderBuilderSegs',
     'renderSavedWorkouts', 'renderCycleHistory', 'renderRPEBlocks',
     'renderWorkoutHistory', 'updateFadigaBar', 'updateDeloadBanner', 'updateOverreachingBanner', 'updateRestCounters', 'renderPico',
     'renderVolumeBars',
@@ -688,6 +693,11 @@ globalThis.applyProgressionIncrease = function() {
       if (item.name === ex.name || item.srcId === ex.id) item.kg = newKg;
     });
   });
+  altBoards.forEach(function(ab) {
+    ab.exercises.forEach(function(item) {
+      if (item.name === ex.name || item.srcId === ex.id) item.kg = newKg;
+    });
+  });
 
   if (!kgHistory[ex.id]) kgHistory[ex.id] = [];
   var hist = kgHistory[ex.id];
@@ -698,6 +708,7 @@ globalThis.applyProgressionIncrease = function() {
   renderKanban();
   renderBank();
   renderPeriodGrid();
+  renderAltBoards();
   renderProgressCharts();
 
   g('mProgression').classList.remove('on');

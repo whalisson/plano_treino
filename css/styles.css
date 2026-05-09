@@ -655,6 +655,15 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .vmrv-help-btn{margin-left:4px;}
 #vmrvHelpPop{width:300px;}
 
+/* ── Treinos Alternativos ── */
+.altcol{background:var(--bg2);border:1px solid var(--border);border-radius:7px;display:flex;flex-direction:column;min-width:180px;flex:0 0 180px;min-height:120px;transition:border-color .15s;}
+.altcol.drag-over{border-color:var(--lime);background:rgba(201,255,58,.04);}
+.altex{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:7px 8px;position:relative;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;animation:kexEnter .18s ease;transition:opacity .15s,transform .1s;}
+.altex:active{cursor:grabbing;opacity:.7;transform:scale(.97);}
+.altex.dragging{opacity:.35;}
+.altex.drop-before{border-top:2px solid var(--lime);margin-top:-1px;}
+.altex.drop-after{border-bottom:2px solid var(--lime);margin-bottom:-1px;}
+
 /* Modo Deload */
 .kex--deload{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.04);}
 .kexmeta--deload{color:var(--amber);}

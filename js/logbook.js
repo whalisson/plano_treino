@@ -69,6 +69,9 @@ export function setBoard(v) { board = v; }
 export function setBoardNames(v) { boardNames = v; }
 export function setBank(v) { bank = v; }
 
+export let altBoards = [];
+export function setAltBoards(v) { altBoards = v; }
+
 // ── Drag & Drop ───────────────────────────────
 var dragItem  = null;
 var dragOverCard = null; // { day, idx, before } — posição de inserção dentro da coluna
@@ -82,7 +85,7 @@ var autoScrollRAF = null;
 var autoScrollVel = 0;
 
 export function clearCardDropIndicators() {
-  document.querySelectorAll('.kex.drop-before,.kex.drop-after').forEach(function(el) {
+  document.querySelectorAll('.kex.drop-before,.kex.drop-after,.altex.drop-before,.altex.drop-after').forEach(function(el) {
     el.classList.remove('drop-before', 'drop-after');
   });
   dragOverCard = null;
@@ -116,7 +119,7 @@ function getTouchDropTarget(x, y) {
   var el = document.elementFromPoint(x, y);
   if (touchGhost) touchGhost.style.display = '';
   if (!el) return null;
-  return el.closest('.kex') || el.closest('.kcol') || el.closest('#ebank') || null;
+  return el.closest('.altex') || el.closest('.altcol') || el.closest('.kex') || el.closest('.kcol') || el.closest('#ebank') || null;
 }
 
 function addTouchDrag(el, getItemFn) {
@@ -165,12 +168,12 @@ function addTouchDrag(el, getItemFn) {
       touchLastTarget = target;
     }
     if (target) {
-      if (target.classList.contains('kex')) {
+      if (target.classList.contains('altex') || target.classList.contains('kex')) {
         var rect   = target.getBoundingClientRect();
         var before = t.clientY < rect.top + rect.height / 2;
         target.classList.toggle('drop-before', before);
         target.classList.toggle('drop-after',  !before);
-      } else if (target.classList.contains('kcol')) {
+      } else if (target.classList.contains('altcol') || target.classList.contains('kcol')) {
         target.classList.add('drag-over');
       } else {
         target.style.borderColor = 'var(--accent)';
@@ -190,7 +193,51 @@ function addTouchDrag(el, getItemFn) {
     var t      = e.changedTouches[0];
     var target = getTouchDropTarget(t.clientX, t.clientY);
     if (target) {
-      if (target.classList.contains('kex')) {
+      if (target.classList.contains('altex')) {
+        var colEl = target.closest('.altcol');
+        var altCols = Array.from(document.querySelectorAll('.altcol'));
+        var bi = altCols.indexOf(colEl);
+        var cards = Array.from(colEl.querySelectorAll('.altex'));
+        var cardIdx = cards.indexOf(target);
+        var rect = target.getBoundingClientRect();
+        var before = t.clientY < rect.top + rect.height / 2;
+        var insertIdx = before ? cardIdx : cardIdx + 1;
+        if (bi >= 0) {
+          if (dragItem.type === 'bank') {
+            var ex = bank.find(function(b) { return b.id === dragItem.id; });
+            if (ex) altBoards[bi].exercises.splice(insertIdx, 0, { id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps, group:ex.group||'', bilateral:ex.bilateral||false });
+          } else if (dragItem.type === 'board') {
+            var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
+            if (item) altBoards[bi].exercises.splice(insertIdx, 0, item);
+            renderKanban(); renderPeriodGrid();
+          } else if (dragItem.type === 'alt') {
+            var fromBi = dragItem.fromBoard, fromEi = dragItem.fromIdx;
+            var item = altBoards[fromBi].exercises.splice(fromEi, 1)[0];
+            if (item) {
+              if (fromBi === bi && fromEi < insertIdx) insertIdx--;
+              altBoards[bi].exercises.splice(Math.max(0, insertIdx), 0, item);
+            }
+          }
+          renderAltBoards(); saveBoardState();
+        }
+      } else if (target.classList.contains('altcol')) {
+        var altCols = Array.from(document.querySelectorAll('.altcol'));
+        var bi = altCols.indexOf(target);
+        if (bi >= 0) {
+          if (dragItem.type === 'bank') {
+            var ex = bank.find(function(b) { return b.id === dragItem.id; });
+            if (ex) altBoards[bi].exercises.push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps, group:ex.group||'', bilateral:ex.bilateral||false });
+          } else if (dragItem.type === 'board') {
+            var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
+            if (item) altBoards[bi].exercises.push(item);
+            renderKanban(); renderPeriodGrid();
+          } else if (dragItem.type === 'alt' && dragItem.fromBoard !== bi) {
+            var item = altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1)[0];
+            if (item) altBoards[bi].exercises.push(item);
+          }
+          renderAltBoards(); saveBoardState();
+        }
+      } else if (target.classList.contains('kex')) {
         // Drop sobre um card — insere antes ou depois
         var colEl = target.closest('.kcol');
         var cols  = Array.from(document.querySelectorAll('.kcol'));
@@ -211,6 +258,10 @@ function addTouchDrag(el, getItemFn) {
               if (fromDay === di && fromIdx < insertIdx) insertIdx--;
               board[di].splice(Math.max(0, insertIdx), 0, item);
             }
+          } else if (dragItem.type === 'alt') {
+            var item = altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1)[0];
+            if (item) board[di].splice(insertIdx, 0, item);
+            renderAltBoards();
           }
           renderKanban(); renderPeriodGrid(); saveBoardState();
         }
@@ -224,12 +275,21 @@ function addTouchDrag(el, getItemFn) {
           } else if (dragItem.type === 'board' && dragItem.fromDay !== di) {
             var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
             if (item) board[di].push(item);
+          } else if (dragItem.type === 'alt') {
+            var item = altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1)[0];
+            if (item) board[di].push(item);
+            renderAltBoards();
           }
           renderKanban(); renderPeriodGrid(); saveBoardState();
         }
-      } else if (target.id === 'ebank' && dragItem.type === 'board') {
-        board[dragItem.fromDay].splice(dragItem.fromIdx, 1);
-        renderKanban(); renderPeriodGrid(); saveBoardState();
+      } else if (target.id === 'ebank') {
+        if (dragItem.type === 'board') {
+          board[dragItem.fromDay].splice(dragItem.fromIdx, 1);
+          renderKanban(); renderPeriodGrid(); saveBoardState();
+        } else if (dragItem.type === 'alt') {
+          altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1);
+          renderAltBoards(); saveBoardState();
+        }
       }
     }
     dragItem = null; touchLastTarget = null;
@@ -434,6 +494,10 @@ function makeBoardCard(ex, di, ei) {
           if (fromDay === di && fromIdx < insertIdx) insertIdx--;
           board[di].splice(Math.max(0, insertIdx), 0, item);
         }
+      } else if (dragItem.type === 'alt') {
+        var item = altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1)[0];
+        if (item) board[di].splice(insertIdx, 0, item);
+        renderAltBoards();
       }
       dragOverCard = null;
       renderKanban(); renderPeriodGrid(); saveBoardState();
@@ -466,6 +530,10 @@ function setupDropzone(colEl, dayIndex) {
       if (dragItem.fromDay === dayIndex) return; // solto no espaço vazio da mesma coluna → sem mudança
       var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
       if (item) board[dayIndex].push(item);
+    } else if (dragItem.type === 'alt') {
+      var item = altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1)[0];
+      if (item) board[dayIndex].push(item);
+      renderAltBoards();
     }
     renderKanban(); renderPeriodGrid(); saveBoardState();
   });
@@ -473,13 +541,18 @@ function setupDropzone(colEl, dayIndex) {
 
 export function setupBankDropzone() {
   var bk = g('ebank');
-  bk.addEventListener('dragover',  function(e) { if (dragItem && dragItem.type === 'board') { e.preventDefault(); bk.style.borderColor = 'var(--accent)'; } });
+  bk.addEventListener('dragover',  function(e) { if (dragItem && (dragItem.type === 'board' || dragItem.type === 'alt')) { e.preventDefault(); bk.style.borderColor = 'var(--accent)'; } });
   bk.addEventListener('dragleave', function()  { bk.style.borderColor = ''; });
   bk.addEventListener('drop', function(e) {
     e.preventDefault(); bk.style.borderColor = '';
-    if (!dragItem || dragItem.type !== 'board') return;
-    board[dragItem.fromDay].splice(dragItem.fromIdx, 1);
-    renderKanban(); renderPeriodGrid(); saveBoardState();
+    if (!dragItem) return;
+    if (dragItem.type === 'board') {
+      board[dragItem.fromDay].splice(dragItem.fromIdx, 1);
+      renderKanban(); renderPeriodGrid(); saveBoardState();
+    } else if (dragItem.type === 'alt') {
+      altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1);
+      renderAltBoards(); saveBoardState();
+    }
   });
 }
 
@@ -572,6 +645,213 @@ export function renderPeriodGrid() {
   });
 }
 
+// ── Treinos Alternativos ──────────────────────
+
+function makeAltCard(ex, bi, ei) {
+  var el = document.createElement('div');
+  el.className = 'altex';
+  el.dataset.exid = ex.id;
+  el.innerHTML = '<div class="kexname">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
+    + '<div class="kexmeta">' + (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps + '</div>';
+
+  var rm = document.createElement('button');
+  rm.className = 'kexrm'; rm.textContent = '×';
+  rm.style.touchAction = 'manipulation';
+  var _rmPending = false, _rmTimer = null;
+  var _cancelPending = function() {
+    _rmPending = false; clearTimeout(_rmTimer);
+    rm.textContent = '×'; rm.style.background = ''; rm.style.color = '';
+  };
+  var _removeCard = function(e) {
+    e.stopPropagation();
+    if (!_rmPending) {
+      _rmPending = true; rm.textContent = '✓?';
+      rm.style.background = 'var(--red,#e05)'; rm.style.color = '#fff';
+      _rmTimer = setTimeout(_cancelPending, 3000);
+    } else {
+      clearTimeout(_rmTimer);
+      altBoards[bi].exercises.splice(ei, 1);
+      renderAltBoards(); saveBoardState();
+    }
+  };
+  rm.addEventListener('click', _removeCard);
+  rm.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
+  rm.addEventListener('touchend', function(e) { e.stopPropagation(); e.preventDefault(); _removeCard(e); }, { passive:false });
+  el.appendChild(rm);
+
+  if (!isTouch) {
+    el.draggable = true;
+    el.addEventListener('dragstart', function(e) {
+      dragItem = { type:'alt', id:ex.id, fromBoard:bi, fromIdx:ei };
+      el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', function() {
+      el.classList.remove('dragging'); clearCardDropIndicators(); dragItem = null;
+    });
+    el.addEventListener('dragover', function(e) {
+      if (!dragItem) return;
+      e.preventDefault(); e.stopPropagation();
+      var rect = el.getBoundingClientRect();
+      var before = e.clientY < rect.top + rect.height / 2;
+      clearCardDropIndicators();
+      el.classList.toggle('drop-before', before);
+      el.classList.toggle('drop-after', !before);
+      dragOverCard = { board: bi, idx: ei, before: before };
+    });
+    el.addEventListener('dragleave', function(e) {
+      if (el.contains(e.relatedTarget)) return;
+      el.classList.remove('drop-before', 'drop-after');
+      dragOverCard = null;
+    });
+    el.addEventListener('drop', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('drop-before', 'drop-after');
+      if (!dragItem) return;
+      var before = dragOverCard ? dragOverCard.before : true;
+      var insertIdx = before ? ei : ei + 1;
+      if (dragItem.type === 'bank') {
+        var ex2 = bank.find(function(b) { return b.id === dragItem.id; });
+        if (ex2) altBoards[bi].exercises.splice(insertIdx, 0, { id:uid(), srcId:ex2.id, name:ex2.name, kg:ex2.kg, reps:ex2.reps, group:ex2.group||'', bilateral:ex2.bilateral||false });
+      } else if (dragItem.type === 'board') {
+        var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
+        if (item) altBoards[bi].exercises.splice(insertIdx, 0, item);
+        renderKanban(); renderPeriodGrid();
+      } else if (dragItem.type === 'alt') {
+        var fromBi = dragItem.fromBoard, fromEi = dragItem.fromIdx;
+        var item = altBoards[fromBi].exercises.splice(fromEi, 1)[0];
+        if (item) {
+          if (fromBi === bi && fromEi < insertIdx) insertIdx--;
+          altBoards[bi].exercises.splice(Math.max(0, insertIdx), 0, item);
+        }
+      }
+      dragOverCard = null;
+      renderAltBoards(); saveBoardState();
+    });
+  }
+  addTouchDrag(el, function() { return { type:'alt', id:ex.id, fromBoard:bi, fromIdx:ei }; });
+  return el;
+}
+
+function setupAltDropzone(colEl, bi) {
+  colEl.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    colEl.classList.add('drag-over');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  colEl.addEventListener('dragleave', function(e) {
+    if (!colEl.contains(e.relatedTarget)) colEl.classList.remove('drag-over');
+  });
+  colEl.addEventListener('drop', function(e) {
+    e.preventDefault();
+    colEl.classList.remove('drag-over');
+    clearCardDropIndicators();
+    if (!dragItem) return;
+    if (dragItem.type === 'bank') {
+      var ex = bank.find(function(b) { return b.id === dragItem.id; });
+      if (!ex) return;
+      altBoards[bi].exercises.push({ id:uid(), srcId:ex.id, name:ex.name, kg:ex.kg, reps:ex.reps, group:ex.group||'', bilateral:ex.bilateral||false });
+    } else if (dragItem.type === 'board') {
+      var item = board[dragItem.fromDay].splice(dragItem.fromIdx, 1)[0];
+      if (item) altBoards[bi].exercises.push(item);
+      renderKanban(); renderPeriodGrid();
+    } else if (dragItem.type === 'alt') {
+      if (dragItem.fromBoard === bi) return;
+      var item = altBoards[dragItem.fromBoard].exercises.splice(dragItem.fromIdx, 1)[0];
+      if (item) altBoards[bi].exercises.push(item);
+    }
+    renderAltBoards(); saveBoardState();
+  });
+}
+
+export function renderAltBoards() {
+  var container = g('altboards');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!altBoards.length) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--muted);padding:6px 0;display:block;">Nenhum treino alternativo — clique em "+ Novo" para criar.</span>';
+    return;
+  }
+  altBoards.forEach(function(ab, bi) {
+    var col = document.createElement('div');
+    col.className = 'altcol';
+
+    var hdr = document.createElement('div');
+    hdr.className = 'kch';
+    var kchTop = document.createElement('div');
+    kchTop.className = 'kch-top';
+
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'kwname' + (ab.name ? '' : ' kwname-empty');
+    nameSpan.textContent = ab.name || '+ nome';
+    nameSpan.style.flex = '1';
+    nameSpan.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var inp = document.createElement('input');
+      inp.className = 'kwname-inp';
+      inp.value = ab.name || '';
+      inp.placeholder = 'ex: Push A';
+      inp.maxLength = 32;
+      nameSpan.replaceWith(inp);
+      inp.focus(); inp.select();
+      function save() { ab.name = inp.value.trim(); renderAltBoards(); saveBoardState(); }
+      inp.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') inp.blur();
+        if (ev.key === 'Escape') renderAltBoards();
+      });
+      inp.addEventListener('blur', save);
+    });
+
+    var cntSpan = document.createElement('span');
+    cntSpan.className = 'kcnt';
+    cntSpan.textContent = ab.exercises.length;
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'sec';
+    delBtn.textContent = '×';
+    delBtn.title = 'Remover treino';
+    delBtn.style.cssText = 'padding:2px 7px;font-size:13px;line-height:1;flex-shrink:0;margin-left:8px;';
+    var _delPending = false, _delTimer = null;
+    delBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!_delPending) {
+        _delPending = true; delBtn.textContent = '✓?';
+        delBtn.style.background = 'var(--red,#e05)'; delBtn.style.color = '#fff';
+        delBtn.style.borderColor = 'var(--red,#e05)';
+        _delTimer = setTimeout(function() {
+          _delPending = false; delBtn.textContent = '×';
+          delBtn.style.background = ''; delBtn.style.color = ''; delBtn.style.borderColor = '';
+        }, 3000);
+      } else {
+        clearTimeout(_delTimer);
+        altBoards.splice(bi, 1);
+        renderAltBoards(); saveBoardState();
+      }
+    });
+
+    kchTop.appendChild(nameSpan);
+    kchTop.appendChild(cntSpan);
+    kchTop.appendChild(delBtn);
+    hdr.appendChild(kchTop);
+    col.appendChild(hdr);
+
+    var body = document.createElement('div');
+    body.className = 'kbody';
+    ab.exercises.forEach(function(ex, ei) { body.appendChild(makeAltCard(ex, bi, ei)); });
+    col.appendChild(body);
+
+    setupAltDropzone(col, bi);
+    container.appendChild(col);
+  });
+}
+
+(function() {
+  var btn = g('btnAddAltBoard');
+  if (btn) btn.addEventListener('click', function() {
+    altBoards.push({ id: uid(), name: '', exercises: [] });
+    renderAltBoards(); saveBoardState();
+  });
+})();
+
 // ── Modal de exercício ────────────────────────
 var editingExId = null;
 
@@ -661,7 +941,15 @@ g('btnConfirmEx').addEventListener('click', function() {
         }
       });
     });
-    renderKanban(); renderPeriodGrid();
+    altBoards.forEach(function(ab) {
+      ab.exercises.forEach(function(item) {
+        if (item.srcId === editingExId || item.id === editingExId || (oldName && item.name === oldName)) {
+          item.name = name; item.kg = kg; item.reps = reps;
+          item.srcId = editingExId; item.bilateral = bilateral;
+        }
+      });
+    });
+    renderKanban(); renderPeriodGrid(); renderAltBoards();
   } else {
     bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group, repGoal:repGoal, bilateral:bilateral });
   }
