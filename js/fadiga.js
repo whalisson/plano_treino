@@ -972,7 +972,7 @@ export function renderTSBChart(canvas, curState, weeklyFreq, loadPct, compDate) 
     if (loadV) loadV.textContent = Math.round(load * 100);
 
     let cur;
-    try { cur = getFadigaRaw(); } catch (e) { console.error('[TSBProj] getFadigaRaw:', e); return; }
+    try { cur = getFatigaRaw(); } catch (e) { console.error('[TSBProj] getFatigaRaw:', e); return; }
 
     let first;
     try {
