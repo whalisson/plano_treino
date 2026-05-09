@@ -1,6 +1,5 @@
 import { g, uid } from './state.js';
 import { board, renderKanban, renderPeriodGrid } from './logbook.js';
-import { renderTSBChart } from './fadiga.js';
 
 const PEAK_WEEKS = [
   { label: 'S-6', sets: 4, reps: 3, pct: 0.77 },
@@ -157,57 +156,8 @@ export function renderPico() {
     + '<div class="card">'
     +   '<div style="font-size:13px;font-weight:600;margin-bottom:12px">Tentativas na Competição</div>'
     +   attemptCards
-    + '</div>'
-
-    + '<div class="card" style="margin-bottom:14px;">'
-    +   '<div style="font-size:13px;font-weight:600;margin-bottom:3px">Projeção de Forma (TSB)</div>'
-    +   '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">se você treinar assim, em quantos dias seu TSB entra na zona ótima (+5 a +25)?</div>'
-    +   '<canvas id="tsbProjectionCanvas" style="width:100%;display:block;border-radius:6px;background:var(--bg3);"></canvas>'
-    +   '<div id="tsbFormLabel" style="font-size:12px;font-weight:600;margin-top:8px;text-align:center;min-height:18px;"></div>'
-    +   '<div style="display:flex;gap:14px;margin-top:10px;">'
-    +     '<div style="flex:1;">'
-    +       '<label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Dias/semana <span id="tsbFreqVal" style="color:var(--text)">4</span></label>'
-    +       '<input type="range" id="tsbFreqSlider" min="1" max="7" step="1" value="4" style="width:100%;accent-color:var(--accent);" oninput="picoUpdateTSB()">'
-    +     '</div>'
-    +     '<div style="flex:1;">'
-    +       '<label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Carga <span id="tsbLoadVal" style="color:var(--text)">100</span>%</label>'
-    +       '<input type="range" id="tsbLoadSlider" min="10" max="150" step="5" value="100" style="width:100%;accent-color:var(--accent);" oninput="picoUpdateTSB()">'
-    +     '</div>'
-    +   '</div>'
     + '</div>';
-
-  setTimeout(picoUpdateTSB, 0);
 }
-
-export function picoUpdateTSB() {
-  var freqEl  = g('tsbFreqSlider');
-  var loadEl  = g('tsbLoadSlider');
-  var freqV   = g('tsbFreqVal');
-  var loadV   = g('tsbLoadVal');
-  var label   = g('tsbFormLabel');
-  var canvas  = g('tsbProjectionCanvas');
-  if (!freqEl || !canvas) return;
-
-  var freq = parseInt(freqEl.value) || 4;
-  var load = parseFloat(loadEl.value) / 100 || 1.0;
-  if (freqV) freqV.textContent = freq;
-  if (loadV) loadV.textContent = Math.round(load * 100);
-
-  var first = renderTSBChart(canvas, freq, load, picoCompDate);
-
-  if (label) {
-    if (first) {
-      var d    = first.date;
-      var dStr = d.getDate() + '/' + (d.getMonth() + 1);
-      label.textContent = 'Forma ótima em ~' + first.day + ' dias (' + dStr + ')';
-      label.style.color = 'var(--lime)';
-    } else {
-      label.textContent = 'TSB não entra na zona ótima em 60 dias';
-      label.style.color = 'var(--amber)';
-    }
-  }
-}
-globalThis.picoUpdateTSB = picoUpdateTSB;
 
 var _picoLogTarget = null;
 

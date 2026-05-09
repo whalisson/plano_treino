@@ -40,7 +40,7 @@
           <div class="ftg-widget">
             <div class="ftg-row"><span class="ftg-lbl">ATL</span><div class="ftg-track"><div id="ftgAtlBar" class="ftg-fill"></div></div><span id="ftgAtlVal" class="ftg-num">—</span></div>
             <div class="ftg-row"><span class="ftg-lbl">CTL</span><div class="ftg-track"><div id="ftgCtlBar" class="ftg-fill ftg-ctl"></div></div><span id="ftgCtlVal" class="ftg-num">—</span></div>
-            <div class="ftg-row"><span class="ftg-lbl">TSB</span><div class="ftg-track"><div id="ftgTsbBar" class="ftg-fill"></div></div><span id="ftgTsbVal" class="ftg-num">—</span></div>
+            <div class="ftg-row" id="ftgTsbRow" style="cursor:pointer;" title="Ver projeção de forma"><span class="ftg-lbl">TSB</span><div class="ftg-track"><div id="ftgTsbBar" class="ftg-fill"></div></div><span id="ftgTsbVal" class="ftg-num">—</span></div>
           </div>
           <button class="ftg-help" id="fadigaHelpBtn" title="O que é ATL/CTL/TSB?">?</button>
         </div>
@@ -94,6 +94,24 @@
     </div>
   </div>
   <div style="font-size:10px;color:var(--muted);margin-top:4px;">Valores baseados na metodologia RP (Mike Israetel). Séries contadas nos últimos 7 dias.</div>
+</div>
+
+<!-- Popover projeção TSB -->
+<div id="tsbProjPop" class="nfw-help-pop" hidden style="width:320px;">
+  <div style="font-size:13px;font-weight:700;margin-bottom:2px;">Projeção de Forma (TSB)</div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">se treinar assim, em quantos dias o TSB entra na zona ótima (+5 a +25)?</div>
+  <canvas id="tsbProjCanvas" style="width:100%;display:block;border-radius:6px;background:var(--bg3);"></canvas>
+  <div id="tsbProjLabel" style="font-size:11px;font-weight:600;margin-top:8px;text-align:center;min-height:16px;"></div>
+  <div style="display:flex;gap:12px;margin-top:10px;">
+    <div style="flex:1;">
+      <label style="font-size:9px;color:var(--muted);display:block;margin-bottom:3px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Dias/sem <span id="tsbProjFreqVal">4</span></label>
+      <input type="range" id="tsbProjFreqSlider" min="1" max="7" step="1" value="4" style="width:100%;accent-color:var(--accent);">
+    </div>
+    <div style="flex:1;">
+      <label style="font-size:9px;color:var(--muted);display:block;margin-bottom:3px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Carga <span id="tsbProjLoadVal">100</span>%</label>
+      <input type="range" id="tsbProjLoadSlider" min="10" max="150" step="5" value="100" style="width:100%;accent-color:var(--accent);">
+    </div>
+  </div>
 </div>
 
 <!-- Popover explicação ATL/CTL/TSB -->

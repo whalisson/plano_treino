@@ -773,14 +773,14 @@ export function updateFadigaBar() {
 globalThis.updateFadigaBar = updateFadigaBar;
 
 // ── Projeção de forma: TSB futuro ─────────────────────────────────────────────
-// weeklyFreq: dias/semana (0-7) · loadPct: fração da carga normal (0-2) · horizonDays: horizonte
-export function calcTSBProjection(weeklyFreq, loadPct, horizonDays) {
+// curState: resultado de getFatigaRaw() passado pelo chamador
+export function calcTSBProjection(curState, weeklyFreq, loadPct, horizonDays) {
   horizonDays = horizonDays || 60;
   weeklyFreq  = Math.max(0, Math.min(7, weeklyFreq != null ? +weeklyFreq : 4));
   loadPct     = Math.max(0, loadPct != null ? +loadPct : 1.0);
 
   const DAY   = 86400000;
-  const cur   = getFatigaRaw();
+  const cur   = curState;
   const ss    = cur.steadyState    || 1;
   const ssCtl = cur.steadyStateCTL || 1;
   // τ médio ponderado (squat+DL 14d, bench 7d, custom 6d → ~10d)
@@ -812,24 +812,24 @@ export function calcTSBProjection(weeklyFreq, loadPct, horizonDays) {
   return out;
 }
 
-// Desenha o gráfico de projeção TSB num <canvas>. Retorna o primeiro ponto dentro da zona ótima.
-export function renderTSBChart(canvas, weeklyFreq, loadPct, compDate) {
-  if (!canvas) return null;
-  const W  = Math.max(canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 280, 200);
+// Desenha o gráfico de projeção TSB num <canvas>. curState = getFatigaRaw(). Retorna primeiro ponto na zona ótima.
+export function renderTSBChart(canvas, curState, weeklyFreq, loadPct, compDate) {
+  if (!canvas || !curState) return null;
+  const rect = canvas.getBoundingClientRect();
+  const W  = Math.max(rect.width || 280, 200);
   const H  = 130;
   canvas.width  = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  const data    = calcTSBProjection(weeklyFreq, loadPct, 60);
+  const data    = calcTSBProjection(curState, weeklyFreq, loadPct, 60);
   const TSB_LO  = 5, TSB_HI = 25;
   const PL = 28, PR = 6, PT = 10, PB = 18;
   const cW = W - PL - PR, cH = H - PT - PB;
 
-  const curR   = getFadigaRaw();
-  const curTsb = (curR.steadyState > 0 && curR.steadyStateCTL > 0)
-    ? (curR.ctl / curR.steadyStateCTL - curR.fatigue / curR.steadyState) * 100 : 0;
+  const curTsb = (curState.steadyState > 0 && curState.steadyStateCTL > 0)
+    ? (curState.ctl / curState.steadyStateCTL - curState.fatigue / curState.steadyState) * 100 : 0;
 
   const vals = data.map(function(p) { return p.tsb; });
   const minV = Math.min(curTsb - 3, -5, Math.min.apply(null, vals));
@@ -948,4 +948,56 @@ export function renderTSBChart(canvas, weeklyFreq, loadPct, compDate) {
   if (!pop) return;
   document.addEventListener('click', function () { pop.classList.remove('on'); });
   pop.addEventListener('click', function (e) { e.stopPropagation(); });
+}());
+
+// Popover projeção TSB — abre ao clicar na linha TSB da navbar
+(function () {
+  const row = document.getElementById('ftgTsbRow');
+  const pop = document.getElementById('tsbProjPop');
+  if (!row || !pop) return;
+
+  function _updateTsbProj() {
+    const freqEl = document.getElementById('tsbProjFreqSlider');
+    const loadEl = document.getElementById('tsbProjLoadSlider');
+    const freqV  = document.getElementById('tsbProjFreqVal');
+    const loadV  = document.getElementById('tsbProjLoadVal');
+    const label  = document.getElementById('tsbProjLabel');
+    const canvas = document.getElementById('tsbProjCanvas');
+    if (!freqEl || !canvas) return;
+
+    const freq = parseInt(freqEl.value) || 4;
+    const load = parseFloat(loadEl.value) / 100 || 1.0;
+    if (freqV) freqV.textContent = freq;
+    if (loadV) loadV.textContent = Math.round(load * 100);
+
+    let cur;
+    try { cur = getFadigaRaw(); } catch (e) { return; }
+
+    const first = renderTSBChart(canvas, cur, freq, load, null);
+    if (!label) return;
+    if (first) {
+      const d = first.date;
+      label.textContent = 'Forma ótima em ~' + first.day + 'd (' + d.getDate() + '/' + (d.getMonth() + 1) + ')';
+      label.style.color = 'var(--lime)';
+    } else {
+      label.textContent = 'TSB não entra na zona ótima em 60 dias';
+      label.style.color = 'var(--amber)';
+    }
+  }
+
+  row.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (pop.classList.contains('on')) { pop.classList.remove('on'); return; }
+    const rc   = row.getBoundingClientRect();
+    const left = Math.min(rc.left, window.innerWidth - 340);
+    pop.style.top  = (rc.bottom + 8) + 'px';
+    pop.style.left = Math.max(8, left) + 'px';
+    pop.classList.add('on');
+    requestAnimationFrame(_updateTsbProj);
+  });
+
+  pop.addEventListener('click', function (e) { e.stopPropagation(); });
+  document.addEventListener('click', function () { pop.classList.remove('on'); });
+
+  pop.addEventListener('input', _updateTsbProj);
 }());
