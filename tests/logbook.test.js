@@ -7,18 +7,12 @@ describe('detectExerciseGroup() — Push', () => {
   const pushExercises = [
     'Supino Reto',
     'Supino Inclinado Halteres',
-    'Crucifixo Máquina',
     'Desenvolvimento Arnold',
-    'Elevação Lateral',
-    'Tríceps Testa',
-    'Pushdown Corda',
     'Dip Paralelas',
     'Push Press',
     'Flexão Solo',
     'Overhead Press',
     'Close Grip Bench',
-    'Voador Peito Máquina',
-    'Fly Cable',
   ];
 
   pushExercises.forEach(name => {
@@ -32,14 +26,9 @@ describe('detectExerciseGroup() — Pull', () => {
   const pullExercises = [
     'Remada Baixa',
     'Puxada Frente',
-    'Rosca Direta',
-    'Rosca Martelo',
     'Barra Fixa',
     'Pulldown Polia',
-    'Encolhimento Trapézio',
-    'Face Pull',
     'Deadlift',
-    'Pulldown Polia',
   ];
 
   pullExercises.forEach(name => {
@@ -56,17 +45,45 @@ describe('detectExerciseGroup() — Legs', () => {
     'Afundo',
     'Hip Thrust',
     'Stiff',
-    'Flexora',
-    'Extensora',
-    'Panturrilha em Pé',
     'Bulgaro Unilateral',
-    'Cadeira Flexora',
     'RDL',
   ];
 
   legExercises.forEach(name => {
     test(`"${name}" → legs`, () => {
       expect(detectExerciseGroup(name)).toBe('legs');
+    });
+  });
+});
+
+describe('detectExerciseGroup() — Isolados (sem grupo MRV)', () => {
+  const isolatedExercises = [
+    // ombro isolado
+    'Elevação Lateral',
+    'Elevação Frontal',
+    'Face Pull',
+    // peito isolado
+    'Crucifixo Máquina',
+    'Voador Peito Máquina',
+    'Fly Cable',
+    // bíceps
+    'Rosca Direta',
+    'Rosca Martelo',
+    // tríceps
+    'Tríceps Testa',
+    'Pushdown Corda',
+    // trapézio isolado
+    'Encolhimento Trapézio',
+    // perna isolado
+    'Flexora',
+    'Extensora',
+    'Cadeira Flexora',
+    'Panturrilha em Pé',
+  ];
+
+  isolatedExercises.forEach(name => {
+    test(`"${name}" → '' (isolado)`, () => {
+      expect(detectExerciseGroup(name)).toBe('');
     });
   });
 });
@@ -108,11 +125,11 @@ describe('detectExerciseGroup() — Casos limite', () => {
   test('detecção é case-insensitive', () => {
     expect(detectExerciseGroup('SUPINO RETO')).toBe('push');
     expect(detectExerciseGroup('agachamento')).toBe('legs');
-    expect(detectExerciseGroup('ROSCA DIRETA')).toBe('pull');
+    expect(detectExerciseGroup('REMADA BAIXA')).toBe('pull');
   });
 
   test('detecção ignora acentos', () => {
-    expect(detectExerciseGroup('Elevação Lateral')).toBe('push');
+    expect(detectExerciseGroup('Elevação Lateral')).toBe('');
     expect(detectExerciseGroup('Puxada à Frente')).toBe('pull');
   });
 });
@@ -237,9 +254,9 @@ describe('bank — operações CRUD', () => {
   });
 
   test('banco pode ter múltiplos exercícios de grupos diferentes', () => {
-    bank.push({ id: uid(), name: 'Supino Reto',  kg: 80, reps: '3x10', group: detectExerciseGroup('Supino Reto')  });
-    bank.push({ id: uid(), name: 'Rosca Direta', kg: 30, reps: '3x12', group: detectExerciseGroup('Rosca Direta') });
-    bank.push({ id: uid(), name: 'Agachamento',  kg: 100, reps: '4x8', group: detectExerciseGroup('Agachamento')  });
+    bank.push({ id: uid(), name: 'Supino Reto', kg: 80,  reps: '3x10', group: detectExerciseGroup('Supino Reto') });
+    bank.push({ id: uid(), name: 'Remada Baixa', kg: 60, reps: '3x10', group: detectExerciseGroup('Remada Baixa') });
+    bank.push({ id: uid(), name: 'Agachamento', kg: 100, reps: '4x8',  group: detectExerciseGroup('Agachamento') });
     expect(bank).toHaveLength(3);
     expect(bank[0].group).toBe('push');
     expect(bank[1].group).toBe('pull');
