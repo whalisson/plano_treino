@@ -334,13 +334,10 @@ export function renderWorkoutHistory() {
 
 var _exLog = null; // { dayIdx, exIdx, exName, plannedKg, sets: [] }
 
-export function openExLog(board, dayIdx, exIdx) {
-  var ex = board[dayIdx] && board[dayIdx][exIdx];
-  if (!ex) return;
+function _openExLogCore(ex, dayIdx, exIdx) {
   var last = getLastSessionForDay(workoutLog, dayIdx);
   var lastEx = last && last.exercises.find(function(e) { return e.name === ex.name; });
   _exLog = { dayIdx: dayIdx, exIdx: exIdx, exName: ex.name, plannedKg: ex.kg, group: ex.group || '', bilateral: ex.bilateral || false, sets: [] };
-
   g('mExLogTitle').textContent = ex.name;
   g('mExLogPlanned').textContent = ex.reps + ' · ' + ex.kg + 'kg planejado';
   g('mExLogLast').textContent = lastEx && lastEx.sets.length
@@ -351,6 +348,17 @@ export function openExLog(board, dayIdx, exIdx) {
   _renderExLogSets();
   g('mExLog').classList.add('on');
   g('mExLogReps').focus();
+}
+
+export function openExLog(board, dayIdx, exIdx) {
+  var ex = board[dayIdx] && board[dayIdx][exIdx];
+  if (!ex) return;
+  _openExLogCore(ex, dayIdx, exIdx);
+}
+
+export function openExLogFromEx(ex) {
+  if (!ex) return;
+  _openExLogCore(ex, 7, 0);
 }
 
 function _renderExLogSets() {

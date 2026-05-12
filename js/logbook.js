@@ -28,6 +28,10 @@ export function detectExerciseGroup(rawName) {
   // abdômen, prancha, rotações, anti-rotação, estabilização
   if (/\bcore\b|abdom|crunch|sit.?up|prancha|plank|obliq|russian.?twist|twist|vacuum|hipopressiv|hipopress|bird.?dog|hollow.?body|dragon.?flag|ab.?wheel|roda.?ab|rollout|hanging.*leg|knee.*raise|elevacao.*perna.*sus|captain.?chair|decline.*crunch|cable.*crunch|pallof|woodchop|wood.?chop|mountain.*climb|toe.?touch|v.?up|jackknife|suitcase.*crunch|windmill|turkish.?get|dead.?bug|side.?plank|reverse.?crunch|bicycle.*crunch|bicicleta.*abd|toque.*tornozelo|prancha.*lat|superman.*abd|estabilizacao|anti.?rotacao/.test(n)) return 'core';
 
+  // ── ISOLADOS ─────────────────────────────────────────
+  // Movimentos uni-articulares não contam para MEV/MAV/MRV
+  if (/elev.*later|elev.*front|lateral.*raise|front.*raise|crucifixo|voador|flye?\b|pec.?deck|cable.*cross|cross.*over|polia.*cross|\brosca\b|\bcurl\b|\bbicep|martelo|zottman|concentration|preacher|scott|spider.?curl|pushdown|pressdown|skull|frances|kickback.*tri|tri.*kickback|coice.*tri|tri.*coice|extens.*tri|tri.*extens|testa.*halt|testa.*barra|triceps.*testa|triceps.*halt|encolhim|shrug|face.?pull|reverse.?fl|voador.*post|passaro\b|rear.*delt|posterior.*ombro|leg.?curl|leg.?extens|cadeira.?flex|cadeira.?ext|extensao.*joelho|extensora\b|flexora\b|panturrilha|\bcalf\b|gemeos?\b|standing.*calf|seated.*calf|donkey.*calf|aducao|abducao|adutor|abdutor|maq.*adut|maq.*abdut|hip.?abduct|hip.?adduct|inner.?thigh|outer.?thigh|donkey.?kick|kickback.*glut|glut.*kickback|\bcoice\b|sissy/.test(n)) return '';
+
   // ── LEGS ────────────────────────────────────────────
   // quadríceps, posterior, glúteo, panturrilha, adutores, cargas
   if (/agacham|squat|leg.?press|leg.?curl|leg.?extens|\bleg\b|perna|afundo|lunge|bulgar|passada|split.?squat|pistol|goblet|front.?squat|zercher|pause.?squat|box.?squat|agach.*front|agach.*gobl|agach.*sumo|sumo.?agach|hip.?thrust|glut|elevacao.?pelvica|ponte.?glut|kickback.*glut|glut.*kickback|coice|donkey.?kick|flexora|extensora|cadeira.?flex|cadeira.?ext|leg.?curl|leg.?ext|panturrilha|calf|gemeo|gemeos|standing.?calf|seated.?calf|donkey.?calf|stiff|rdl|romanian|good.?morning|nordic.?curl|single.?leg|unilateral.*perna|terra.?sumo|terra.?conv|terra.?defic|deficit.?dead|rack.?dead|snatch|aducao|abducao|adutor|abdutor|maq.*adut|maq.*abdut|inner.?thigh|outer.?thigh|hip.?abduct|hip.?adduct|sissy|wall.?sit|step.?up|box.?jump|box.?step|farmer.?walk|sled|prowler|plie|elev.*quadril|swing.*kettle|kb.?swing|kettlebell.?swing|hack.?squat|hack\b|45.?grau|45\s*graus|cadeira.*leg|leg.*machine|extensao.*joelho|45.*graus/.test(n)) return 'legs';
@@ -651,8 +655,25 @@ function makeAltCard(ex, bi, ei) {
   var el = document.createElement('div');
   el.className = 'altex';
   el.dataset.exid = ex.id;
+  var dispKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg;
+  if (deloadMode && ex.kg > 0) el.classList.add('kex--deload');
   el.innerHTML = '<div class="kexname">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
-    + '<div class="kexmeta">' + (ex.kg > 0 ? ex.kg + 'kg · ' : '') + ex.reps + '</div>';
+    + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
+    + (dispKg > 0 ? dispKg + 'kg · ' : '') + ex.reps + '</div>';
+
+  if (ex.kg > 0) {
+    var logBtn = document.createElement('button');
+    logBtn.className = 'kexlog'; logBtn.textContent = '▶'; logBtn.title = 'Registrar série';
+    logBtn.style.touchAction = 'manipulation';
+    var _openLog = function(e) {
+      e.stopPropagation();
+      if (typeof openAltExLog === 'function') openAltExLog(bi, ei);
+    };
+    logBtn.addEventListener('click', _openLog);
+    logBtn.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
+    logBtn.addEventListener('touchend', function(e) { e.stopPropagation(); e.preventDefault(); _openLog(e); }, { passive:false });
+    el.appendChild(logBtn);
+  }
 
   var rm = document.createElement('button');
   rm.className = 'kexrm'; rm.textContent = '×';

@@ -20,7 +20,7 @@ import { rpeBlocks, setRpeBlocks, renderRPEBlocks,
 import { workoutLog, setWorkoutLog,
   openWorkoutLogModal, wlAddSet, wlRemoveSet,
   renderWorkoutHistory, deleteExerciseHistory,
-  openExLog, exLogAddSet, exLogSave } from './workoutlog.js';
+  openExLog, openExLogFromEx, exLogAddSet, exLogSave } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase, resetCycle } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
@@ -105,6 +105,7 @@ globalThis.renderWorkoutHistory = renderWorkoutHistory;
 globalThis.deleteExerciseHistory = deleteExerciseHistory;
 globalThis.renderVolumeBars = renderVolumeBars;
 globalThis.openExLog            = function(di, ei) { openExLog(board, di, ei); };
+globalThis.openAltExLog         = function(bi, ei) { var ex = altBoards[bi] && altBoards[bi].exercises[ei]; if (ex) openExLogFromEx(ex); };
 globalThis.exLogAddSet          = exLogAddSet;
 globalThis.exLogSave            = exLogSave;
 
