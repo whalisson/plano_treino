@@ -409,11 +409,41 @@ function makeBankPill(ex) {
   return el;
 }
 
+// Trava de edição de peso — persistida em localStorage. Evita cliques acidentais no mobile.
+var _kgEditLocked = localStorage.getItem('kgEditLocked') === '1';
+if (_kgEditLocked && typeof document !== 'undefined' && document.body) document.body.classList.add('kg-locked');
+
+function isKgEditLocked() { return _kgEditLocked; }
+
+// Ícones Material Design (filled) 24×24 — herdam cor via fill=currentColor
+var _SVG_LOCK      = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>';
+var _SVG_LOCK_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>';
+
+function syncKgLockBtn() {
+  var btn = g('btnKgLock'); if (!btn) return;
+  btn.innerHTML = _kgEditLocked ? _SVG_LOCK : _SVG_LOCK_OPEN;
+  btn.title     = _kgEditLocked ? 'Destravar edição de peso' : 'Travar edição de peso';
+  btn.setAttribute('aria-label', btn.title);
+  btn.classList.toggle('kg-lock-on', _kgEditLocked);
+}
+
+(function() {
+  var btn = g('btnKgLock'); if (!btn) return;
+  btn.addEventListener('click', function() {
+    _kgEditLocked = !_kgEditLocked;
+    localStorage.setItem('kgEditLocked', _kgEditLocked ? '1' : '0');
+    document.body.classList.toggle('kg-locked', _kgEditLocked);
+    syncKgLockBtn();
+  });
+  syncKgLockBtn();
+})();
+
 // Anexa edição inline do peso a um span. onSave(newKg) é chamado após validação.
 function attachInlineKgEditor(span, ex, onSave) {
   span.style.cursor = 'pointer';
   span.title = ex.kg > 0 ? 'Clique para editar peso' : 'Clique para definir peso';
   var startEdit = function(e) {
+    if (isKgEditLocked()) { e.stopPropagation(); return; }
     e.stopPropagation();
     if (span.dataset.editing === '1') return;
     span.dataset.editing = '1';
@@ -427,12 +457,14 @@ function attachInlineKgEditor(span, ex, onSave) {
     var done = false;
     var commit = function(save) {
       if (done) return; done = true;
+      var changed = false;
       if (save) {
         var v = parseFloat(inp.value);
-        if (isFinite(v) && v >= 0 && v !== ex.kg) onSave(v);
+        if (isFinite(v) && v >= 0 && v !== ex.kg) { onSave(v); changed = true; }
       }
-      // re-render ocorre em onSave; se cancelou, restaura span
-      if (!save && inp.parentNode) {
+      // Se onSave foi chamado, a re-render substitui o card inteiro.
+      // Sem mudança (ou cancel), restaura o span manualmente para fechar o input.
+      if (!changed && inp.parentNode) {
         inp.replaceWith(span);
         span.dataset.editing = '';
       }

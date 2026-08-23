@@ -359,6 +359,9 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .kexmeta{font-family:var(--mono);font-size:10px;color:var(--lime);margin-top:2px;}
 .kexkg{border-bottom:1px dashed transparent;padding-bottom:1px;transition:border-color .15s;}
 .kexkg:hover{border-bottom-color:var(--accent);}
+body.kg-locked .kexkg{cursor:default!important;}
+body.kg-locked .kexkg:hover{border-bottom-color:transparent!important;}
+#btnKgLock.kg-lock-on{color:var(--amber);border-color:var(--amber);box-shadow:0 0 8px rgba(251,191,36,.25);}
 .kexgrip{position:absolute;top:0;left:0;bottom:0;display:flex;align-items:center;justify-content:center;width:14px;color:var(--muted);font-size:11px;letter-spacing:-3px;cursor:grab;user-select:none;touch-action:none;opacity:.45;transition:opacity .15s,color .15s;line-height:1;}
 .kexgrip:hover{opacity:1;color:var(--accent);}
 .kexgrip:active{cursor:grabbing;}
