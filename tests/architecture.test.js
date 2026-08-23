@@ -46,6 +46,7 @@ const SAVE_KEYS = [
   'cardioDailyGoal', 'cardioExtra', 'cardioGoal',
   'checks', 'customLifts', 'cycleHistory', 'cycleStartDates',
   'deloadMode',
+  'exerciseNotes',
   'kgHistory',
   'periodLog', 'picoCompDate',
   'rmAgacha', 'rmHistory', 'rmSupino', 'rmTerra', 'rmTests',
