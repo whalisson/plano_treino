@@ -361,6 +361,8 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .kexkg:hover{border-bottom-color:var(--accent);}
 body.kg-locked .kexkg{cursor:default!important;}
 body.kg-locked .kexkg:hover{border-bottom-color:transparent!important;}
+#btnKgLock{min-width:44px;min-height:36px;padding:6px 12px;display:inline-flex;align-items:center;justify-content:center;line-height:1;}
+#btnKgLock svg{width:20px;height:20px;display:block;}
 #btnKgLock.kg-lock-on{color:var(--amber);border-color:var(--amber);box-shadow:0 0 8px rgba(251,191,36,.25);}
 .kexgrip{position:absolute;top:0;left:0;bottom:0;display:flex;align-items:center;justify-content:center;width:14px;color:var(--muted);font-size:11px;letter-spacing:-3px;cursor:grab;user-select:none;touch-action:none;opacity:.45;transition:opacity .15s,color .15s;line-height:1;}
 .kexgrip:hover{opacity:1;color:var(--accent);}
