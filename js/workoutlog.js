@@ -1,7 +1,7 @@
 // ── GORILA GYM — workoutlog.js ────────────────
 // Registro de execucao de treinos: sessoes, sets realizados e historico
 
-import { uid, g, saveState } from './state.js';
+import { uid, g, saveState, showUndo } from './state.js';
 import { DAYS } from './constants.js';
 
 // ── Estado ────────────────────────────────────
@@ -268,18 +268,36 @@ export function finishWorkoutLog() {
 }
 
 export function deleteExerciseHistory(name) {
+  // Snapshot dos sets por (sessionId, exName) para permitir undo
+  var backup = [];
   workoutLog = workoutLog.map(function(s) {
-    var newExercises = s.exercises.map(function(ex) {
-      if (ex.name !== name) return ex;
+    var newExercises = s.exercises.map(function(ex, exIdx) {
+      if (ex.name !== name || !ex.sets.length) return ex;
+      backup.push({ sessionId: s.id, exIdx: exIdx, sets: ex.sets });
       return Object.assign({}, ex, { sets: [] });
     });
     return Object.assign({}, s, { exercises: newExercises });
   });
-  saveState();
   renderWorkoutHistory();
+  if (!backup.length) { saveState(); return; }
+  showUndo('Histórico de "' + name + '" apagado', function() {
+    var byId = {};
+    backup.forEach(function(b) { (byId[b.sessionId] = byId[b.sessionId] || []).push(b); });
+    workoutLog = workoutLog.map(function(s) {
+      var restores = byId[s.id];
+      if (!restores) return s;
+      var newExercises = s.exercises.slice();
+      restores.forEach(function(r) {
+        if (newExercises[r.exIdx]) newExercises[r.exIdx] = Object.assign({}, newExercises[r.exIdx], { sets: r.sets });
+      });
+      return Object.assign({}, s, { exercises: newExercises });
+    });
+    renderWorkoutHistory();
+    saveState();
+  }, saveState);
 }
 
-var _wlHistoryGroup = '';
+var _wlHistoryGroup = localStorage.getItem('wlHistoryGroupFilter') || '';
 
 export function renderWorkoutHistory() {
   var section = g('wlHistorySection');
@@ -324,8 +342,7 @@ export function renderWorkoutHistory() {
   // Wires up delete buttons (safer than inline — avoids quoting issues with special chars)
   container.querySelectorAll('.wlh-del').forEach(function(btn) {
     btn.onclick = function() {
-      var n = btn.getAttribute('data-name');
-      window.showConfirm('Apagar histórico', 'Apagar todo o histórico de "' + n + '"?', function() { deleteExerciseHistory(n); });
+      deleteExerciseHistory(btn.getAttribute('data-name'));
     };
   });
 }
@@ -474,9 +491,15 @@ if (typeof document !== 'undefined') {
     // Filtro de grupo no histórico de execução
     var wlFilter = g('wlHistoryGroupFilter');
     if (wlFilter) {
+      // Restaura visualmente o botão ativo a partir do localStorage
+      wlFilter.querySelectorAll('.bank-filter-btn').forEach(function(b) {
+        if (b.dataset.group === _wlHistoryGroup) b.classList.add('active');
+        else                                     b.classList.remove('active');
+      });
       wlFilter.addEventListener('click', function(e) {
         var btn = e.target.closest('.bank-filter-btn'); if (!btn) return;
         _wlHistoryGroup = btn.dataset.group;
+        localStorage.setItem('wlHistoryGroupFilter', _wlHistoryGroup);
         wlFilter.querySelectorAll('.bank-filter-btn').forEach(function(b) { b.classList.remove('active'); });
         btn.classList.add('active');
         renderWorkoutHistory();

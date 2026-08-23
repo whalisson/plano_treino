@@ -260,6 +260,16 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
   border:1px solid rgba(201,255,58,.25);font-weight:500;
   margin-left:6px;letter-spacing:.04em;
 }
+.week-block.sealed{
+  border-color:rgba(138,136,152,.28);
+  opacity:.78;
+}
+.week-sealed-badge{
+  font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;
+  background:rgba(138,136,152,.12);color:var(--muted);
+  border:1px solid rgba(138,136,152,.3);font-weight:500;
+  margin-left:6px;letter-spacing:.04em;
+}
 
 /* ── ZONE COLORS ── */
 .zbadge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;font-family:var(--mono);}
@@ -347,6 +357,12 @@ button.cy:hover{box-shadow:0 0 20px rgba(80,227,194,.4);}
 .kex,.bpill{-webkit-user-select:none;user-select:none;touch-action:manipulation;-webkit-touch-callout:none;}
 .kexname{font-size:11px;font-weight:600;padding-right:16px;line-height:1.3;letter-spacing:-.01em;}
 .kexmeta{font-family:var(--mono);font-size:10px;color:var(--lime);margin-top:2px;}
+.kexkg{border-bottom:1px dashed transparent;padding-bottom:1px;transition:border-color .15s;}
+.kexkg:hover{border-bottom-color:var(--accent);}
+.kexgrip{position:absolute;top:0;left:0;bottom:0;display:flex;align-items:center;justify-content:center;width:14px;color:var(--muted);font-size:11px;letter-spacing:-3px;cursor:grab;user-select:none;touch-action:none;opacity:.45;transition:opacity .15s,color .15s;line-height:1;}
+.kexgrip:hover{opacity:1;color:var(--accent);}
+.kexgrip:active{cursor:grabbing;}
+.kex,.altex{padding-left:16px;}
 .kexrm{position:absolute;top:2px;right:3px;background:transparent;border:none;color:var(--muted);font-size:14px;padding:5px 7px;cursor:pointer;line-height:1;touch-action:manipulation;}
 .kexrm:hover{color:var(--red);}
 

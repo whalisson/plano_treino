@@ -67,6 +67,8 @@ export let rmHistory = [];
 export let periodLog = [];
 // amrapReps[liftKey][weekIdx] = extraReps digitados pelo usuário na série AMRAP
 export let amrapReps = { supino: {}, agacha: {}, terra: {} };
+// exerciseNotes[srcId] = string livre com anotações do usuário sobre o exercício
+export let exerciseNotes = {};
 
 export function setChecksState(v) { checksState = v; }
 export function setPeriodLog(v) { periodLog = v; }
@@ -77,6 +79,7 @@ export function setKgHistory(v) { kgHistory = v; }
 export function setCycleHistory(v) { cycleHistory = v; }
 export function setCustomLifts(v) { customLifts = v; }
 export function setCycleStartDates(v) { cycleStartDates = v; }
+export function setExerciseNotes(v) { exerciseNotes = v; }
 
 // ── Persistência ──────────────────────────────
 let _saveTimer = null;

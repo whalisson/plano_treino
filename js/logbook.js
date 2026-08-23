@@ -1,10 +1,11 @@
 // ── GORILA GYM — logbook.js ──────────────────
 // Kanban, banco de exercícios, drag-and-drop e progresso de carga
 
-import { uid, g, round05, parseSetCount, getWeekRange, showUndo, saveState, kgHistory } from './state.js';
+import { uid, g, round05, parseSetCount, getWeekRange, showUndo, saveState, kgHistory, exerciseNotes } from './state.js';
+import { workoutLog } from './workoutlog.js';
 import { DAYS } from './constants.js';
 var _bankQuery = '';
-var _bankGroup = '';
+var _bankGroup = localStorage.getItem('bankGroupFilter') || '';
 
 function saveBoardState() {
   saveState();
@@ -130,9 +131,19 @@ function addTouchDrag(el, getItemFn) {
   var startX, startY;
 
   el.addEventListener('touchstart', function(e) {
-    if (e.target.closest('button')) return;
+    // Grip handle: drag imediato sem long-press
+    var onGrip = e.target.closest('.kexgrip');
+    if (!onGrip && e.target.closest('button')) return;
     var t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
+    if (onGrip) {
+      if (window.getSelection) window.getSelection().removeAllRanges();
+      dragItem    = getItemFn();
+      touchGhost  = createTouchGhost(el);
+      el.classList.add('dragging');
+      touchScrollBlocked = true;
+      return;
+    }
     touchLongPressTimer = setTimeout(function() {
       if (window.getSelection) window.getSelection().removeAllRanges();
       dragItem    = getItemFn();
@@ -322,9 +333,14 @@ function makeBankPill(ex) {
     : '';
   var row1 = document.createElement('div');
   row1.className = 'bprow1';
-  row1.innerHTML = (groupBadge ? groupBadge + ' ' : '') + '<span class="bpname">' + ex.name + '</span>' + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '');
+  row1.innerHTML = (groupBadge ? groupBadge + ' ' : '') + '<span class="bpname" title="Clique para ver detalhes">' + ex.name + '</span>' + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '');
   row1.draggable = false;
   el.appendChild(row1);
+  var bpNameEl = row1.querySelector('.bpname');
+  if (bpNameEl) {
+    bpNameEl.style.cursor = 'pointer';
+    bpNameEl.addEventListener('click', function(e) { e.stopPropagation(); openExDetail(ex); });
+  }
 
   // Linha 2: meta + botões
   var row2 = document.createElement('div');
@@ -393,15 +409,83 @@ function makeBankPill(ex) {
   return el;
 }
 
+// Anexa edição inline do peso a um span. onSave(newKg) é chamado após validação.
+function attachInlineKgEditor(span, ex, onSave) {
+  span.style.cursor = 'pointer';
+  span.title = ex.kg > 0 ? 'Clique para editar peso' : 'Clique para definir peso';
+  var startEdit = function(e) {
+    e.stopPropagation();
+    if (span.dataset.editing === '1') return;
+    span.dataset.editing = '1';
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.step = '0.5'; inp.min = '0';
+    inp.value = ex.kg > 0 ? String(ex.kg) : '';
+    inp.draggable = false;
+    inp.style.cssText = 'width:52px;font-family:var(--mono);font-size:10px;padding:1px 4px;background:var(--bg2);border:1px solid var(--accent);color:var(--text);border-radius:3px;';
+    span.replaceWith(inp);
+    inp.focus(); inp.select();
+    var done = false;
+    var commit = function(save) {
+      if (done) return; done = true;
+      if (save) {
+        var v = parseFloat(inp.value);
+        if (isFinite(v) && v >= 0 && v !== ex.kg) onSave(v);
+      }
+      // re-render ocorre em onSave; se cancelou, restaura span
+      if (!save && inp.parentNode) {
+        inp.replaceWith(span);
+        span.dataset.editing = '';
+      }
+    };
+    inp.addEventListener('blur',    function() { commit(true); });
+    inp.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter')  { ev.preventDefault(); inp.blur(); }
+      if (ev.key === 'Escape') { ev.preventDefault(); commit(false); }
+    });
+    // Impede drag/touch enquanto edita
+    inp.addEventListener('mousedown',  function(ev) { ev.stopPropagation(); });
+    inp.addEventListener('touchstart', function(ev) { ev.stopPropagation(); }, { passive:true });
+  };
+  span.addEventListener('click', startEdit);
+  span.addEventListener('mousedown',  function(e) { e.stopPropagation(); });
+  span.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive:true });
+  span.addEventListener('touchend',   function(e) { e.stopPropagation(); e.preventDefault(); startEdit(e); }, { passive:false });
+}
+
+// Atualiza kgHistory ao editar peso inline (mesma lógica do editor do banco)
+function recordKgHistoryChange(srcId, oldKg, newKg, name) {
+  if (!srcId) return;
+  var now = new Date().toLocaleDateString('pt-BR');
+  if (!kgHistory[srcId]) kgHistory[srcId] = [];
+  var hist = kgHistory[srcId];
+  if (hist.length === 0 && oldKg > 0) hist.push({ date:now, kg:oldKg, name:name, note:'inicial' });
+  if (newKg !== oldKg && newKg > 0)   hist.push({ date:now, kg:newKg, name:name, note:'editado' });
+}
+
 function makeBoardCard(ex, di, ei) {
   var el = document.createElement('div');
   el.className   = 'kex';
   el.dataset.exid = ex.id;
   var dispKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg;
   if (deloadMode && ex.kg > 0) el.classList.add('kex--deload');
-  el.innerHTML = '<div class="kexname">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
+  var kgLabel = dispKg > 0 ? (dispKg + 'kg') : '+ peso';
+  el.innerHTML = '<span class="kexgrip" title="Arraste para mover">⋮⋮</span>'
+    + '<div class="kexname" title="Clique para ver detalhes">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
     + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
-    + (dispKg > 0 ? dispKg + 'kg · ' : '') + ex.reps + '</div>';
+    + '<span class="kexkg">' + kgLabel + '</span> · ' + ex.reps + '</div>';
+  attachInlineKgEditor(el.querySelector('.kexkg'), ex, function(newKg) {
+    var srcId = ex.srcId || ex.id;
+    recordKgHistoryChange(srcId, ex.kg, newKg, ex.name);
+    board[di][ei].kg = newKg;
+    renderKanban(); renderPeriodGrid();
+    if (typeof renderProgressCharts === 'function') renderProgressCharts();
+    saveBoardState();
+  });
+  var nameEl = el.querySelector('.kexname');
+  if (nameEl) {
+    nameEl.style.cursor = 'pointer';
+    nameEl.addEventListener('click', function(e) { e.stopPropagation(); openExDetail(ex); });
+  }
 
   if (ex.kg > 0) {
     var logBtn = document.createElement('button');
@@ -657,9 +741,24 @@ function makeAltCard(ex, bi, ei) {
   el.dataset.exid = ex.id;
   var dispKg = (deloadMode && ex.kg > 0) ? Math.round(ex.kg * DELOAD_FACTOR) : ex.kg;
   if (deloadMode && ex.kg > 0) el.classList.add('kex--deload');
-  el.innerHTML = '<div class="kexname">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
+  var kgLabel = dispKg > 0 ? (dispKg + 'kg') : '+ peso';
+  el.innerHTML = '<span class="kexgrip" title="Arraste para mover">⋮⋮</span>'
+    + '<div class="kexname" title="Clique para ver detalhes">' + ex.name + (ex.bilateral ? ' <span class="bilat-badge">×2</span>' : '') + '</div>'
     + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
-    + (dispKg > 0 ? dispKg + 'kg · ' : '') + ex.reps + '</div>';
+    + '<span class="kexkg">' + kgLabel + '</span> · ' + ex.reps + '</div>';
+  attachInlineKgEditor(el.querySelector('.kexkg'), ex, function(newKg) {
+    var srcId = ex.srcId || ex.id;
+    recordKgHistoryChange(srcId, ex.kg, newKg, ex.name);
+    altBoards[bi].exercises[ei].kg = newKg;
+    renderAltBoards();
+    if (typeof renderProgressCharts === 'function') renderProgressCharts();
+    saveBoardState();
+  });
+  var altNameEl = el.querySelector('.kexname');
+  if (altNameEl) {
+    altNameEl.style.cursor = 'pointer';
+    altNameEl.addEventListener('click', function(e) { e.stopPropagation(); openExDetail(ex); });
+  }
 
   if (ex.kg > 0) {
     var logBtn = document.createElement('button');
@@ -875,6 +974,38 @@ export function renderAltBoards() {
 
 // ── Modal de exercício ────────────────────────
 var editingExId = null;
+var DRAFT_KEY   = 'mAddExDraft';
+
+function saveDraft() {
+  if (editingExId) return; // Rascunho só no modo "Novo"
+  var d = {
+    name:      g('mExName').value,
+    kg:        g('mExKg').value,
+    reps:      g('mExReps').value,
+    repGoal:   g('mExRepGoal').value,
+    group:     g('mExGroup').value,
+    bilateral: g('mExBilateral').checked,
+  };
+  if (!d.name && !d.kg && !d.reps && !d.repGoal && !d.bilateral) {
+    sessionStorage.removeItem(DRAFT_KEY); return;
+  }
+  try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch(e) {}
+}
+function restoreDraft() {
+  try {
+    var raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return false;
+    var d = JSON.parse(raw);
+    if (d.name)      g('mExName').value      = d.name;
+    if (d.kg)        g('mExKg').value        = d.kg;
+    if (d.reps)      g('mExReps').value      = d.reps;
+    if (d.repGoal)   g('mExRepGoal').value   = d.repGoal;
+    if (d.group)     g('mExGroup').value     = d.group;
+    if (d.bilateral) g('mExBilateral').checked = true;
+    return !!(d.name || d.kg || d.reps || d.repGoal || d.bilateral);
+  } catch(e) { return false; }
+}
+function clearDraft() { try { sessionStorage.removeItem(DRAFT_KEY); } catch(e) {} }
 
 function openAddModal() {
   editingExId = null;
@@ -884,6 +1015,7 @@ function openAddModal() {
   g('mExBilateral').checked = false;
   g('btnConfirmEx').textContent = 'Adicionar';
   g('mExDeleteWrap').style.display = 'none';
+  if (restoreDraft()) g('mExTitle').textContent = 'Novo Exercício · rascunho';
   g('mAddEx').classList.add('on');
 }
 
@@ -906,6 +1038,13 @@ g('mExName').addEventListener('input', function() {
   g('mExGroup').value = detectExerciseGroup(this.value);
 });
 
+// Auto-save de rascunho enquanto o usuário digita
+['mExName','mExKg','mExReps','mExRepGoal','mExGroup'].forEach(function(id) {
+  var el = g(id); if (el) el.addEventListener('input', saveDraft);
+});
+var _mExBil = g('mExBilateral');
+if (_mExBil) _mExBil.addEventListener('change', saveDraft);
+
 g('btnAddEx').addEventListener('click', openAddModal);
 
 (function() {
@@ -925,15 +1064,66 @@ g('btnAddEx').addEventListener('click', openAddModal);
     applyBankToggle();
   });
 })();
-g('btnCancelEx').addEventListener('click', function() { g('mAddEx').classList.remove('on'); });
+
+// Toggle Progresso de Carga
+(function() {
+  var body = g('progressCharts');
+  var btn  = g('btnToggleProgress');
+  if (!body || !btn) return;
+  var hidden = localStorage.getItem('progressHidden') === '1';
+  function apply() {
+    body.style.display = hidden ? 'none' : '';
+    btn.textContent = hidden ? '▼ mostrar' : '▲ ocultar';
+    btn.title = hidden ? 'Mostrar progresso de carga' : 'Ocultar progresso de carga';
+  }
+  apply();
+  btn.addEventListener('click', function() {
+    hidden = !hidden;
+    localStorage.setItem('progressHidden', hidden ? '1' : '0');
+    apply();
+  });
+})();
+
+// Toggle Histórico de Ciclos
+(function() {
+  var body = g('cycleHistoryBody');
+  var btn  = g('btnToggleCycleHistory');
+  if (!body || !btn) return;
+  var hidden = localStorage.getItem('cycleHistoryHidden') === '1';
+  function apply() {
+    body.style.display = hidden ? 'none' : '';
+    btn.textContent = hidden ? '▼ mostrar' : '▲ ocultar';
+    btn.title = hidden ? 'Mostrar histórico de ciclos' : 'Ocultar histórico de ciclos';
+  }
+  apply();
+  btn.addEventListener('click', function() {
+    hidden = !hidden;
+    localStorage.setItem('cycleHistoryHidden', hidden ? '1' : '0');
+    apply();
+  });
+})();
+g('btnCancelEx').addEventListener('click', function() {
+  g('mAddEx').classList.remove('on');
+  if (!editingExId) clearDraft();
+});
 
 g('bankGroupFilter').addEventListener('click', function(e) {
   var btn = e.target.closest('.bank-filter-btn'); if (!btn) return;
   _bankGroup = btn.dataset.group;
-  document.querySelectorAll('.bank-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  localStorage.setItem('bankGroupFilter', _bankGroup);
+  g('bankGroupFilter').querySelectorAll('.bank-filter-btn').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
   renderBank();
 });
+
+// Restaura visualmente o botão ativo do filtro do banco a partir do localStorage
+(function() {
+  var wrap = g('bankGroupFilter'); if (!wrap) return;
+  wrap.querySelectorAll('.bank-filter-btn').forEach(function(b) {
+    if (b.dataset.group === _bankGroup) b.classList.add('active');
+    else                                 b.classList.remove('active');
+  });
+})();
 
 g('btnConfirmEx').addEventListener('click', function() {
   var name     = g('mExName').value.trim(); if (!name) return;
@@ -975,6 +1165,7 @@ g('btnConfirmEx').addEventListener('click', function() {
     bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group, repGoal:repGoal, bilateral:bilateral });
   }
   g('mAddEx').classList.remove('on');
+  if (!editingExId) clearDraft();
   renderBank();
   renderProgressCharts();
   saveState();
@@ -982,11 +1173,129 @@ g('btnConfirmEx').addEventListener('click', function() {
 
 g('btnDeleteEx').addEventListener('click', function() {
   if (!editingExId) return;
-  bank = bank.filter(function(b) { return b.id !== editingExId; });
+  var idx   = bank.findIndex(function(b) { return b.id === editingExId; });
+  if (idx === -1) return;
+  var saved = JSON.parse(JSON.stringify(bank[idx]));
+  bank.splice(idx, 1);
   g('mAddEx').classList.remove('on');
   renderBank();
-  saveState();
+  showUndo('"' + saved.name + '" removido do banco', function() {
+    bank.splice(idx, 0, saved);
+    renderBank();
+    saveState();
+  }, saveState);
 });
+
+// ── Modal de Detalhe do Exercício ─────────────
+var _exDetailChart = null;
+
+export function openExDetail(ex) {
+  var srcId = ex.srcId || ex.id;
+  var name  = ex.name;
+
+  g('mExDetailTitle').textContent = name;
+  var groupBadge = ex.group && GROUP_CSS[ex.group]
+    ? '<span class="bpgroup ' + GROUP_CSS[ex.group] + '">' + GROUP_LABEL[ex.group] + '</span> · '
+    : '';
+  g('mExDetailMeta').innerHTML = groupBadge
+    + (ex.kg > 0 ? ex.kg + 'kg · ' : '')
+    + ex.reps
+    + (ex.bilateral ? ' · bilateral' : '');
+
+  // Notas — salvamento automático no blur/input com debounce
+  var notesEl = g('mExDetailNotes');
+  notesEl.value = exerciseNotes[srcId] || '';
+  notesEl.oninput = function() {
+    exerciseNotes[srcId] = notesEl.value;
+    saveState();
+  };
+
+  // PRs a partir das sessões finalizadas
+  var prKg = 0, prSingle = 0, prVol = 0;
+  workoutLog.forEach(function(s) {
+    if (!s.finishedAt) return;
+    s.exercises.forEach(function(e) {
+      if (e.name !== name) return;
+      e.sets.forEach(function(set) {
+        var kg = +set.kg || 0, r = +set.reps || 0;
+        if (kg > prKg) prKg = kg;
+        if (r === 1 && kg > prSingle) prSingle = kg;
+        var v = kg * r; if (v > prVol) prVol = v;
+      });
+    });
+  });
+  function prCard(lbl, val, suffix) {
+    return '<div style="background:var(--bg3);border-radius:6px;padding:8px 10px;text-align:center;">'
+      + '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">' + lbl + '</div>'
+      + '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);">' + (val > 0 ? val + suffix : '—') + '</div>'
+      + '</div>';
+  }
+  g('mExDetailPRs').innerHTML =
+    prCard('Máx carga', prKg, ' kg') +
+    prCard('Máx 1 rep', prSingle, ' kg') +
+    prCard('Máx vol/set', prVol, ' kg');
+
+  // Gráfico kgHistory (só mostra se >= 2 pontos)
+  var hist = kgHistory[srcId] || [];
+  var wrap = g('mExDetailChartWrap');
+  if (_exDetailChart) { _exDetailChart.destroy(); _exDetailChart = null; }
+  if (hist.length >= 2 && typeof Chart !== 'undefined') {
+    wrap.style.display = '';
+    var ctx = g('mExDetailChart').getContext('2d');
+    _exDetailChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: hist.map(function(p) { return p.date; }), datasets: [{
+        data: hist.map(function(p) { return p.kg; }),
+        borderColor:'#6c63ff', backgroundColor:'rgba(108,99,255,.12)',
+        borderWidth:2, pointRadius:4, fill:true, tension:0.3,
+      }]},
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:function(c){return c.parsed.y+' kg';}}}},
+        scales:{
+          x:{ ticks:{color:'#8a8898',font:{size:9}}, grid:{color:'rgba(255,255,255,.04)'}},
+          y:{ ticks:{color:'#8a8898',font:{size:9},callback:function(v){return v+' kg';}}, grid:{color:'rgba(255,255,255,.05)'}, beginAtZero:false }
+        }
+      }
+    });
+  } else {
+    wrap.style.display = 'none';
+  }
+
+  // Últimas 5 sessões
+  var last5 = [];
+  workoutLog.forEach(function(s) {
+    if (!s.finishedAt) return;
+    var e = s.exercises.find(function(x) { return x.name === name; });
+    if (e && e.sets.length) last5.push({ date: s.date, sets: e.sets, ts: s.startedAt });
+  });
+  last5.sort(function(a, b) { return b.ts - a.ts; });
+  last5 = last5.slice(0, 5);
+  g('mExDetailSessions').innerHTML = last5.length
+    ? last5.map(function(h) {
+        return '<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);padding:4px 0;">'
+          + '<span style="color:var(--muted);">' + h.date + '</span>'
+          + '<span>' + h.sets.map(function(s){ return s.kg+'kg×'+s.reps; }).join(' · ') + '</span>'
+          + '</div>';
+      }).join('')
+    : '<span style="color:var(--muted);font-family:var(--sans);font-size:11px;">Nenhuma sessão registrada</span>';
+
+  g('mExDetail').classList.add('on');
+}
+
+(function() {
+  var btn = g('btnCloseExDetail');
+  if (!btn) return;
+  btn.addEventListener('click', function() {
+    g('mExDetail').classList.remove('on');
+    if (_exDetailChart) { _exDetailChart.destroy(); _exDetailChart = null; }
+  });
+  // Fechar clicando no backdrop
+  var bg = g('mExDetail');
+  if (bg) bg.addEventListener('click', function(e) {
+    if (e.target === bg) { bg.classList.remove('on'); if (_exDetailChart) { _exDetailChart.destroy(); _exDetailChart = null; } }
+  });
+})();
 
 // ── Progresso de Carga ────────────────────────
 var progressChartInstances = {};

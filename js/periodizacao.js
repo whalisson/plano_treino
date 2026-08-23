@@ -14,6 +14,26 @@ function parseRMDate(dStr) {
   return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
 }
 
+// Semana parcialmente marcada é encerrada automaticamente após 7 dias sem atividade
+var STALE_WEEK_MS = 7 * 24 * 3600 * 1000;
+
+// Retorna 'done' (todos checks), 'sealed' (parcial + inativa), 'active' (parcial recente), 'empty'
+export function weekStatus(liftKey, wi, wEff) {
+  if (!wEff.series) return 'empty';
+  var totalChecks = 0;
+  wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
+  var state = (checksState[liftKey] || {})[wi] || {};
+  var done  = Object.values(state).filter(Boolean).length;
+  if (done >= totalChecks) return 'done';
+  if (done === 0)          return 'empty';
+  var lastTs = 0;
+  for (var i = 0; i < periodLog.length; i++) {
+    var e = periodLog[i];
+    if (e.liftKey === liftKey && e.weekIdx === wi && e.ts > lastTs) lastTs = e.ts;
+  }
+  return (lastTs > 0 && (Date.now() - lastTs) > STALE_WEEK_MS) ? 'sealed' : 'active';
+}
+
 // ── Tabela de periodização (única — antes duplicada 3×) ──
 export var periodBase = [
   { label:'Semana 1',  series:[{r:'8 reps',p:.50},{r:'5 reps',p:.55},{r:'6x4',p:.60}] },
@@ -49,21 +69,19 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
   if (!c) return;
   c.innerHTML = '';
 
-  // Detecta semana atual: primeira não-descanso não concluída, desde que todas anteriores estejam feitas
+  // Detecta semana atual: primeira não-encerrada, desde que todas anteriores estejam feitas ou encerradas.
+  // Semanas parciais inativas há > 7 dias são consideradas encerradas (usuário passou para a próxima).
   var currentWeekIdx = -1;
   var allPrevDone    = true;
   baseWeeks.forEach(function(w, wi) {
     var wEff = (w.byLift && w.byLift[liftKey]) ? Object.assign({}, w, w.byLift[liftKey]) : w;
     if (wEff.skip || wEff.rest || !wEff.series) return;
-    var totalChecks = 0;
-    wEff.series.forEach(function(s) { totalChecks += parseSetCount(s.r); });
-    var state    = (checksState[liftKey] || {})[wi] || {};
-    var done     = Object.values(state).filter(Boolean).length;
-    var weekDone = done >= totalChecks;
-    if (currentWeekIdx === -1 && !weekDone) {
-      if (allPrevDone || done > 0) currentWeekIdx = wi;
+    var status          = weekStatus(liftKey, wi, wEff);
+    var effectivelyDone = (status === 'done' || status === 'sealed');
+    if (currentWeekIdx === -1 && !effectivelyDone) {
+      if (allPrevDone || status === 'active') currentWeekIdx = wi;
     }
-    if (!weekDone) allPrevDone = false;
+    if (!effectivelyDone) allPrevDone = false;
   });
 
   baseWeeks.forEach(function(w, wi) {
@@ -85,20 +103,27 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
     if (!checksState[liftKey][wi]) checksState[liftKey][wi] = {};
     var weekState  = checksState[liftKey][wi];
     var doneCount  = Object.values(weekState).filter(Boolean).length;
-    var weekDone   = doneCount >= totalChecks;
+    var status     = weekStatus(liftKey, wi, wEff);
+    var weekDone   = (status === 'done');
+    var weekSealed = (status === 'sealed');
     var isCurrent  = wi === currentWeekIdx;
 
     var block = document.createElement('div');
-    block.className = 'week-block' + (weekDone ? ' completed' : '') + (isCurrent ? ' current-week' : '') + (wEff.deload ? ' deload-week' : '');
+    block.className = 'week-block'
+      + (weekDone   ? ' completed' : '')
+      + (weekSealed ? ' sealed'    : '')
+      + (isCurrent  ? ' current-week' : '')
+      + (wEff.deload ? ' deload-week' : '');
     block.id = 'wb-' + liftKey + '-' + wi;
 
     var hdr = document.createElement('div');
     hdr.className = 'week-header';
     hdr.innerHTML = '<span class="week-header-label">' + w.label + '</span>';
-    if (wEff.deload && !weekDone) hdr.innerHTML += '<span class="week-deload-badge">⬇ Deload</span>';
-    if (isCurrent && !weekDone) hdr.innerHTML += '<span class="week-current-badge">▶ Em andamento</span>';
-    if (weekDone)                hdr.innerHTML += '<span class="week-done-badge">✓ Concluída</span>';
-    if (wEff.note && !weekDone) hdr.innerHTML += '<span class="week-header-note">' + wEff.note + '</span>';
+    if (wEff.deload && !weekDone && !weekSealed) hdr.innerHTML += '<span class="week-deload-badge">⬇ Deload</span>';
+    if (isCurrent && !weekDone && !weekSealed)   hdr.innerHTML += '<span class="week-current-badge">▶ Em andamento</span>';
+    if (weekDone)                                 hdr.innerHTML += '<span class="week-done-badge">✓ Concluída</span>';
+    if (weekSealed)                               hdr.innerHTML += '<span class="week-sealed-badge" title="Semana encerrada automaticamente (7d sem atividade)">⏭ Encerrada</span>';
+    if (wEff.note && !weekDone && !weekSealed)   hdr.innerHTML += '<span class="week-header-note">' + wEff.note + '</span>';
 
     var progWrap = document.createElement('div');
     progWrap.className = 'week-header-progress';
@@ -550,9 +575,8 @@ export function buildRmDashboard() {
         if (nextWeekIdx !== -1) return;
         var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
         if (wEff.skip || wEff.rest || !wEff.series) return;
-        var checks = (checksState[lf.key] || {})[wi] || {};
-        var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
-        if (Object.values(checks).filter(Boolean).length < numChecks) nextWeekIdx = wi;
+        var st = weekStatus(lf.key, wi, wEff);
+        if (st !== 'done' && st !== 'sealed') nextWeekIdx = wi;
       });
       if (nextWeekIdx !== -1) {
         var wEff = (periodBase[nextWeekIdx].byLift && periodBase[nextWeekIdx].byLift[lf.key])
@@ -603,9 +627,8 @@ export function buildRmDashboard() {
         if (nextWeekIdx !== -1) return;
         var wEff = (w.byLift && w.byLift[lift.id]) ? Object.assign({}, w, w.byLift[lift.id]) : w;
         if (wEff.skip || wEff.rest || !wEff.series) return;
-        var checks = (checksState[lift.id] || {})[wi] || {};
-        var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
-        if (Object.values(checks).filter(Boolean).length < numChecks) nextWeekIdx = wi;
+        var st = weekStatus(lift.id, wi, wEff);
+        if (st !== 'done' && st !== 'sealed') nextWeekIdx = wi;
       });
       if (nextWeekIdx !== -1) {
         var wEff2 = periodBase[nextWeekIdx];
@@ -638,9 +661,8 @@ function buildCycleProgress() {
       var wEff = (w.byLift && w.byLift[lf.key]) ? Object.assign({}, w, w.byLift[lf.key]) : w;
       if (wEff.skip || wEff.rest) return;
       total++;
-      var checks = checksState[lf.key][wi] || {};
-      var numChecks = wEff.series.reduce(function(a, s) { return a + parseSetCount(s.r); }, 0);
-      var weekDone = Object.values(checks).filter(Boolean).length >= numChecks;
+      var st = weekStatus(lf.key, wi, wEff);
+      var weekDone = (st === 'done' || st === 'sealed');
       if (weekDone) { done++; } else if (nextWeekIdx === -1) { nextWeekIdx = wi; }
     });
     if (lf.key === 'supino') { globalDone = done; globalTotal = total; }
@@ -847,10 +869,17 @@ export function parseCycleDate(dStr) {
 }
 
 function deleteCycle(id) {
-  var newCycleHistory = cycleHistory.filter(function(c) { return c.id !== id; });
-  setCycleHistory(newCycleHistory);
+  var idx   = cycleHistory.findIndex(function(c) { return c.id === id; });
+  if (idx === -1) return;
+  var saved = JSON.parse(JSON.stringify(cycleHistory[idx]));
+  cycleHistory.splice(idx, 1);
   renderCycleHistory();
-  saveState();
+  var label = (LIFT_LABELS[saved.lift] || saved.lift) + ' (' + saved.rmEnd + 'kg)';
+  showUndo('Ciclo ' + label + ' removido', function() {
+    cycleHistory.splice(idx, 0, saved);
+    renderCycleHistory();
+    saveState();
+  }, saveState);
 }
 
 export function renderCycleHistory() {

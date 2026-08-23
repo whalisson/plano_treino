@@ -6,11 +6,12 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
   customLifts, setCustomLifts, cycleStartDates, setCycleStartDates,
   rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog,
-  amrapReps, setAmrapReps } from './state.js';
+  amrapReps, setAmrapReps,
+  exerciseNotes, setExerciseNotes } from './state.js';
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, boardNames, altBoards, setBoard, setBank, setBoardNames, setAltBoards,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
-  renderAltBoards, deloadMode, setDeloadMode } from './logbook.js';
+  renderAltBoards, deloadMode, setDeloadMode, openExDetail } from './logbook.js';
 import { calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
   buildCardioChart, renderBuilderSegs, renderSavedWorkouts,
@@ -87,6 +88,7 @@ globalThis.setupBankDropzone    = setupBankDropzone;
 globalThis.renderPeriodGrid     = renderPeriodGrid;
 globalThis.renderProgressCharts = renderProgressCharts;
 globalThis.renderAltBoards      = renderAltBoards;
+globalThis.openExDetail         = openExDetail;
 globalThis.renderBuilderSegs    = renderBuilderSegs;
 globalThis.renderSavedWorkouts  = renderSavedWorkouts;
 globalThis.renderCycleHistory   = renderCycleHistory;
@@ -236,6 +238,7 @@ document.addEventListener('gorila-save', function() {
       periodLog:     periodLog,
       picoCompDate:  picoCompDate,
       amrapReps:     amrapReps,
+      exerciseNotes: exerciseNotes,
     };
   } catch(e) {
     setSyncStatus('error');
@@ -385,6 +388,7 @@ export function exportData() {
     cycleStartDates: cycleStartDates,
     workoutLog:    workoutLog,
     amrapReps:     amrapReps,
+    exerciseNotes: exerciseNotes,
   };
   var json  = JSON.stringify(data, null, 2);
   var blob  = new Blob([json], { type:'application/json' });
@@ -470,6 +474,7 @@ export function applyState(saved) {
     if (saved.periodLog && Array.isArray(saved.periodLog)) setPeriodLog(saved.periodLog);
     if (saved.picoCompDate) setPicoCompDate(saved.picoCompDate);
     if (saved.amrapReps && typeof saved.amrapReps === 'object') setAmrapReps(saved.amrapReps);
+    if (saved.exerciseNotes && typeof saved.exerciseNotes === 'object') setExerciseNotes(saved.exerciseNotes);
   }
   syncDeloadBtn();
   // Fila de renders — iterar aqui garante que nenhuma função seja esquecida.
@@ -741,6 +746,7 @@ if (_btnDeload) {
     syncDeloadBtn();
     renderKanban();
     renderPeriodGrid();
+    renderAltBoards();
     saveState();
   });
 }

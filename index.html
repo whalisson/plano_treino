@@ -343,11 +343,14 @@
     <div class="sh" style="margin-bottom:14px;">
       <div class="shtitle">Histórico de Ciclos</div>
       <span class="badge bp">Evolução do RM</span>
+      <button id="btnToggleCycleHistory" class="mag" style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:2px 8px;" title="Ocultar histórico de ciclos">▲ ocultar</button>
     </div>
-    <div style="position:relative;height:220px;margin-bottom:14px;" class="card">
-      <canvas id="cycleChart"></canvas>
+    <div id="cycleHistoryBody">
+      <div style="position:relative;height:220px;margin-bottom:14px;" class="card">
+        <canvas id="cycleChart"></canvas>
+      </div>
+      <div id="cycleList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
     </div>
-    <div id="cycleList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
   </div>
 
 </div>
@@ -424,6 +427,7 @@
     <div class="sh" style="margin-bottom:14px;">
       <div class="shtitle">Progresso de Carga</div>
       <span class="badge bg">Histórico de edições</span>
+      <button id="btnToggleProgress" class="mag" style="margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:2px 8px;" title="Ocultar progresso de carga">▲ ocultar</button>
     </div>
     <div id="progressCharts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:13px;"></div>
   </div>
@@ -686,6 +690,34 @@
 </div>
 
 <!-- Modal: add exercise -->
+<!-- Modal: detalhe completo do exercício (histórico + notas + PRs) -->
+<div class="mbg" id="mExDetail">
+  <div class="mbox" style="max-width:640px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;">
+      <div class="mtitle" id="mExDetailTitle" style="margin:0;">—</div>
+      <button class="sec" id="btnCloseExDetail" style="font-size:16px;padding:2px 10px;line-height:1;">×</button>
+    </div>
+    <div id="mExDetailMeta" style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:14px;">—</div>
+
+    <div id="mExDetailPRs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;"></div>
+
+    <div id="mExDetailChartWrap" style="display:none;background:var(--bg3);border-radius:8px;padding:10px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Progresso de carga</div>
+      <div style="position:relative;height:140px;"><canvas id="mExDetailChart"></canvas></div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Notas</label>
+      <textarea id="mExDetailNotes" placeholder="Notas de técnica, adaptações, cues…" style="width:100%;min-height:70px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-family:var(--sans);font-size:12px;resize:vertical;"></textarea>
+    </div>
+
+    <div style="margin-bottom:6px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Últimas sessões</div>
+      <div id="mExDetailSessions" style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-family:var(--mono);"></div>
+    </div>
+  </div>
+</div>
+
 <div class="mbg" id="mAddEx">
   <div class="mbox">
     <div class="mtitle" id="mExTitle">Novo Exercício</div>
