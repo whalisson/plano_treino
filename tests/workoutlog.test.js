@@ -16,6 +16,9 @@ import {
   finishSession,
   getExerciseHistory,
   getLastSessionForDay,
+  getLastSessionForAltBoard,
+  todayDayIdx,
+  normalizeWorkoutLog,
   calcSessionVolume,
   getPersonalRecord,
 } from '../js/workoutlog.js';
@@ -362,5 +365,93 @@ describe('getPersonalRecord()', () => {
   test('retorna null se exercicio nao existe no log', () => {
     let s = finishSession(createWorkoutSession(BOARD_STUB, 0, DATE_STR));
     expect(getPersonalRecord([s], 'Exercicio Inexistente')).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sessoes de treino alternativo — contexto proprio, fora dos 7 dias do board
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('getLastSessionForAltBoard()', () => {
+  const altSession = (altBoardId, date, startedAt) => ({
+    id: 's-' + date, date, dayIdx: 2, dayLabel: 'Push B', altBoardId,
+    startedAt, finishedAt: startedAt + 1, exercises: [],
+  });
+
+  test('retorna null quando nao ha sessoes do treino', () => {
+    expect(getLastSessionForAltBoard([], 'ab1')).toBeNull();
+  });
+
+  test('retorna null sem altBoardId (nao casa com sessoes normais)', () => {
+    const normal = finishSession(createWorkoutSession(BOARD_STUB, 0, '18/04/2026'));
+    expect(getLastSessionForAltBoard([normal], null)).toBeNull();
+    expect(getLastSessionForAltBoard([normal], undefined)).toBeNull();
+  });
+
+  test('encontra a sessao mais recente do mesmo treino alternativo', () => {
+    const log = [altSession('ab1', '11/04/2026', 100), altSession('ab1', '18/04/2026', 200)];
+    expect(getLastSessionForAltBoard(log, 'ab1').date).toBe('18/04/2026');
+  });
+
+  test('nao mistura treinos alternativos diferentes', () => {
+    const log = [altSession('ab1', '11/04/2026', 100), altSession('ab2', '18/04/2026', 200)];
+    expect(getLastSessionForAltBoard(log, 'ab1').date).toBe('11/04/2026');
+  });
+
+  test('encontra a sessao em qualquer dia da semana', () => {
+    const seg = Object.assign(altSession('ab1', '13/04/2026', 100), { dayIdx: 0 });
+    const qui = Object.assign(altSession('ab1', '16/04/2026', 200), { dayIdx: 3 });
+    expect(getLastSessionForAltBoard([seg, qui], 'ab1').date).toBe('16/04/2026');
+  });
+
+  test('getLastSessionForDay ignora sessoes de treino alternativo', () => {
+    const alt = Object.assign(altSession('ab1', '18/04/2026', 300), { dayIdx: 0 });
+    const normal = finishSession(createWorkoutSession(BOARD_STUB, 0, '11/04/2026'));
+    expect(getLastSessionForDay([normal, alt], 0).date).toBe('11/04/2026');
+  });
+});
+
+describe('todayDayIdx()', () => {
+  test('esta no intervalo do board (0..6)', () => {
+    const idx = todayDayIdx();
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(idx).toBeLessThanOrEqual(6);
+  });
+
+  test('Segunda = 0 e Domingo = 6', () => {
+    const spy = vi.spyOn(Date.prototype, 'getDay');
+    spy.mockReturnValue(1); // segunda
+    expect(todayDayIdx()).toBe(0);
+    spy.mockReturnValue(0); // domingo
+    expect(todayDayIdx()).toBe(6);
+    spy.mockRestore();
+  });
+});
+
+describe('normalizeWorkoutLog() — sessoes legadas no pseudo-dia 7', () => {
+  test('preenche dayLabel vazio de sessao alternativa antiga', () => {
+    const legacy = [{ id: 'x', date: '18/04/2026', dayIdx: 7, dayLabel: '', startedAt: 1, finishedAt: 2, exercises: [] }];
+    expect(normalizeWorkoutLog(legacy)[0].dayLabel).toBe('Treino alternativo');
+  });
+
+  test('preenche dayLabel vazio de sessao com dia valido', () => {
+    const legacy = [{ id: 'x', date: '18/04/2026', dayIdx: 0, dayLabel: '', startedAt: 1, finishedAt: 2, exercises: [] }];
+    expect(normalizeWorkoutLog(legacy)[0].dayLabel).toBe('Segunda');
+  });
+
+  test('nao altera sessoes que ja tem dayLabel', () => {
+    const ok = [{ id: 'x', date: '18/04/2026', dayIdx: 0, dayLabel: 'Segunda', startedAt: 1, finishedAt: 2, exercises: [] }];
+    expect(normalizeWorkoutLog(ok)[0]).toBe(ok[0]);
+  });
+
+  test('preserva os sets das sessoes legadas', () => {
+    const legacy = [{ id: 'x', date: '18/04/2026', dayIdx: 7, dayLabel: '', startedAt: 1, finishedAt: 2,
+      exercises: [{ name: 'Supino Reto', sets: [{ kg: 80, reps: 8 }] }] }];
+    expect(normalizeWorkoutLog(legacy)[0].exercises[0].sets).toHaveLength(1);
+  });
+
+  test('nao quebra com entrada invalida', () => {
+    expect(normalizeWorkoutLog(null)).toBeNull();
+    expect(normalizeWorkoutLog([])).toEqual([]);
   });
 });

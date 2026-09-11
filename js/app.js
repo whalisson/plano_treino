@@ -11,7 +11,7 @@ import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
 import { idbSet, RECORD_KEY } from './db.js';
 import { board, bank, boardNames, altBoards, setBoard, setBank, setBoardNames, setAltBoards,
   renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts,
-  renderAltBoards, deloadMode, setDeloadMode, openExDetail } from './logbook.js';
+  renderAltBoards, deloadMode, setDeloadMode, openExDetail, setExerciseKg } from './logbook.js';
 import { calcRM, populateRMLiftSelect, renderRMHistory } from './rm.js';
 import { cardioExtra, setCardioExtra, savedWorkouts, setSavedWorkouts,
   buildCardioChart, renderBuilderSegs, renderSavedWorkouts,
@@ -21,7 +21,7 @@ import { rpeBlocks, setRpeBlocks, renderRPEBlocks,
 import { workoutLog, setWorkoutLog,
   openWorkoutLogModal, wlAddSet, wlRemoveSet,
   renderWorkoutHistory, deleteExerciseHistory,
-  openExLog, openExLogFromEx, exLogAddSet, exLogSave } from './workoutlog.js';
+  openExLog, openExLogFromEx, exLogAddSet, exLogSave, normalizeWorkoutLog } from './workoutlog.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, periodBase, resetCycle } from './periodizacao.js';
 import { renderAnilhas } from './anilhas.js';
 import { renderFeeder } from './feeder.js';
@@ -89,6 +89,8 @@ globalThis.renderPeriodGrid     = renderPeriodGrid;
 globalThis.renderProgressCharts = renderProgressCharts;
 globalThis.renderAltBoards      = renderAltBoards;
 globalThis.openExDetail         = openExDetail;
+// Mudança de carga em um ponto só — workoutlog.js chama daqui (evita ciclo de import)
+globalThis.setExerciseKg        = setExerciseKg;
 globalThis.renderBuilderSegs    = renderBuilderSegs;
 globalThis.renderSavedWorkouts  = renderSavedWorkouts;
 globalThis.renderCycleHistory   = renderCycleHistory;
@@ -107,7 +109,11 @@ globalThis.renderWorkoutHistory = renderWorkoutHistory;
 globalThis.deleteExerciseHistory = deleteExerciseHistory;
 globalThis.renderVolumeBars = renderVolumeBars;
 globalThis.openExLog            = function(di, ei) { openExLog(board, di, ei); };
-globalThis.openAltExLog         = function(bi, ei) { var ex = altBoards[bi] && altBoards[bi].exercises[ei]; if (ex) openExLogFromEx(ex); };
+globalThis.openAltExLog         = function(bi, ei) {
+  var ab = altBoards[bi];
+  var ex = ab && ab.exercises[ei];
+  if (ex) openExLogFromEx(ex, ab);
+};
 globalThis.exLogAddSet          = exLogAddSet;
 globalThis.exLogSave            = exLogSave;
 
@@ -469,7 +475,7 @@ export function applyState(saved) {
     if (saved.rpeBlocks)      setRpeBlocks(saved.rpeBlocks);
     if (saved.customLifts)    setCustomLifts(saved.customLifts);
     if (saved.cycleStartDates) setCycleStartDates(saved.cycleStartDates);
-    if (saved.workoutLog && Array.isArray(saved.workoutLog)) setWorkoutLog(saved.workoutLog);
+    if (saved.workoutLog && Array.isArray(saved.workoutLog)) setWorkoutLog(normalizeWorkoutLog(saved.workoutLog));
     if (saved.deloadMode !== undefined) setDeloadMode(saved.deloadMode);
     if (saved.periodLog && Array.isArray(saved.periodLog)) setPeriodLog(saved.periodLog);
     if (saved.picoCompDate) setPicoCompDate(saved.picoCompDate);
@@ -687,35 +693,8 @@ globalThis.applyProgressionIncrease = function() {
   var inc = parseFloat(g('mProgressionInc').value);
   if (!inc || inc <= 0) { g('mProgression').classList.remove('on'); _progressionPending = null; return; }
 
-  var ex    = _progressionPending.bankEx;
-  var oldKg = ex.kg;
-  var newKg = round05(oldKg + inc);
-  var now   = new Date().toLocaleDateString('pt-BR');
-
-  ex.kg = newKg;
-
-  board.forEach(function(day) {
-    day.forEach(function(item) {
-      if (item.name === ex.name || item.srcId === ex.id) item.kg = newKg;
-    });
-  });
-  altBoards.forEach(function(ab) {
-    ab.exercises.forEach(function(item) {
-      if (item.name === ex.name || item.srcId === ex.id) item.kg = newKg;
-    });
-  });
-
-  if (!kgHistory[ex.id]) kgHistory[ex.id] = [];
-  var hist = kgHistory[ex.id];
-  if (hist.length === 0 && oldKg > 0) hist.push({ date: now, kg: oldKg, name: ex.name, note: 'inicial' });
-  hist.push({ date: now, kg: newKg, name: ex.name, note: 'progressão automática' });
-
-  saveState();
-  renderKanban();
-  renderBank();
-  renderPeriodGrid();
-  renderAltBoards();
-  renderProgressCharts();
+  var ex = _progressionPending.bankEx;
+  setExerciseKg(ex.id, ex.name, round05(ex.kg + inc), 'progressão automática');
 
   g('mProgression').classList.remove('on');
   _progressionPending = null;

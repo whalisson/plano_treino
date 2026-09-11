@@ -485,13 +485,68 @@ function attachInlineKgEditor(span, ex, onSave) {
 }
 
 // Atualiza kgHistory ao editar peso inline (mesma lógica do editor do banco)
-function recordKgHistoryChange(srcId, oldKg, newKg, name) {
+function recordKgHistoryChange(srcId, oldKg, newKg, name, note) {
   if (!srcId) return;
   var now = new Date().toLocaleDateString('pt-BR');
   if (!kgHistory[srcId]) kgHistory[srcId] = [];
   var hist = kgHistory[srcId];
   if (hist.length === 0 && oldKg > 0) hist.push({ date:now, kg:oldKg, name:name, note:'inicial' });
-  if (newKg !== oldKg && newKg > 0)   hist.push({ date:now, kg:newKg, name:name, note:'editado' });
+  if (newKg !== oldKg && newKg > 0)   hist.push({ date:now, kg:newKg, name:name, note:note || 'editado' });
+}
+
+// ── Peso oficial do exercício ─────────────────
+// O mesmo exercício vive em três listas: o banco, os dias do board e os treinos
+// alternativos. Alterar a carga em qualquer uma delas vale para todas as cópias.
+
+// Casa uma instância com o exercício de origem: por srcId quando existe,
+// por nome para instâncias antigas criadas antes do srcId.
+function matchesExercise(item, srcId, name) {
+  if (srcId && (item.srcId === srcId || item.id === srcId)) return true;
+  return !!name && item.name === name;
+}
+
+// Carga atual do exercício — o banco é a fonte de verdade; sem entrada no banco,
+// usa a primeira instância encontrada.
+export function findExerciseKg(srcId, name) {
+  var found = null;
+  bank.forEach(function(b) { if (found === null && matchesExercise(b, srcId, name)) found = b.kg || 0; });
+  if (found !== null) return found;
+  board.forEach(function(day) {
+    day.forEach(function(item) { if (found === null && matchesExercise(item, srcId, name)) found = item.kg || 0; });
+  });
+  altBoards.forEach(function(ab) {
+    ab.exercises.forEach(function(item) { if (found === null && matchesExercise(item, srcId, name)) found = item.kg || 0; });
+  });
+  return found === null ? 0 : found;
+}
+
+// Grava newKg em todas as instâncias. Retorna true se algo mudou.
+export function applyKgEverywhere(srcId, name, newKg) {
+  if (!isFinite(newKg) || newKg < 0) return false;
+  var changed = false;
+  bank.forEach(function(b) {
+    if (matchesExercise(b, srcId, name) && b.kg !== newKg) { b.kg = newKg; changed = true; }
+  });
+  var applyToInstance = function(item) {
+    if (!matchesExercise(item, srcId, name)) return;
+    if (srcId && !item.srcId) item.srcId = srcId; // reata a instância ao banco
+    if (item.kg !== newKg) { item.kg = newKg; changed = true; }
+  };
+  board.forEach(function(day) { day.forEach(applyToInstance); });
+  altBoards.forEach(function(ab) { ab.exercises.forEach(applyToInstance); });
+  return changed;
+}
+
+// Ponto único de mudança de carga: propaga, registra no histórico, re-renderiza
+// e persiste. `note` identifica a origem no gráfico de progresso.
+export function setExerciseKg(srcId, name, newKg, note) {
+  var oldKg = findExerciseKg(srcId, name);
+  if (!applyKgEverywhere(srcId, name, newKg)) return false;
+  recordKgHistoryChange(srcId, oldKg, newKg, name, note);
+  renderKanban(); renderBank(); renderPeriodGrid(); renderAltBoards();
+  renderProgressCharts();
+  saveState();
+  return true;
 }
 
 function makeBoardCard(ex, di, ei) {
@@ -506,12 +561,7 @@ function makeBoardCard(ex, di, ei) {
     + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
     + '<span class="kexkg">' + kgLabel + '</span> · ' + ex.reps + '</div>';
   attachInlineKgEditor(el.querySelector('.kexkg'), ex, function(newKg) {
-    var srcId = ex.srcId || ex.id;
-    recordKgHistoryChange(srcId, ex.kg, newKg, ex.name);
-    board[di][ei].kg = newKg;
-    renderKanban(); renderPeriodGrid();
-    if (typeof renderProgressCharts === 'function') renderProgressCharts();
-    saveBoardState();
+    setExerciseKg(ex.srcId || ex.id, ex.name, newKg);
   });
   var nameEl = el.querySelector('.kexname');
   if (nameEl) {
@@ -779,12 +829,7 @@ function makeAltCard(ex, bi, ei) {
     + '<div class="kexmeta' + (deloadMode && ex.kg > 0 ? ' kexmeta--deload' : '') + '">'
     + '<span class="kexkg">' + kgLabel + '</span> · ' + ex.reps + '</div>';
   attachInlineKgEditor(el.querySelector('.kexkg'), ex, function(newKg) {
-    var srcId = ex.srcId || ex.id;
-    recordKgHistoryChange(srcId, ex.kg, newKg, ex.name);
-    altBoards[bi].exercises[ei].kg = newKg;
-    renderAltBoards();
-    if (typeof renderProgressCharts === 'function') renderProgressCharts();
-    saveBoardState();
+    setExerciseKg(ex.srcId || ex.id, ex.name, newKg);
   });
   var altNameEl = el.querySelector('.kexname');
   if (altNameEl) {
@@ -1176,22 +1221,15 @@ g('btnConfirmEx').addEventListener('click', function() {
       if (kg !== oldKg && kg > 0)         hist.push({ date:now, kg:kg, name:name, note:'editado' });
       ex.name = name; ex.kg = kg; ex.reps = reps; ex.group = group; ex.repGoal = repGoal; ex.bilateral = bilateral;
     }
-    board.forEach(function(day) {
-      day.forEach(function(item) {
-        if (item.srcId === editingExId || item.id === editingExId || (oldName && item.name === oldName)) {
-          item.name = name; item.kg = kg; item.reps = reps;
-          item.srcId = editingExId; item.bilateral = bilateral;
-        }
-      });
-    });
-    altBoards.forEach(function(ab) {
-      ab.exercises.forEach(function(item) {
-        if (item.srcId === editingExId || item.id === editingExId || (oldName && item.name === oldName)) {
-          item.name = name; item.kg = kg; item.reps = reps;
-          item.srcId = editingExId; item.bilateral = bilateral;
-        }
-      });
-    });
+    // Toda instância do exercício (board e treinos alternativos) recebe os
+    // mesmos campos — inclusive group e repGoal, que alimentam MRV e progressão.
+    var syncInstance = function(item) {
+      if (!(item.srcId === editingExId || item.id === editingExId || (oldName && item.name === oldName))) return;
+      item.name = name; item.kg = kg; item.reps = reps; item.group = group;
+      item.repGoal = repGoal; item.srcId = editingExId; item.bilateral = bilateral;
+    };
+    board.forEach(function(day) { day.forEach(syncInstance); });
+    altBoards.forEach(function(ab) { ab.exercises.forEach(syncInstance); });
     renderKanban(); renderPeriodGrid(); renderAltBoards();
   } else {
     bank.push({ id:uid(), name:name, kg:kg, reps:reps, group:group, repGoal:repGoal, bilateral:bilateral });

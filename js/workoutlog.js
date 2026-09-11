@@ -113,15 +113,51 @@ export function getExerciseHistory(log, exerciseName) {
     .sort(function(a, b) { return a.startedAt - b.startedAt; });
 }
 
+function _mostRecent(sessions) {
+  if (sessions.length === 0) return null;
+  return sessions.reduce(function(best, s) {
+    return s.startedAt >= best.startedAt ? s : best;
+  });
+}
+
 /**
- * Retorna a sessao mais recente para o dayIdx (incluindo em andamento).
+ * Retorna a sessao mais recente do dia planejado (incluindo em andamento).
+ * Sessoes de treino alternativo sao ignoradas — elas tem contexto proprio.
  * Retorna null se nenhuma sessao encontrada.
  */
 export function getLastSessionForDay(log, dayIdx) {
-  var filtered = log.filter(function(s) { return s.dayIdx === dayIdx; });
-  if (filtered.length === 0) return null;
-  return filtered.reduce(function(best, s) {
-    return s.startedAt >= best.startedAt ? s : best;
+  return _mostRecent(log.filter(function(s) {
+    return s.dayIdx === dayIdx && !s.altBoardId;
+  }));
+}
+
+/**
+ * Retorna a sessao mais recente de um treino alternativo, em qualquer dia da
+ * semana — um treino alternativo nao esta preso a um dia fixo.
+ * Retorna null se nenhuma sessao encontrada.
+ */
+export function getLastSessionForAltBoard(log, altBoardId) {
+  if (!altBoardId) return null;
+  return _mostRecent(log.filter(function(s) { return s.altBoardId === altBoardId; }));
+}
+
+/**
+ * Indice do dia de hoje na escala do board (0 = Segunda … 6 = Domingo).
+ */
+export function todayDayIdx() {
+  var dow = new Date().getDay(); // 0 = Domingo
+  return dow === 0 ? 6 : dow - 1;
+}
+
+/**
+ * Sessoes antigas de treino alternativo foram gravadas no pseudo-dia 7, que
+ * nao existe em DAYS, e ficaram sem dayLabel. Backfill do rotulo na carga.
+ */
+export function normalizeWorkoutLog(log) {
+  if (!Array.isArray(log)) return log;
+  return log.map(function(s) {
+    if (s.dayLabel) return s;
+    return Object.assign({}, s, { dayLabel: DAYS[s.dayIdx] || 'Treino alternativo' });
   });
 }
 
@@ -165,6 +201,20 @@ export function updateSession(session) {
     return s.id === session.id ? session : s;
   });
   saveState();
+}
+
+/**
+ * O peso oficial do exercicio segue a execucao real: a maior carga registrada
+ * vira a carga planejada em todas as listas (banco, board, treinos alternativos).
+ * Delegado via globalThis para nao criar import circular com logbook.js.
+ */
+function syncOfficialKg(srcId, name, sets) {
+  if (!sets || !sets.length) return;
+  var topKg = sets.reduce(function(max, s) { var kg = +s.kg || 0; return kg > max ? kg : max; }, 0);
+  if (topKg <= 0) return;
+  if (typeof globalThis.setExerciseKg === 'function') {
+    globalThis.setExerciseKg(srcId, name, topKg, 'execução');
+  }
 }
 
 // ── UI do Modal de Registro ───────────────────────────────────────────────────
@@ -260,6 +310,7 @@ export function finishWorkoutLog() {
   if (dateInput) _activeSession = Object.assign({}, _activeSession, { date: dateInput });
   _activeSession = finishSession(_activeSession);
   workoutLog = workoutLog.concat(_activeSession);
+  _activeSession.exercises.forEach(function(ex) { syncOfficialKg(ex.srcId, ex.name, ex.sets); });
   _activeSession = null;
   saveState();
   if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
@@ -349,12 +400,18 @@ export function renderWorkoutHistory() {
 
 // ── Modal focado: um exercício por vez ───────────────────────────────────────
 
-var _exLog = null; // { dayIdx, exIdx, exName, plannedKg, sets: [] }
+var _exLog = null; // { dayIdx, exIdx, exName, altBoardId, dayLabel, plannedKg, sets: [] }
 
-function _openExLogCore(ex, dayIdx, exIdx) {
-  var last = getLastSessionForDay(workoutLog, dayIdx);
+// altBoard: { id, name } quando o registro parte de um treino alternativo.
+function _openExLogCore(ex, dayIdx, exIdx, altBoard) {
+  var last = altBoard
+    ? getLastSessionForAltBoard(workoutLog, altBoard.id)
+    : getLastSessionForDay(workoutLog, dayIdx);
   var lastEx = last && last.exercises.find(function(e) { return e.name === ex.name; });
-  _exLog = { dayIdx: dayIdx, exIdx: exIdx, exName: ex.name, plannedKg: ex.kg, group: ex.group || '', bilateral: ex.bilateral || false, sets: [] };
+  _exLog = { dayIdx: dayIdx, exIdx: exIdx, exName: ex.name, srcId: ex.srcId || ex.id,
+    altBoardId: altBoard ? altBoard.id : null,
+    dayLabel: altBoard ? (altBoard.name || 'Treino alternativo') : (DAYS[dayIdx] || 'Dia ' + (dayIdx + 1)),
+    plannedKg: ex.kg, group: ex.group || '', bilateral: ex.bilateral || false, sets: [] };
   g('mExLogTitle').textContent = ex.name;
   g('mExLogPlanned').textContent = ex.reps + ' · ' + ex.kg + 'kg planejado';
   g('mExLogLast').textContent = lastEx && lastEx.sets.length
@@ -373,9 +430,14 @@ export function openExLog(board, dayIdx, exIdx) {
   _openExLogCore(ex, dayIdx, exIdx);
 }
 
-export function openExLogFromEx(ex) {
+/**
+ * Registro a partir de um exercicio solto — tipicamente de um treino
+ * alternativo, que nao mora em nenhum dia do board. A sessao fica no dia de
+ * hoje e leva o nome do treino alternativo como rotulo.
+ */
+export function openExLogFromEx(ex, altBoard) {
   if (!ex) return;
-  _openExLogCore(ex, 7, 0);
+  _openExLogCore(ex, todayDayIdx(), 0, altBoard && altBoard.id ? altBoard : null);
 }
 
 function _renderExLogSets() {
@@ -408,16 +470,20 @@ export function exLogAddSet() {
 export function exLogSave() {
   if (!_exLog || !_exLog.sets.length) { g('mExLog').classList.remove('on'); _exLog = null; return; }
   var savedExName = _exLog.exName;
+  var savedSrcId  = _exLog.srcId;
   var savedSets   = _exLog.sets.slice();
 
   // Busca ou cria sessão do dia
   var dateStr = todayStr();
-  var existing = getLastSessionForDay(workoutLog, _exLog.dayIdx);
+  var existing = _exLog.altBoardId
+    ? getLastSessionForAltBoard(workoutLog, _exLog.altBoardId)
+    : getLastSessionForDay(workoutLog, _exLog.dayIdx);
   var session;
   if (existing && existing.finishedAt === null) {
     session = Object.assign({}, existing);
   } else {
-    session = { id: uid(), date: dateStr, dayIdx: _exLog.dayIdx, dayLabel: DAYS[_exLog.dayIdx] || '',
+    session = { id: uid(), date: dateStr, dayIdx: _exLog.dayIdx, dayLabel: _exLog.dayLabel,
+      altBoardId: _exLog.altBoardId,
       startedAt: Date.now(), finishedAt: null, exercises: [] };
     workoutLog = workoutLog.concat(session);
   }
@@ -425,7 +491,7 @@ export function exLogSave() {
   // Adiciona ou acumula sets no exercício
   var hasEx = session.exercises.some(function(e) { return e.name === _exLog.exName; });
   if (!hasEx) {
-    var newEx = { name: _exLog.exName, plannedKg: _exLog.plannedKg, group: _exLog.group, bilateral: _exLog.bilateral, sets: _exLog.sets.slice() };
+    var newEx = { srcId: _exLog.srcId, name: _exLog.exName, plannedKg: _exLog.plannedKg, group: _exLog.group, bilateral: _exLog.bilateral, sets: _exLog.sets.slice() };
     session = Object.assign({}, session, { exercises: session.exercises.concat(newEx) });
   } else {
     session = Object.assign({}, session, {
@@ -436,6 +502,8 @@ export function exLogSave() {
   }
 
   workoutLog = workoutLog.map(function(s) { return s.id === session.id ? finishSession(session) : s; });
+  // Antes de checkExerciseProgression, para que a progressão parta da carga real
+  syncOfficialKg(savedSrcId, savedExName, savedSets);
   saveState();
   if (typeof globalThis.updateFadigaBar === 'function') globalThis.updateFadigaBar();
   if (typeof globalThis.renderVolumeBars === 'function') { try { globalThis.renderVolumeBars(); } catch(e) {} }

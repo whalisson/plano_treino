@@ -320,3 +320,86 @@ describe('parseVolume() — integração com board real', () => {
     expect(parseVolume(board[3])).toBe(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Propagação de carga — o mesmo exercício vive no banco, no board e nos
+// treinos alternativos; mudar a carga em um lugar vale para todos.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('applyKgEverywhere() — propagação entre banco, board e alternativos', () => {
+  beforeEach(() => {
+    setBank([{ id: 'src1', name: 'Supino Reto', kg: 80, reps: '3x10', group: 'push' }]);
+    setBoard(Array.from({ length: 7 }, () => []));
+    board[0].push({ id: 'b1', srcId: 'src1', name: 'Supino Reto', kg: 80, reps: '3x10' });
+    setAltBoards([{ id: 'ab1', name: 'Push B', exercises: [
+      { id: 'a1', srcId: 'src1', name: 'Supino Reto', kg: 80, reps: '3x10' },
+    ] }]);
+  });
+
+  test('mudar pelo treino alternativo atualiza o board e o banco', () => {
+    expect(applyKgEverywhere('src1', 'Supino Reto', 85)).toBe(true);
+    expect(altBoards[0].exercises[0].kg).toBe(85);
+    expect(board[0][0].kg).toBe(85);
+    expect(bank[0].kg).toBe(85);
+  });
+
+  test('mudar pelo board atualiza o treino alternativo', () => {
+    applyKgEverywhere('src1', 'Supino Reto', 90);
+    expect(altBoards[0].exercises[0].kg).toBe(90);
+  });
+
+  test('não toca exercícios diferentes', () => {
+    board[0].push({ id: 'b2', srcId: 'src2', name: 'Terra', kg: 110, reps: '3x5' });
+    applyKgEverywhere('src1', 'Supino Reto', 85);
+    expect(board[0][1].kg).toBe(110);
+  });
+
+  test('casa por nome quando a instância antiga não tem srcId', () => {
+    board[1].push({ id: 'legado', name: 'Supino Reto', kg: 80, reps: '3x10' });
+    applyKgEverywhere('src1', 'Supino Reto', 85);
+    expect(board[1][0].kg).toBe(85);
+    expect(board[1][0].srcId).toBe('src1'); // reatado ao banco
+  });
+
+  test('retorna false quando a carga já é a mesma', () => {
+    expect(applyKgEverywhere('src1', 'Supino Reto', 80)).toBe(false);
+  });
+
+  test('ignora valores inválidos', () => {
+    expect(applyKgEverywhere('src1', 'Supino Reto', NaN)).toBe(false);
+    expect(applyKgEverywhere('src1', 'Supino Reto', -5)).toBe(false);
+    expect(bank[0].kg).toBe(80);
+  });
+
+  test('findExerciseKg() usa o banco como fonte de verdade', () => {
+    expect(findExerciseKg('src1', 'Supino Reto')).toBe(80);
+  });
+});
+
+describe('setExerciseKg() — histórico de carga', () => {
+  beforeEach(() => {
+    setBank([{ id: 'src9', name: 'Remada Curvada', kg: 60, reps: '3x10', group: 'pull' }]);
+    setBoard(Array.from({ length: 7 }, () => []));
+    board[2].push({ id: 'b9', srcId: 'src9', name: 'Remada Curvada', kg: 60, reps: '3x10' });
+    setAltBoards([]);
+    delete kgHistory['src9'];
+  });
+
+  test('registra a carga anterior como "inicial" e a nova com a nota informada', () => {
+    setExerciseKg('src9', 'Remada Curvada', 65, 'execução');
+    expect(kgHistory['src9']).toHaveLength(2);
+    expect(kgHistory['src9'][0]).toMatchObject({ kg: 60, note: 'inicial' });
+    expect(kgHistory['src9'][1]).toMatchObject({ kg: 65, note: 'execução' });
+  });
+
+  test('propaga a nova carga para board e banco', () => {
+    setExerciseKg('src9', 'Remada Curvada', 65);
+    expect(bank[0].kg).toBe(65);
+    expect(board[2][0].kg).toBe(65);
+  });
+
+  test('sem mudança não grava histórico', () => {
+    expect(setExerciseKg('src9', 'Remada Curvada', 60)).toBe(false);
+    expect(kgHistory['src9']).toBeUndefined();
+  });
+});

@@ -184,8 +184,13 @@ vi.hoisted(() => {
   `;
 
   // ── Chart.js mock (CDN, not available in tests) ──
+  // Guarda config.data: renderProgressCharts() reusa a instância e escreve em
+  // chart.data.labels / chart.data.datasets[0].data ao atualizar.
   globalThis.Chart = class Chart {
-    constructor() {}
+    constructor(_ctx, config) {
+      this.config = config || {};
+      this.data = (config && config.data) || { labels: [], datasets: [{ data: [] }] };
+    }
     destroy() {}
     update() {}
   };
@@ -238,11 +243,13 @@ Object.assign(globalThis, periodizacaoModule);
 // Setters de board/bank expostos como funções chamáveis nos testes
 globalThis.setBoard = setBoard;
 globalThis.setBank  = setBank;
+globalThis.setAltBoards = setAltBoards;
 
 // ── 5. Proxy globals for mutable state ───────────────────────────────────────
 const proxyMap = {
   board:          { get: () => board,        set: setBoard        },
   bank:           { get: () => bank,         set: setBank         },
+  altBoards:      { get: () => altBoards,    set: setAltBoards    },
   rmHistory:      { get: () => rmHistory,    set: setRmHistory    },
   cardioExtra:    { get: () => cardioExtra,  set: setCardioExtra  },
   savedWorkouts:  { get: () => savedWorkouts, set: setSavedWorkouts },
@@ -264,7 +271,7 @@ for (const [key, { get, set }] of Object.entries(proxyMap)) {
 globalThis.cardioBase = cardioBase;
 
 // ── 7. Expose render functions so tests can find them via globalThis ──────────
-import { detectExerciseGroup, parseVolume, renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts } from '../js/logbook.js';
+import { detectExerciseGroup, parseVolume, renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts, applyKgEverywhere, findExerciseKg, setExerciseKg, altBoards, setAltBoards } from '../js/logbook.js';
 import { calcRM, parseRMDate, populateRMLiftSelect, renderRMHistory } from '../js/rm.js';
 import { parseCardioDate, allCardioSessions, calcCardioStreak, CARDIO_TYPE_LABELS, CARDIO_TYPE_COLORS, buildCardioChart, renderBuilderSegs, renderSavedWorkouts } from '../js/cardio.js';
 import { getRPEFactor, calcRPEWeight, getRPEColor, estimateExecRM, execStates, renderRPEBlocks } from '../js/rpe.js';
@@ -277,6 +284,9 @@ globalThis.renderBank = renderBank;
 globalThis.setupBankDropzone = setupBankDropzone;
 globalThis.renderPeriodGrid = renderPeriodGrid;
 globalThis.renderProgressCharts = renderProgressCharts;
+globalThis.applyKgEverywhere = applyKgEverywhere;
+globalThis.findExerciseKg = findExerciseKg;
+globalThis.setExerciseKg = setExerciseKg;
 globalThis.calcRM = calcRM;
 globalThis.parseRMDate = parseRMDate;
 globalThis.populateRMLiftSelect = populateRMLiftSelect;
