@@ -49,7 +49,7 @@ const SAVE_KEYS = [
   'exerciseNotes',
   'kgHistory',
   'periodLog', 'picoCompDate',
-  'rmAgacha', 'rmHistory', 'rmSupino', 'rmTerra', 'rmTests',
+  'rmAgacha', 'rmHistory', 'rmSupino', 'rmTerra', 'rmTestReps', 'rmTests',
   'rpeBlocks',
   'savedWorkouts',
   'userAge', 'userExp',

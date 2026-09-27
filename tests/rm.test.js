@@ -178,3 +178,61 @@ describe('LIFT_LABELS — definidos corretamente', () => {
     expect(LIFT_LABELS.terra.length).toBeGreaterThan(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// estimate1RM(kg, reps) — usada no teste de RM da periodização
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('estimate1RM()', () => {
+  test('1 rep devolve o próprio peso (uma única já é o máximo)', () => {
+    expect(estimate1RM(200, 1)).toBe(200);
+    expect(estimate1RM(100, 1)).toBe(100);
+    expect(estimate1RM(62.5, 1)).toBe(62.5);
+  });
+
+  test('reps ausente ou inválida assume 1 rep', () => {
+    expect(estimate1RM(200)).toBe(200);
+    expect(estimate1RM(200, 0)).toBe(200);
+    expect(estimate1RM(200, '')).toBe(200);
+  });
+
+  test('2 reps estimam acima do peso levantado', () => {
+    const est = estimate1RM(200, 2);
+    expect(est).toBeGreaterThan(200);
+    expect(est).toBeLessThan(230);
+  });
+
+  test('2 reps = média de Brzycki, Epley e Mayhew', () => {
+    expect(estimate1RM(200, 2)).toBeCloseTo(avgRM(200, 2), 6);
+  });
+
+  test('cresce monotonicamente com as reps', () => {
+    let prev = estimate1RM(100, 1);
+    for (let r = 2; r <= 12; r++) {
+      const cur = estimate1RM(100, r);
+      expect(cur).toBeGreaterThan(prev);
+      prev = cur;
+    }
+  });
+
+  test('escala linearmente com o peso', () => {
+    expect(estimate1RM(200, 5)).toBeCloseTo(estimate1RM(100, 5) * 2, 6);
+  });
+
+  test('peso inválido ou ausente retorna 0', () => {
+    expect(estimate1RM(0, 3)).toBe(0);
+    expect(estimate1RM(-10, 3)).toBe(0);
+    expect(estimate1RM(null, 3)).toBe(0);
+    expect(estimate1RM('', 3)).toBe(0);
+  });
+
+  test('reps fora do intervalo utilizável retorna 0', () => {
+    expect(estimate1RM(100, 37)).toBe(0);
+    expect(estimate1RM(100, 99)).toBe(0);
+  });
+
+  test('aceita strings vindas de inputs do DOM', () => {
+    expect(estimate1RM('200', '1')).toBe(200);
+    expect(estimate1RM('200', '2')).toBeCloseTo(avgRM(200, 2), 6);
+  });
+});

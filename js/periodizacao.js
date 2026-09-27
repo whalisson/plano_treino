@@ -5,7 +5,8 @@ import { uid, g, round05, getWeekRange, parseSetCount, showUndo, saveState,
   BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
   kgHistory, customLifts, cycleHistory, setCycleHistory, cycleStartDates,
-  rmHistory, periodLog, setPeriodLog, amrapReps } from './state.js';
+  rmHistory, periodLog, setPeriodLog, amrapReps, rmTestReps } from './state.js';
+import { estimate1RM } from './rm.js';
 import { DAYS, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE } from './constants.js';
 export { DAYS, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, CUSTOM_LIFT_PALETTE };
 
@@ -183,42 +184,86 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
         var testWrap = document.createElement('div');
         testWrap.className = 'rm-test-input-wrap';
 
+        // Peso levantado × reps atingidas → 1RM estimado.
+        // Com 1 rep o RM e o proprio peso; acima disso a estimativa sobe.
+        var savedTest = rmTestValues[liftKey][wi];
+        var savedReps = (rmTestReps[liftKey] && rmTestReps[liftKey][wi]) || 1;
+
         var inp = document.createElement('input');
         inp.type = 'number'; inp.step = '0.5'; inp.min = '0';
         inp.className = 'rm-test-inline';
-        inp.placeholder = '—';
-        inp.title = 'Novo RM (kg)';
-        var savedTest = rmTestValues[liftKey][wi];
+        inp.placeholder = 'kg';
+        inp.title = 'Peso levantado (kg)';
         if (savedTest) inp.value = savedTest;
+
+        var xEl = document.createElement('span');
+        xEl.className = 'rm-test-x';
+        xEl.textContent = '×';
+
+        var repsInp = document.createElement('input');
+        repsInp.type = 'number'; repsInp.step = '1'; repsInp.min = '1'; repsInp.max = '36';
+        repsInp.className = 'rm-test-inline rm-test-reps';
+        repsInp.placeholder = '1';
+        repsInp.title = 'Reps atingidas nesse peso';
+        if (savedTest && savedReps > 1) repsInp.value = savedReps;
+
+        var projEl = document.createElement('span');
+        projEl.className = 'rm-test-proj';
 
         var updBtn = document.createElement('button');
         updBtn.className = 'rm-update-btn' + (savedTest ? ' visible' : '');
         updBtn.innerHTML = '↑ Atualizar RM';
-        updBtn.title = 'Substituir RM principal pelo novo valor';
+        updBtn.title = 'Substituir RM principal pelo RM estimado';
 
-        inp.addEventListener('input', function() {
-          var v = parseFloat(inp.value);
+        // 1RM estimado a partir do que esta nos dois campos
+        function _estRM() {
+          var kg = parseFloat(inp.value);
+          if (!(kg > 0)) return 0;
+          return round05(estimate1RM(kg, parseInt(repsInp.value, 10) || 1));
+        }
+
+        // Só desenha — usado no restore, para não reescrever o ts do periodLog
+        function _renderProj() {
+          var r   = Math.max(1, parseInt(repsInp.value, 10) || 1);
+          var est = _estRM();
+          // Com 1 rep o estimado e o proprio peso — nao ha o que projetar
+          projEl.textContent = (est > 0 && r > 1) ? '→ ' + est + ' kg' : '';
+          updBtn.classList.toggle('visible', est > 0);
+        }
+
+        function _syncTest() {
+          var kg  = parseFloat(inp.value);
+          var r   = Math.max(1, parseInt(repsInp.value, 10) || 1);
+          var est = _estRM();
+          _renderProj();
           var rmTestCbKey = 'rmtest';
           var eIdx = periodLog.findIndex(function(e) {
             return e.liftKey === liftKey && e.weekIdx === wi && e.cbKey === rmTestCbKey;
           });
-          if (v > 0) {
-            rmTestValues[liftKey][wi] = v;
-            updBtn.classList.add('visible');
+          if (est > 0) {
+            rmTestValues[liftKey][wi] = kg;
+            if (!rmTestReps[liftKey]) rmTestReps[liftKey] = {};
+            rmTestReps[liftKey][wi] = r;
             var rmId  = { supino:'rm-supino', agacha:'rm-agacha', terra:'rm-terra' }[liftKey] || ('rm-custom-' + liftKey);
-            var curRm = parseFloat((g(rmId) || {}).value) || v;
-            var entry = { liftKey: liftKey, weekIdx: wi, cbKey: rmTestCbKey, vol: v, pct: v / curRm, ts: Date.now() };
+            var curRm = parseFloat((g(rmId) || {}).value) || est;
+            // vol = tonelagem real do teste; pct = intensidade do peso levantado
+            var entry = { liftKey: liftKey, weekIdx: wi, cbKey: rmTestCbKey, vol: kg * r, pct: kg / curRm, ts: Date.now() };
             if (eIdx === -1) periodLog.push(entry);
             else periodLog[eIdx] = entry;
           } else {
-            updBtn.classList.remove('visible');
+            delete rmTestValues[liftKey][wi];
+            if (rmTestReps[liftKey]) delete rmTestReps[liftKey][wi];
             if (eIdx !== -1) periodLog.splice(eIdx, 1);
           }
           saveState();
-        });
+        }
+
+        if (savedTest) _renderProj();
+        inp.addEventListener('input', _syncTest);
+        repsInp.addEventListener('input', _syncTest);
 
         updBtn.addEventListener('click', function() {
-          var v = parseFloat(inp.value);
+          var v = _estRM();
           if (!v || v <= 0) return;
           var rmId = { supino:'rm-supino', agacha:'rm-agacha', terra:'rm-terra' }[liftKey]
             || ('rm-custom-' + liftKey);
@@ -262,6 +307,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
           g(rmId).value = v;
           checksState[liftKey]  = {};
           rmTestValues[liftKey] = {};
+          rmTestReps[liftKey]   = {};
           var _cl = customLifts.find(function(l) { return l.id === liftKey; });
           if (_cl) {
             _cl.rm = v;
@@ -293,6 +339,9 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
 
         var cbWrap = makeCbEl(liftKey, wi, checkIdx, weekState, totalChecks, block, 0, 0);
         testWrap.appendChild(inp);
+        testWrap.appendChild(xEl);
+        testWrap.appendChild(repsInp);
+        testWrap.appendChild(projEl);
         testWrap.appendChild(updBtn);
         checksWrap.appendChild(cbWrap);
         checksWrap.appendChild(testWrap);
@@ -384,6 +433,7 @@ function buildWeekTable(baseWeeks, tid, liftKey, rm) {
           g(rmId).value = proj;
           checksState[liftKey]  = {};
           rmTestValues[liftKey] = {};
+          rmTestReps[liftKey]   = {};
           amrapReps[liftKey]    = {};
           var _cl = customLifts.find(function(l) { return l.id === liftKey; });
           if (_cl) { _cl.rm = proj; buildWeekTable(periodBase, 'tbl-custom-' + liftKey, liftKey, proj); }
@@ -733,6 +783,7 @@ export function renderCustomLifts() {
 
     if (!checksState[lift.id])  checksState[lift.id]  = {};
     if (!rmTestValues[lift.id]) rmTestValues[lift.id] = {};
+    if (!rmTestReps[lift.id])   rmTestReps[lift.id]   = {};
     LIFT_LABELS[lift.id] = lift.name;
     LIFT_COLORS[lift.id] = 'rgba(' + rgb + ',.9)';
     LIFT_FILL[lift.id]   = 'rgba(' + rgb + ',.12)';
@@ -813,6 +864,7 @@ function deleteCustomLift(id) {
   newCustomLifts.forEach(function(l) { customLifts.push(l); });
   delete checksState[id];
   delete rmTestValues[id];
+  delete rmTestReps[id];
   delete cycleStartDates[id];
   delete LIFT_LABELS[id];
   delete LIFT_COLORS[id];
@@ -848,6 +900,7 @@ export function resetCycle(liftKey) {
   liftKeys.forEach(function(k) {
     checksState[k]  = {};
     rmTestValues[k] = {};
+    rmTestReps[k]   = {};
     amrapReps[k]    = {};
     delete cycleStartDates[k];
   });

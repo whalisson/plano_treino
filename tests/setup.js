@@ -11,6 +11,14 @@ import { vi } from 'vitest';
 vi.hoisted(() => {
   // ── DOM skeleton ──
   document.body.innerHTML = `
+    <!-- Perfil de recuperação (fadiga.js) -->
+    <input id="user-age" value="28">
+    <input id="user-exp" value="3">
+    <!-- Barras ATL/CTL/TSB -->
+    <div id="ftgAtlBar"></div><div id="ftgAtlVal"></div>
+    <div id="ftgCtlBar"></div><div id="ftgCtlVal"></div>
+    <div id="ftgTsbBar"></div><div id="ftgTsbVal"></div>
+
     <!-- RMs globais -->
     <input id="rm-supino" value="74">
     <input id="rm-agacha" value="93">
@@ -272,7 +280,7 @@ globalThis.cardioBase = cardioBase;
 
 // ── 7. Expose render functions so tests can find them via globalThis ──────────
 import { detectExerciseGroup, parseVolume, renderKanban, renderBank, setupBankDropzone, renderPeriodGrid, renderProgressCharts, applyKgEverywhere, findExerciseKg, setExerciseKg, altBoards, setAltBoards } from '../js/logbook.js';
-import { calcRM, parseRMDate, populateRMLiftSelect, renderRMHistory } from '../js/rm.js';
+import { calcRM, parseRMDate, populateRMLiftSelect, renderRMHistory, estimate1RM } from '../js/rm.js';
 import { parseCardioDate, allCardioSessions, calcCardioStreak, CARDIO_TYPE_LABELS, CARDIO_TYPE_COLORS, buildCardioChart, renderBuilderSegs, renderSavedWorkouts } from '../js/cardio.js';
 import { getRPEFactor, calcRPEWeight, getRPEColor, estimateExecRM, execStates, renderRPEBlocks } from '../js/rpe.js';
 import { buildAllPeriod, renderCustomLifts, renderCycleHistory, LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID, periodBase, CUSTOM_LIFT_PALETTE, hexToRgb, getCustomColor, parseCycleDate } from '../js/periodizacao.js';
@@ -288,6 +296,7 @@ globalThis.applyKgEverywhere = applyKgEverywhere;
 globalThis.findExerciseKg = findExerciseKg;
 globalThis.setExerciseKg = setExerciseKg;
 globalThis.calcRM = calcRM;
+globalThis.estimate1RM = estimate1RM;
 globalThis.parseRMDate = parseRMDate;
 globalThis.populateRMLiftSelect = populateRMLiftSelect;
 globalThis.renderRMHistory = renderRMHistory;

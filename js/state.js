@@ -51,8 +51,10 @@ export var BASE_TER = 110;
 // ── Estado global ─────────────────────────────
 // checksState[lift][weekIdx][serIdx] = bool
 export let checksState = { supino: {}, agacha: {}, terra: {} };
-// rmTestValues[lift][weekIdx] = kg inserido pelo usuário
+// rmTestValues[lift][weekIdx] = kg levantado no teste de RM
 export let rmTestValues = { supino: {}, agacha: {}, terra: {} };
+// rmTestReps[lift][weekIdx] = reps atingidas nesse peso (ausente = 1)
+export let rmTestReps = { supino: {}, agacha: {}, terra: {} };
 // kgHistory[exId] = [{date, kg, name}]
 export let kgHistory = {};
 // cycleHistory = [{lift, rmStart, rmEnd, dateStart, dateEnd, gain, id}]
@@ -75,6 +77,7 @@ export function setPeriodLog(v) { periodLog = v; }
 export function setAmrapReps(v) { amrapReps = v; }
 export function setRmHistory(v) { rmHistory = v; }
 export function setRmTestValues(v) { rmTestValues = v; }
+export function setRmTestReps(v) { rmTestReps = v; }
 export function setKgHistory(v) { kgHistory = v; }
 export function setCycleHistory(v) { cycleHistory = v; }
 export function setCustomLifts(v) { customLifts = v; }

@@ -3,10 +3,24 @@
 
 import { uid, g, round05, saveState, BASE_SUP, BASE_AGA, BASE_TER, customLifts,
   rmHistory, setRmHistory } from './state.js';
-import { LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID } from './periodizacao.js';
+import { LIFT_LABELS, LIFT_COLORS, LIFT_FILL, LIFT_SOLID } from './constants.js';
 
 export { rmHistory, setRmHistory };
 let _rmLastAvg = 0;
+
+// 1RM estimado a partir de uma serie: media de Brzycki, Epley e Mayhew.
+// reps = 1 devolve o proprio peso — uma unica ja e o maximo, e Mayhew, ajustada
+// a dados submaximos, inflaria ~8,9% nesse ponto.
+export function estimate1RM(kg, reps) {
+  var w = parseFloat(kg)      || 0;
+  var r = parseInt(reps, 10)  || 1;
+  if (w <= 0 || r < 1 || r > 36) return 0;
+  if (r === 1) return w;
+  var brzycki = w * (36 / (37 - r));
+  var epley   = w * (1 + r / 30);
+  var mayhew  = w / (0.522 + 0.419 * Math.exp(-0.055 * r));
+  return (brzycki + epley + mayhew) / 3;
+}
 
 export function calcRM() {
   var w = parseFloat(g('rmW').value) || 0;
@@ -80,7 +94,9 @@ export function saveRMRecord() {
 }
 
 export function deleteRMRecord(id) {
-  rmHistory = rmHistory.filter(function(r) { return r.id !== id; });
+  // Reatribuir um import é ilegal em ES modules (TypeError no navegador) — o
+  // setter do state.js é o caminho para trocar a referência do array.
+  setRmHistory(rmHistory.filter(function(r) { return r.id !== id; }));
   renderRMHistory();
   saveState();
 }

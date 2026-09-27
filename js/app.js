@@ -3,6 +3,7 @@
 
 import { uid, g, round05, saveState, loadState, BASE_SUP, BASE_AGA, BASE_TER,
   checksState, setChecksState, rmTestValues, setRmTestValues,
+  rmTestReps, setRmTestReps,
   kgHistory, setKgHistory, cycleHistory, setCycleHistory,
   customLifts, setCustomLifts, cycleStartDates, setCycleStartDates,
   rmHistory, setRmHistory, parseSetCount, periodLog, setPeriodLog,
@@ -225,6 +226,7 @@ document.addEventListener('gorila-save', function() {
       userExp:       parseInt((g('user-exp') || {}).value) || 3,
       checks:        checksState,
       rmTests:       rmTestValues,
+      rmTestReps:    rmTestReps,
       board:         board,
       boardNames:    boardNames,
       altBoards:     altBoards,
@@ -378,6 +380,7 @@ export function exportData() {
     userExp:       parseInt((g('user-exp') || {}).value) || 3,
     checks:        checksState,
     rmTests:       rmTestValues,
+    rmTestReps:    rmTestReps,
     board:         board,
     boardNames:    boardNames,
     altBoards:     altBoards,
@@ -461,6 +464,7 @@ export function applyState(saved) {
     if (saved.userExp != null && g('user-exp')) g('user-exp').value  = saved.userExp;
     if (saved.checks)         setChecksState(saved.checks);
     if (saved.rmTests)        setRmTestValues(saved.rmTests);
+    if (saved.rmTestReps && typeof saved.rmTestReps === 'object') setRmTestReps(saved.rmTestReps);
     if (saved.board && saved.board.length === 7) setBoard(saved.board);
     if (saved.boardNames && saved.boardNames.length === 7) setBoardNames(saved.boardNames);
     if (saved.altBoards && Array.isArray(saved.altBoards)) setAltBoards(saved.altBoards);

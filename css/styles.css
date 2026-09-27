@@ -228,13 +228,17 @@ main{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .set-cb-box:hover{border-color:var(--lime);background:rgba(201,255,58,.08);}
 
 /* RM test input inline */
-.rm-test-input-wrap{display:flex;align-items:center;gap:6px;font-size:12px;}
+.rm-test-input-wrap{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;font-size:12px;}
 .rm-test-inline{
   background:transparent;border:none;border-bottom:1px solid var(--border2);
   font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green);
   width:52px;padding:0 0 1px;outline:none;text-align:center;
 }
 .rm-test-inline:focus{border-bottom-color:var(--green);}
+.rm-test-reps{width:34px;color:var(--muted);}
+.rm-test-reps:focus{color:var(--green);}
+.rm-test-x{font-family:var(--mono);font-size:11px;color:var(--muted);opacity:.6;}
+.rm-test-proj{font-family:var(--mono);font-size:11px;color:var(--lime);white-space:nowrap;}
 .rm-update-btn{
   font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;
   background:rgba(201,255,58,.1);border:1px solid rgba(201,255,58,.3);

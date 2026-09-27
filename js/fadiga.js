@@ -27,40 +27,57 @@ function _lkOf(name) {
 }
 
 // ── Cache de pseudo-1RM ───────────────────────
-// Hash cobre kg/reps/timestamps — edição inline invalida o cache.
-// refTime passado para que queries históricas usem pesos temporais corretos.
+// _pseudoRM é reconstruído quando os dados mudam OU quando o dia de referência
+// muda — uma consulta histórica não pode enxergar séries posteriores a ela.
+// _fatigaCacheVer só sobe quando os DADOS mudam, para que o memo por dia de
+// getFatigaRaw continue válido ao varrer vários refTimes.
 let _pseudoRM = {};
-let _pseudoRMLastHash = NaN;
-let _fatigaCacheVer = 0;  // bumped a cada rebuild; invalida o cache de getFatigaRaw
+let _pseudoRMKey    = '';   // hash dos dados + dia de referência
+let _pseudoDataHash = NaN;  // hash só dos dados
+let _fatigaCacheVer = 0;    // invalida o cache de getFatigaRaw
 
+// FNV-1a: mistura dependente da ordem. Uma soma simples colide ao trocar
+// valores entre séries (ex: 100kg×5 ↔ 5kg×100) e deixaria o cache obsoleto.
 function _pseudoRMHash() {
-  let h = 0;
-  workoutLog.forEach(function(s) {
-    h += s.startedAt || 0;
-    (s.exercises || []).forEach(function(ex) {
-      (ex.sets || []).forEach(function(st) { h += +(st.kg) * 97 + +(st.reps); });
+  let h = 2166136261;
+  function mix(v) {
+    h = Math.imul(h ^ ((v | 0) & 0xffff),       16777619);
+    h = Math.imul(h ^ (((v | 0) >>> 16) & 0xffff), 16777619);
+  }
+  function mixSets(sets) {
+    (sets || []).forEach(function(st) {
+      mix(Math.round((+st.kg || 0) * 10));
+      mix(Math.round(+st.reps || 0));
     });
+  }
+  workoutLog.forEach(function(s) {
+    mix(Math.round((s.startedAt || 0) / 1000));
+    (s.exercises || []).forEach(function(ex) { mixSets(ex.sets); });
   });
   rpeBlocks.forEach(function(blk) {
     (blk.execHistory || []).forEach(function(exec) {
-      h += exec.date || 0;
-      (exec.exercises || []).forEach(function(ex) {
-        (ex.sets || []).forEach(function(st) { h += +(st.kg) * 97 + +(st.reps); });
-      });
+      mix(Math.round((exec.date || 0) / 1000));
+      (exec.exercises || []).forEach(function(ex) { mixSets(ex.sets); });
     });
   });
-  return h;
+  return h >>> 0;
 }
 
 function _ensurePseudoRM(refTime) {
-  const h = _pseudoRMHash();
-  if (h === _pseudoRMLastHash) return;
-  _pseudoRMLastHash = h;
-  _fatigaCacheVer++;
+  const evalNow  = refTime !== undefined ? refTime : Date.now();
+  const dataHash = _pseudoRMHash();
+  if (dataHash !== _pseudoDataHash) {
+    _pseudoDataHash = dataHash;
+    _fatigaCacheVer++;   // só mudança de dados invalida o memo por dia
+  }
+  const key = dataHash + '|' + _localDayStart(evalNow);
+  if (key === _pseudoRMKey) return;
+  _pseudoRMKey = key;
   _pseudoRM = {};
-  const evalNow = refTime || Date.now();
   function _updatePseudo(name, kg, reps, ts) {
     if (!kg || !reps || _lkOf(name) !== '_other') return;
+    // Série posterior ao instante consultado não existe para essa consulta
+    if (ts && ts > evalNow) return;
     const est    = kg * (1 + reps / 30);
     const age    = Math.max(0, evalNow - (ts || evalNow));
     const weight = Math.exp(-age / (90 * 86400000));
@@ -91,7 +108,14 @@ function _ensurePseudoRM(refTime) {
 
 // ── Constantes temporais (lifts nomeados) ─────
 const SS_WIN_MS          = 42 * 24 * 3600 * 1000;
+const SS_FLOOR_MIN       = 3000;   // piso do denominador: evita ATL% absurdo sem histórico
+const DELOAD_THRESHOLD   = 1.10;   // ATL acima de 110% do steady-state
+const DELOAD_MIN_DAYS    = 3;
+const DELOAD_SUGGESTED_PCT = 45;   // % de carga sugerida na semana de deload
+const OVERREACH_THRESHOLD  = -0.30;
+const REST_TARGET_PCT    = 0.8;    // alvo de ATL para "descansado"
 const _TAU_CTL_MS        = 42 * 86400000;
+const TAU_ATL_FALLBACK_DAYS = 10;  // usado só quando não há ATL para ponderar
 
 const _TAU_MS            = { agacha: 14 * 86400000, terra: 14 * 86400000, supino: 7 * 86400000 };
 const _TAU_DEF_MS        = 6 * 86400000;
@@ -109,6 +133,9 @@ const _MUSCLE_OVERLAP = {
 };
 
 // ── Padrões de movimento para exercícios _other ─
+// `muscles` alimenta o cross-fatigue. Um mapa vazio zera o vazamento nos DOIS
+// sentidos, então só fica vazio onde o músculo é genuinamente desconhecido
+// (isolado não reconhecido) ou não se aplica (cardio, fadiga sistêmica).
 const MOVEMENT_PATTERNS = {
   legs: {
     tau: 12 * 86400000, tauNeural: 14 * 86400000, eccentric: 1.35, defaultInt: 0.75, tlScale: 1.0,
@@ -122,15 +149,44 @@ const MOVEMENT_PATTERNS = {
     tau: 7 * 86400000, tauNeural: 9 * 86400000, eccentric: 1.15, defaultInt: 0.72, tlScale: 1.0,
     muscles: { peitoral: 1.0, triceps: 0.8, deltoid_ant: 0.6 },
   },
+  core: {
+    tau: 4 * 86400000, tauNeural: 5 * 86400000, eccentric: 1.10, defaultInt: 0.65, tlScale: 0.5,
+    muscles: { core: 1.0, eretores: 0.4 },
+  },
+  // Isolados reconhecidos: τ curto e tlScale baixo, mas com músculo conhecido
+  // para que a fadiga vaze corretamente nos compostos que dividem o mesmo motor.
+  iso_biceps: {
+    tau: 3 * 86400000, tauNeural: 4 * 86400000, eccentric: 1.05, defaultInt: 0.70, tlScale: 0.35,
+    muscles: { biceps: 1.0 },
+  },
+  iso_triceps: {
+    tau: 3 * 86400000, tauNeural: 4 * 86400000, eccentric: 1.05, defaultInt: 0.70, tlScale: 0.35,
+    muscles: { triceps: 1.0 },
+  },
+  iso_delts: {
+    tau: 3 * 86400000, tauNeural: 4 * 86400000, eccentric: 1.05, defaultInt: 0.70, tlScale: 0.35,
+    muscles: { deltoid_lat: 1.0, deltoid_ant: 0.5 },
+  },
+  iso_chest: {
+    tau: 4 * 86400000, tauNeural: 5 * 86400000, eccentric: 1.20, defaultInt: 0.70, tlScale: 0.4,
+    muscles: { peitoral: 1.0, deltoid_ant: 0.4 },
+  },
+  // Fallback de isolado não reconhecido — músculo desconhecido, sem vazamento
   isolation: {
     tau: 3 * 86400000, tauNeural: 4 * 86400000, eccentric: 1.05, defaultInt: 0.70, tlScale: 0.35,
     muscles: {},
   },
+  // Fadiga sistêmica, não muscular — sem vazamento por sobreposição
   cardio: {
     tau: 1.5 * 86400000, tauNeural: 2 * 86400000, eccentric: 1.0, defaultInt: 0.55, tlScale: 0.5,
     muscles: {},
   },
 };
+
+// Grupo persistido pelo logbook (detectExerciseGroup) → padrão de movimento.
+// Fonte de verdade preferencial: o dicionário do logbook é mais rico que as
+// keywords daqui e o valor fica gravado em cada exercício.
+const GROUP_TO_PATTERN = { push: 'push', pull: 'pull', legs: 'legs', core: 'core' };
 
 // Keywords → padrão. Ordem importa: mais específico primeiro.
 // Todas as keywords em ASCII (sem acentos) — comparação usa _normalizeStr.
@@ -148,23 +204,24 @@ const PATTERN_KEYWORDS = [
   ['facepull','pull'],['encolhimento','pull'],['shrug','pull'],
   ['terra','pull'],['deadlift','pull'],['trapezio','pull'],
   // ISOLATION: monoarticulares (antes de PUSH para evitar match errado)
-  ['rosca','isolation'],['curl','isolation'],
-  ['elevacao lateral','isolation'],['lateral raise','isolation'],
-  ['elevacao frontal','isolation'],['front raise','isolation'],
-  ['crucifixo','isolation'],['fly','isolation'],['voador','isolation'],
-  ['crossover','isolation'],
-  ['triceps','isolation'],['tricep','isolation'],
+  ['rosca','iso_biceps'],['curl','iso_biceps'],
+  ['elevacao lateral','iso_delts'],['lateral raise','iso_delts'],
+  ['elevacao frontal','iso_delts'],['front raise','iso_delts'],
+  ['crucifixo','iso_chest'],['fly','iso_chest'],['voador','iso_chest'],
+  ['crossover','iso_chest'],
+  ['triceps','iso_triceps'],['tricep','iso_triceps'],
   // PUSH: compostos de empurrar
   ['supino','push'],['bench','push'],['desenvolvimento','push'],['overhead','push'],
   ['ohp','push'],['press','push'],
   ['mergulho','push'],['dip','push'],
-  // CARDIO / CORE
-  ['prancha','cardio'],['plank','cardio'],['abdominal','cardio'],['crunch','cardio'],
+  // CORE
+  ['prancha','core'],['plank','core'],['abdominal','core'],['crunch','core'],
+  // CARDIO
   ['esteira','cardio'],['bike','cardio'],['spinning','cardio'],['eliptico','cardio'],
 ];
 
 // Popula _MUSCLE_OVERLAP para chaves _other:* (cross-fatigue automático)
-['legs','pull','push','isolation','cardio'].forEach(function(p) {
+Object.keys(MOVEMENT_PATTERNS).forEach(function(p) {
   _MUSCLE_OVERLAP['_other:' + p] = MOVEMENT_PATTERNS[p].muscles;
 });
 
@@ -173,23 +230,40 @@ function _normalizeStr(s) {
   return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 
-// Cache: name → { key, pat } para evitar re-scan do array a cada set
+// Cache: chave → { key, pat } para evitar re-scan do array a cada set
 let _patternCache = {};
-function _resolvePattern(name) {
-  const k = _normalizeStr(name);
-  if (_patternCache[k]) return _patternCache[k];
-  const found = PATTERN_KEYWORDS.find(function(pair) { return k.includes(pair[0]); });
-  const pkey  = found ? found[1] : 'isolation';
+
+// O grupo gravado no exercício (push/pull/legs/core) vence as keywords: vem do
+// dicionário do logbook, que é mais rico, e foi confirmado na criação do card.
+// Isolados e nomes não classificados chegam com group vazio → cai nas keywords.
+function _resolvePattern(name, group) {
+  const fromGroup = GROUP_TO_PATTERN[group];
+  const ck = fromGroup ? 'g:' + fromGroup : 'n:' + _normalizeStr(name);
+  if (_patternCache[ck]) return _patternCache[ck];
+  let pkey = fromGroup;
+  if (!pkey) {
+    const nk    = _normalizeStr(name);
+    const found = PATTERN_KEYWORDS.find(function(pair) { return nk.includes(pair[0]); });
+    pkey = found ? found[1] : 'isolation';
+  }
   const entry = { key: pkey, pat: MOVEMENT_PATTERNS[pkey] };
-  _patternCache[k] = entry;
+  _patternCache[ck] = entry;
   return entry;
 }
-function _patternOf(name)    { return _resolvePattern(name).pat; }
-function _patternKeyOf(name) { return _resolvePattern(name).key; }
+export function _patternOf(name, group)    { return _resolvePattern(name, group).pat; }
+export function _patternKeyOf(name, group) { return _resolvePattern(name, group).key; }
 
 // Chave completa: lk nomeado ou '_other:<padrão>'
-function _lkFull(lk, name) {
-  return lk !== '_other' ? lk : '_other:' + _patternKeyOf(name);
+function _lkFull(lk, name, group) {
+  return lk !== '_other' ? lk : '_other:' + _patternKeyOf(name, group);
+}
+
+// Padrão de movimento de uma chave completa. null para os 3 lifts nomeados,
+// que têm τ e excêntrico próprios em _TAU_MS / _ECCENTRIC.
+function _patOfLkf(lkf) {
+  if (lkf.indexOf('_other:') === 0) return MOVEMENT_PATTERNS[lkf.slice(7)] || MOVEMENT_PATTERNS.isolation;
+  const cl = customLifts.find(function(c) { return c.id === lkf; });
+  return cl ? _patternOf(cl.name) : null;
 }
 
 // ── Perfil de recuperação ──────────────────────
@@ -205,70 +279,82 @@ function _recoveryMult() {
   const expRaw = parseFloat((g('user-exp') || {}).value);
   const age = isNaN(ageRaw) || ageRaw <= 0 ? (_recoveryProfile.age || 28) : ageRaw;
   const exp = isNaN(expRaw)               ? (_recoveryProfile.trainingYears || 3) : expRaw;
-  _recovMultVal   = (age < 30 ? 1.0 : age < 40 ? 1.15 : 1.35) * (exp > 5 ? 0.85 : 1.0);
+  const next = (age < 30 ? 1.0 : age < 40 ? 1.15 : 1.35) * (exp > 5 ? 0.85 : 1.0);
+  // Perfil alterado muda todos os τ — projeções e checkDeload em cache ficariam velhos
+  if (_recovMultVal !== null && next !== _recovMultVal) _fatigaCacheVer++;
+  _recovMultVal   = next;
   _recovMultStamp = now;
   return _recovMultVal;
 }
 
+// τ base de uma chave completa, antes do perfil de recuperação
+function _tauBaseMs(lkf) {
+  if (_TAU_MS[lkf]) return _TAU_MS[lkf];
+  const pat = _patOfLkf(lkf);
+  return pat ? pat.tau : _TAU_DEF_MS;
+}
+
 // τ dinâmico: base × multiplicador de intensidade × perfil de recuperação
-function _tauMs(lk, intensity, name) {
-  const base = _TAU_MS[lk] || (name ? _patternOf(name).tau : _TAU_DEF_MS);
+function _tauMs(lkf, intensity) {
   const mult = intensity >= 0.9 ? 2.0 : intensity >= 0.8 ? 1.4 : 1.0;
-  return base * mult * _recoveryMult();
+  return _tauBaseMs(lkf) * mult * _recoveryMult();
 }
 
-// τ para steady-state (sem mult dinâmico). Aceita chaves _other:* compostas.
-function _tauDay(lkFull) {
-  const rm = _recoveryMult();
-  if (lkFull.startsWith('_other:')) {
-    const pname = lkFull.slice(7);
-    return ((MOVEMENT_PATTERNS[pname] || MOVEMENT_PATTERNS.push).tau) * rm / 86400000;
-  }
-  if (_TAU_MS[lkFull]) return _TAU_MS[lkFull] * rm / 86400000;
-  const cl = customLifts.find(function(c) { return c.id === lkFull; });
-  if (cl) return _patternOf(cl.name).tau * rm / 86400000;
-  return _TAU_DEF_MS * rm / 86400000;
+// τ em dias para steady-state (sem mult dinâmico)
+function _tauDay(lkf) {
+  return _tauBaseMs(lkf) * _recoveryMult() / 86400000;
 }
 
-function _tauNeuralMs(lk, name) {
-  return _TAU_NEURAL_MS[lk] || (name ? _patternOf(name).tauNeural : _TAU_NEURAL_DEF_MS);
+function _tauNeuralMs(lkf) {
+  if (_TAU_NEURAL_MS[lkf]) return _TAU_NEURAL_MS[lkf];
+  const pat = _patOfLkf(lkf);
+  return pat ? pat.tauNeural : _TAU_NEURAL_DEF_MS;
 }
 
-function _eccentricOf(lk, name) {
-  return _ECCENTRIC[lk] || _patternOf(name).eccentric || 1.0;
+function _eccentricOf(lkf) {
+  if (_ECCENTRIC[lkf]) return _ECCENTRIC[lkf];
+  const pat = _patOfLkf(lkf);
+  return (pat && pat.eccentric) || 1.0;
 }
 
-function _tlScaleOf(lk, name) {
-  if (lk !== '_other') return 1.0;
-  return _patternOf(name).tlScale || 1.0;
+// Só exercícios _other escalam: lifts nomeados e customizados valem 1.0
+function _tlScaleOf(lkf) {
+  if (lkf.indexOf('_other:') !== 0) return 1.0;
+  return _patOfLkf(lkf).tlScale || 1.0;
 }
 
 // Custo de esforço exponencial. Referência = 65% 1RM (carga de trabalho típica = 1.0).
 // Ramo quadrático abaixo de 55% casado com o exponencial em 0.55: exp(2×(0.55−0.65)) = exp(−0.2).
 const _EF_JOIN = Math.exp(-0.2); // ≈ 0.8187 — valor do exponencial exatamente em 0.55
-function effortFactor(intensity) {
+export function effortFactor(intensity) {
   if (intensity < 0.55) return Math.pow(intensity / 0.55, 2) * _EF_JOIN;
   return Math.exp(2 * (intensity - 0.65));
 }
 
 // Intensidade efetiva via Epley, normalizada pelo 1RM real.
-function intensityFromSet(kg, reps, rm) {
+export function intensityFromSet(kg, reps, rm) {
   const est1RM = kg * (1 + reps / 30);
   return Math.min(est1RM / rm, 1.0);
 }
 
+// Joelho da rampa neural. O cap de _other precisa ficar ACIMA dele, senão
+// nenhum exercício sem lift nomeado alcança o componente neural.
+export const NEURAL_KNEE   = 0.92;
+const NEURAL_SPAN          = 1 - NEURAL_KNEE;
+export const OTHER_INT_CAP = 0.95;
+
 // Para _other: evita circularidade onde pseudo-RM = est1RM do próprio set → intensity 1.0.
 // relInt (rep-based) é o piso independente de kg; absInt (RM-based) escala com histórico.
-// Retorna o mais conservador, capado em 0.90 para não explodir o effortFactor.
+// Retorna o mais conservador, capado para não explodir o effortFactor.
 function _intensityFor(lk, kg, reps, rm, name) {
   if (lk !== '_other') return intensityFromSet(kg, reps, rm);
   const relInt = 1 / (1 + reps / 30);
   const stored = _pseudoRM[name];
   if (stored) {
-    const absInt = Math.min(intensityFromSet(kg, reps, stored.val), 0.90);
+    const absInt = Math.min(intensityFromSet(kg, reps, stored.val), OTHER_INT_CAP);
     return Math.min(relInt, absInt);
   }
-  return Math.min(relInt, 0.90);
+  return Math.min(relInt, OTHER_INT_CAP);
 }
 
 // Sobreposição muscular — inicialização lazy de customLifts + cache de pares O(1)
@@ -305,12 +391,6 @@ function _sharedMuscleScore(lkA, lkB) {
 function _localDayStart(ts) {
   const d = new Date(ts);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-// 2º treino no mesmo dia custa +25% (densidade intra-dia)
-function _sameDayMult(ts, allTs) {
-  const ds = _localDayStart(ts);
-  return allTs.some(function(t) { return t >= ds && t < ts; }) ? 1.25 : 1.0;
 }
 
 // Desconto adaptativo: cargas abaixo da intensidade habitual custam menos fadiga.
@@ -377,10 +457,7 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
 
   customLifts.forEach(function(cl) {
     if (!cl.rm || !trainedLifts.has(cl.id)) return;
-    const pat  = _patternOf(cl.name);
-    const tauD = pat.tau / 86400000 * _recoveryMult();
-    const ecc  = pat.eccentric || 1.15;
-    ss += cl.rm * K * ecc * tauD;
+    ss += cl.rm * K * _eccentricOf(cl.id) * _tauDay(cl.id);
   });
 
   // Exercícios _other frequentes (ex: Hip Thrust, Leg Press) contribuem para o
@@ -391,7 +468,7 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
     if (!s.startedAt || s.startedAt < now - SS_WIN_MS) return;
     (s.exercises || []).forEach(function(ex) {
       if (_lkOf(ex.name) !== '_other') return;
-      const lkf = '_other:' + _patternKeyOf(ex.name);
+      const lkf = '_other:' + _patternKeyOf(ex.name, ex.group);
       (ex.sets || []).forEach(function(set) {
         const kg = +(set.kg) || 0, reps = +(set.reps) || 0;
         if (!kg || !reps) return;
@@ -406,7 +483,7 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
       if (!exec.date || exec.date < now - SS_WIN_MS || exec.date > now) return;
       (exec.exercises || []).forEach(function(ex) {
         if (_lkOf(ex.name) !== '_other') return;
-        const lkf = '_other:' + _patternKeyOf(ex.name);
+        const lkf = '_other:' + _patternKeyOf(ex.name, ex.group);
         (ex.sets || []).forEach(function(set) {
           const kg = +(set.kg) || 0, reps = +(set.reps) || 0;
           if (!kg || !reps) return;
@@ -419,24 +496,18 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
 
   Object.keys(otherTL).forEach(function(lkf) {
     if (otherCount[lkf] < 3) return;
-    const patName = lkf.slice(7);
-    const pat  = MOVEMENT_PATTERNS[patName] || MOVEMENT_PATTERNS.push;
-    const tauD = pat.tau / 86400000 * _recoveryMult();
-    const ecc  = pat.eccentric || 1.0;
     const avgTL = (otherTL[lkf] / 42) * 0.75 * effortFactor(0.75);
-    ss += avgTL * ecc * tauD;
+    ss += avgTL * _eccentricOf(lkf) * _tauDay(lkf);
   });
 
   periodLog.forEach(function(e) {
     if (!e.ts || e.ts < now - SS_WIN_MS || e.ts > now || !e.vol || !e.liftKey) return;
     const lk        = e.liftKey;
-    const clName    = (customLifts.find(function(c) { return c.id === lk; }) || {}).name;
     const intensity = +e.pct || 0.75;
-    const eccentric = _ECCENTRIC[lk] || (clName ? _patternOf(clName).eccentric : 1.0);
-    ss += (+e.vol / 42) * intensity * effortFactor(intensity) * eccentric * _tauDay(lk);
+    ss += (+e.vol / 42) * intensity * effortFactor(intensity) * _eccentricOf(lk) * _tauDay(lk);
   });
 
-  return Math.max(ss, 3000);
+  return Math.max(ss, SS_FLOOR_MIN);
 }
 
 // ── Núcleo: calcula ATL/CTL/TSB para um dado refTime ──
@@ -444,12 +515,29 @@ function _computeSsFloor(oneRMs, allSessionTs, now) {
 // Chamadas sem refTime (tempo real) sempre recomputam.
 const _fatigaCache = new Map();
 
+// Zera todos os memos derivados de dados ou do DOM. Os caches vivem no escopo
+// do módulo, então cenários independentes precisam disso para não contaminar
+// uns aos outros.
+export function resetFadigaCaches() {
+  _pseudoRM        = {};
+  _pseudoRMKey     = '';
+  _pseudoDataHash  = NaN;
+  _fatigaCache.clear();
+  _fatigaCacheVer++;
+  _recovMultVal    = null;
+  _recovMultStamp  = 0;
+  _patternCache    = {};
+  _sharedMuscleCache = {};
+  _customOverlapLen  = -1;
+}
+
 export function getFatigaRaw(refTime) {
   const t = refTime !== undefined ? refTime : Date.now();
   _ensurePseudoRM(t);
 
   if (refTime !== undefined) {
-    const cacheKey = Math.floor(t / 86400000) + ':' + _fatigaCacheVer;
+    // Dia local, coerente com _localDayStart usado na densidade intra-dia
+    const cacheKey = _localDayStart(t) + ':' + _fatigaCacheVer;
     if (_fatigaCache.has(cacheKey)) return _fatigaCache.get(cacheKey);
     const result = _computeFatiga(t);
     _fatigaCache.set(cacheKey, result);
@@ -501,7 +589,7 @@ function _computeFatiga(t) {
     s.exercises.forEach(function(ex) {
       if (!ex || !ex.sets) return;
       const lk  = _lkOf(ex.name), rm = rmFor(lk);
-      const lkf = _lkFull(lk, ex.name);
+      const lkf = _lkFull(lk, ex.name, ex.group);
       ex.sets.forEach(function(set) {
         const kg = +(set.kg) || 0, reps = +(set.reps) || 0;
         if (!kg || !reps) return;
@@ -524,7 +612,7 @@ function _computeFatiga(t) {
       exec.exercises.forEach(function(ex) {
         if (!ex || !ex.sets) return;
         const lk  = _lkOf(ex.name), rm = +ex.rmAfter || +ex.rmBefore || rmFor(lk);
-        const lkf = _lkFull(lk, ex.name);
+        const lkf = _lkFull(lk, ex.name, ex.group);
         ex.sets.forEach(function(set) {
           const kg = +(set.kg) || 0, reps = +(set.reps) || 0;
           if (!kg || !reps) return;
@@ -544,20 +632,20 @@ function _computeFatiga(t) {
   const tlByLift = {};
 
   // Acumula um set no ATL/CTL e, se estiver na janela de 42d, no tlByLift.
-  function _accSet(lk, lkf, kg, reps, intensity, elapsed, sdMult, bilateral, exName) {
+  function _accSet(lkf, kg, reps, intensity, elapsed, sdMult, bilateral) {
     const tlBase = reps * kg * intensity * effortFactor(intensity) * (bilateral ? 2 : 1);
     if (!isFinite(tlBase) || tlBase <= 0) return;
-    const tl = tlBase * _eccentricOf(lk, exName) * sdMult
-              * _adaptScale(intensity, lkf, avgIntByLift) * _tlScaleOf(lk, exName);
+    const tl = tlBase * _eccentricOf(lkf) * sdMult
+              * _adaptScale(intensity, lkf, avgIntByLift) * _tlScaleOf(lkf);
 
     if (elapsed >= 0) {
-      const decayATL = Math.exp(-elapsed / _tauMs(lk, intensity, exName));
+      const decayATL = Math.exp(-elapsed / _tauMs(lkf, intensity));
       const decayCTL = Math.exp(-elapsed / _TAU_CTL_MS);
       if (decayATL >= 0.001) perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tl * decayATL;
       if (decayCTL >= 0.001) ctl += tl * decayCTL;
-      if (intensity > 0.92) {
-        const tlN    = tl * 0.3 * Math.pow((intensity - 0.92) / 0.08, 2);
-        const decayN = Math.exp(-elapsed / _tauNeuralMs(lk, exName));
+      if (intensity > NEURAL_KNEE) {
+        const tlN    = tl * 0.3 * Math.pow((intensity - NEURAL_KNEE) / NEURAL_SPAN, 2);
+        const decayN = Math.exp(-elapsed / _tauNeuralMs(lkf));
         if (decayN   >= 0.001) perLiftATL[lkf] = (perLiftATL[lkf] || 0) + tlN * decayN;
         if (decayCTL >= 0.001) ctl += tlN * decayCTL;
       }
@@ -574,12 +662,12 @@ function _computeFatiga(t) {
     s.exercises.forEach(function(ex) {
       if (!ex || !ex.sets) return;
       const lk  = _lkOf(ex.name);
-      const lkf = _lkFull(lk, ex.name);
+      const lkf = _lkFull(lk, ex.name, ex.group);
       const rm  = rmFor(lk);
       ex.sets.forEach(function(set) {
         const kg = +(set.kg) || 0, reps = +(set.reps) || 0;
         if (!kg || !reps) return;
-        _accSet(lk, lkf, kg, reps, _intensityFor(lk, kg, reps, rm, ex.name), elapsed, sdMult, ex.bilateral, ex.name);
+        _accSet(lkf, kg, reps, _intensityFor(lk, kg, reps, rm, ex.name), elapsed, sdMult, ex.bilateral);
       });
     });
   });
@@ -587,23 +675,22 @@ function _computeFatiga(t) {
   periodLog.forEach(function(e) {
     if (!e.ts || e.ts > t || !e.vol || !e.liftKey) return;
     const lk        = e.liftKey;
-    const clName    = (customLifts.find(function(c) { return c.id === lk; }) || {}).name;
     const intensity = +e.pct || 0.75;
     const tlBase    = (+e.vol) * intensity * effortFactor(intensity);
     if (!isFinite(tlBase) || tlBase <= 0) return;
-    const eccentric = _ECCENTRIC[lk] || (clName ? _patternOf(clName).eccentric : 1.0);
+    const eccentric = _eccentricOf(lk);
     const sdMult    = _sdMult(e.ts);
     const tl        = tlBase * eccentric * sdMult * _adaptScale(intensity, lk, avgIntByLift);
     const elapsed   = t - e.ts;
 
     if (elapsed >= 0) {
-      const decayATL = Math.exp(-elapsed / _tauMs(lk, intensity, clName));
+      const decayATL = Math.exp(-elapsed / _tauMs(lk, intensity));
       const decayCTL = Math.exp(-elapsed / _TAU_CTL_MS);
       if (decayATL >= 0.001) perLiftATL[lk] = (perLiftATL[lk] || 0) + tl * decayATL;
       if (decayCTL >= 0.001) ctl += tl * decayCTL;
-      if (intensity > 0.92) {
-        const tlN    = tl * 0.3 * Math.pow((intensity - 0.92) / 0.08, 2);
-        const decayN = Math.exp(-elapsed / _tauNeuralMs(lk, clName));
+      if (intensity > NEURAL_KNEE) {
+        const tlN    = tl * 0.3 * Math.pow((intensity - NEURAL_KNEE) / NEURAL_SPAN, 2);
+        const decayN = Math.exp(-elapsed / _tauNeuralMs(lk));
         if (decayN   >= 0.001) perLiftATL[lk] = (perLiftATL[lk] || 0) + tlN * decayN;
         if (decayCTL >= 0.001) ctl += tlN * decayCTL;
       }
@@ -622,12 +709,12 @@ function _computeFatiga(t) {
       exec.exercises.forEach(function(ex) {
         if (!ex || !ex.sets) return;
         const lk  = _lkOf(ex.name);
-        const lkf = _lkFull(lk, ex.name);
+        const lkf = _lkFull(lk, ex.name, ex.group);
         const rm  = +ex.rmAfter || +ex.rmBefore || rmFor(lk);
         ex.sets.forEach(function(set) {
           const kg = +(set.kg) || 0, reps = +(set.reps) || 0;
           if (!kg || !reps) return;
-          _accSet(lk, lkf, kg, reps, _intensityFor(lk, kg, reps, rm, ex.name), elapsed, sdMult, ex.bilateral, ex.name);
+          _accSet(lkf, kg, reps, _intensityFor(lk, kg, reps, rm, ex.name), elapsed, sdMult, ex.bilateral);
         });
       });
     });
@@ -664,12 +751,24 @@ function _computeFatiga(t) {
   const ssFloorScaled = SS_FLOOR * crossFactor;
   const ssCtlFloor    = ss_raw > 0 ? SS_FLOOR * (ss_ctl_raw / ss_raw) : SS_FLOOR * 4;
 
+  // τ efetivo do ATL: média dos τ por lift ponderada pela fadiga de cada um.
+  // A projeção usava 10d fixo, o que diverge do modelo quando o treino pende
+  // para um padrão só (isolados ~3d vs. agacha/terra 14d).
+  let tauNum = 0, tauDen = 0;
+  allLks.forEach(function(lk) {
+    const a = perLiftATL[lk] || 0;
+    if (a <= 0) return;
+    tauNum += _tauDay(lk) * a;
+    tauDen += a;
+  });
+
   const _ss    = Math.max(ss, ssFloorScaled);
   const _ssCtl = Math.max(ss_ctl_raw, ssCtlFloor);
   return { fatigue: fatigue, ctl: ctl,
            tsbPct: (_ss > 0 && _ssCtl > 0) ? (ctl / _ssCtl - fatigue / _ss) * 100 : 0,
            steadyState:    _ss,
-           steadyStateCTL: _ssCtl };
+           steadyStateCTL: _ssCtl,
+           tauAtlDays: tauDen > 0 ? tauNum / tauDen : TAU_ATL_FALLBACK_DAYS };
 }
 
 export function calcFadiga() {
@@ -680,7 +779,7 @@ export function calcFadiga() {
 // Verifica se ATL esteve acima de 110% do steady-state por >= 3 dias consecutivos.
 export function checkDeload() {
   const DAY = 86400000, now = Date.now();
-  const THRESHOLD = 1.10, MIN_DAYS = 3;
+  const THRESHOLD = DELOAD_THRESHOLD, MIN_DAYS = DELOAD_MIN_DAYS;
   let days = 0;
   for (let d = 0; d < 7; d++) {
     const r = getFatigaRaw(now - d * DAY);
@@ -692,14 +791,14 @@ export function checkDeload() {
     needed:       days >= MIN_DAYS,
     days:         days,
     atlPct:       Math.round(cur.fatigue / cur.steadyState * 100),
-    suggestedPct: 45,
+    suggestedPct: DELOAD_SUGGESTED_PCT,
   };
 }
 
 // Verifica se TSB esteve abaixo de −30% do steady-state por >= 3 dias consecutivos.
 export function checkOverreaching() {
   const DAY = 86400000, now = Date.now();
-  const THRESHOLD = -0.30, MIN_DAYS = 3;
+  const THRESHOLD = OVERREACH_THRESHOLD, MIN_DAYS = DELOAD_MIN_DAYS;
   let days = 0;
   for (let d = 0; d < 14; d++) {
     const r = getFatigaRaw(now - d * DAY);
@@ -712,7 +811,7 @@ export function checkOverreaching() {
 
 export function calcRestDays() {
   const base   = getFatigaRaw();
-  const target = 0.8 * base.steadyState;
+  const target = REST_TARGET_PCT * base.steadyState;
   if (base.fatigue <= target) return 0;
   const DAY = 86400000, now = Date.now();
   let lo = 1, hi = 60, best = 60;
@@ -783,9 +882,10 @@ export function calcTSBProjection(curState, weeklyFreq, loadPct, horizonDays) {
   const cur   = curState;
   const ss    = cur.steadyState    || 1;
   const ssCtl = cur.steadyStateCTL || 1;
-  // τ médio ponderado (squat+DL 14d, bench 7d, custom 6d → ~10d)
-  const dA    = Math.exp(-DAY / (10 * DAY));
-  const dC    = Math.exp(-DAY / (42 * DAY));
+  // τ do ATL vem do próprio estado (ponderado pelos lifts realmente treinados)
+  const tauA  = Math.max(1, +cur.tauAtlDays || TAU_ATL_FALLBACK_DAYS);
+  const dA    = Math.exp(-1 / tauA);
+  const dC    = Math.exp(-1 / (_TAU_CTL_MS / DAY));
   // Carga por sessão normalizada: a 100% de load, 1 sessão/dia → ATL converge a SS
   const lAtl  = ss    * (1 - dA) * loadPct;
   const lCtl  = ssCtl * (1 - dC) * loadPct;
@@ -822,7 +922,6 @@ export function renderTSBChart(canvas, curState, weeklyFreq, loadPct, compDate) 
   canvas.height = H;
   const ctx = canvas.getContext('2d');
   if (!ctx) { console.error('[TSBChart] getContext retornou null'); return null; }
-  console.log('[TSBChart] canvas', W + 'x' + H, 'curTSB%', Math.round((curState.steadyStateCTL > 0 ? (curState.ctl / curState.steadyStateCTL - curState.fatigue / curState.steadyState) * 100 : 0)));
 
   const data    = calcTSBProjection(curState, weeklyFreq, loadPct, 60);
   const TSB_LO  = 5, TSB_HI = 25;
